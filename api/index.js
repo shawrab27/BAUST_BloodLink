@@ -45,9 +45,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // ─── HEALTH (also handled by /api/health.js in Vercel, but available here for local dev)
 app.get('/api/health', require('./health'));
 
-// ─── PLACEHOLDER ROUTES (will be replaced in subsequent phases) ──────────────
+// ─── ROUTES ──────────────────────────────────────────────────────────────────
 // Phase 2: Auth
-// app.use('/api/auth', require('./routes/auth'));
+app.use('/api/auth', require('./routes/auth'));
 // Phase 3: Blood Hub
 // app.use('/api/blood-requests', require('./routes/bloodRequests'));
 // app.use('/api/donors', require('./routes/donors'));

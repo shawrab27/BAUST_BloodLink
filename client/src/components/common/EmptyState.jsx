@@ -26,7 +26,7 @@ export function EmptyState({
           </p>
         )}
       </div>
-      {action && action}
+      {action || null}
     </div>
   );
 }

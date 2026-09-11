@@ -1,4 +1,3 @@
-import { NotificationSkeleton } from '../../components/common/SkeletonLoader';
 import EmptyState from '../../components/common/EmptyState';
 
 /**

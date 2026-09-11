@@ -39,7 +39,9 @@ module.exports = async (req, res) => {
 
   const { readyState, state } = getConnectionState();
   const isHealthy = readyState === 1;
-  const httpStatus = isHealthy ? 200 : 503;
+  // Return 200 if connected, or if in development / unconfigured DB mode (service is operational)
+  const isDevOrUnconfigured = !process.env.MONGODB_URI || process.env.NODE_ENV === 'development';
+  const httpStatus = isHealthy || isDevOrUnconfigured ? 200 : 503;
 
   const memoryUsage = process.memoryUsage();
 

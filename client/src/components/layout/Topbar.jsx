@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 
 /**
  * Topbar — Fixed 72px application header.
@@ -11,8 +12,10 @@ import { useState } from 'react';
  * Left corner: Logo image only (the PNG already contains "BAUST BloodLink" +
  * "DONATE • CONNECT • SAVE LIVES" as built-in text — no duplicate HTML text).
  */
-function Topbar({ user = null, notificationCount = 0, isAdmin = false }) {
+function Topbar({ user: propUser = null, notificationCount = 0, isAdmin = false }) {
   const navigate = useNavigate();
+  const { user: authUser, logout } = useAuth();
+  const user = propUser || authUser;
   const [profileOpen, setProfileOpen] = useState(false);
   const [lang, setLang] = useState('EN');
 
@@ -146,7 +149,11 @@ function Topbar({ user = null, notificationCount = 0, isAdmin = false }) {
                       <ProfileMenuItem
                         icon="logout"
                         label="Sign Out"
-                        onClick={() => { setProfileOpen(false); navigate('/login'); }}
+                        onClick={() => {
+                          setProfileOpen(false);
+                          logout();
+                          navigate('/login');
+                        }}
                       />
                     </div>
                   </>
