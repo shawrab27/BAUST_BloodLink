@@ -1,0 +1,16 @@
+{
+  "name": "baust-bloodlink",
+  "version": "1.0.0",
+  "description": "BAUST BloodLink — Institutional Blood Donation Platform",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix api\" \"npm run dev --prefix client\"",
+    "build": "npm run build --prefix client",
+    "install:all": "npm install && npm install --prefix api && npm install --prefix client",
+    "start:api": "npm run dev --prefix api",
+    "start:client": "npm run dev --prefix client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
