@@ -49,8 +49,8 @@ app.get('/api/health', require('./health'));
 // Phase 2: Auth
 app.use('/api/auth', require('./routes/auth'));
 // Phase 3: Blood Hub
-// app.use('/api/blood-requests', require('./routes/bloodRequests'));
-// app.use('/api/donors', require('./routes/donors'));
+app.use('/api/blood-requests', require('./routes/bloodRequests'));
+app.use('/api/donors', require('./routes/donors'));
 // Phase 4: Emergency SOS
 // app.use('/api/emergency', require('./routes/emergency'));
 // Phase 5: Feed, Notifications, Messenger
