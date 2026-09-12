@@ -1,0 +1,490 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BAUST BloodLink — Global Design System
+   "Radiant Crimson Glass" — Light Glassmorphism
+   1440px Desktop-Only, Inter typography, Zero Green
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── BASE RESETS ────────────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    overscroll-behavior: none;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #0d1c2f;
+    background-color: #f8f9ff;
+    /* Desktop only — no mobile handling */
+    min-width: 1280px;
+  }
+
+  /* Hide scrollbar (Stitch style) */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(184, 0, 53, 0.25);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(184, 0, 53, 0.45);
+  }
+
+  /* Focus visible styles */
+  :focus-visible {
+    outline: 2px solid #e11d48;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  img {
+    display: block;
+    max-width: 100%;
+  }
+
+  button {
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-family: inherit;
+  }
+
+  input, textarea, select {
+    font-family: inherit;
+  }
+}
+
+/* ─── GLASSMORPHISM COMPONENT LAYER ─────────────────────────────────────── */
+@layer components {
+
+  /* ── Level 1: Standard Glass Panel (cards, sidebar, topbar) ── */
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(225, 29, 72, 0.18);
+    box-shadow: 0 12px 32px rgba(225, 29, 72, 0.08);
+  }
+
+  /* ── Level 2: Floating Interactive / Critical Cards ── */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(225, 29, 72, 0.32);
+    box-shadow: 0 16px 40px rgba(225, 29, 72, 0.14);
+    border-radius: 1rem;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+
+  .glass-card:hover {
+    box-shadow: 0 20px 48px rgba(225, 29, 72, 0.20);
+    transform: translateY(-2px);
+  }
+
+  /* ── Level 3: Modals & Emergency Overlays ── */
+  .glass-modal {
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+    border: 1px solid rgba(190, 18, 60, 0.40);
+    box-shadow: 0 24px 64px rgba(153, 27, 27, 0.20);
+    border-radius: 1.5rem;
+  }
+
+  /* ── Topbar — fixed 72px ── */
+  .topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 72px;
+    z-index: 50;
+    @apply glass-panel;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    border-bottom: 1px solid rgba(225, 29, 72, 0.15);
+    box-shadow: 0 4px 24px rgba(184, 0, 53, 0.06);
+  }
+
+  /* ── Sidebar — fixed 260px ── */
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 72px;
+    bottom: 0;
+    width: 260px;
+    z-index: 40;
+    @apply glass-panel;
+    border-top: none;
+    border-left: none;
+    border-bottom: none;
+    border-right: 1px solid rgba(225, 29, 72, 0.15);
+    box-shadow: 4px 0 24px rgba(184, 0, 53, 0.04);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  /* ── Main content area ── */
+  .main-content {
+    padding-left: 260px;
+    padding-top: 72px;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  /* ── Admin layout override — blue + red palette ── */
+  .admin-layout .sidebar,
+  .admin-layout .topbar {
+    background: rgba(15, 23, 42, 0.92);
+    border-color: rgba(225, 29, 72, 0.30);
+  }
+
+  .admin-layout .sidebar-nav-item {
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .admin-layout .sidebar-nav-item:hover {
+    background: rgba(225, 29, 72, 0.15);
+    color: #ffffff;
+  }
+
+  /* ── Sidebar nav items ── */
+  .sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.75rem;
+    transition: all 0.18s ease;
+    color: #5c3f40;
+    font-size: 14px;
+    font-weight: 600;
+    gap: 0.75rem;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  .sidebar-nav-item:hover {
+    background: rgba(221, 233, 255, 0.8);
+    color: #0d1c2f;
+  }
+
+  .sidebar-nav-item.active {
+    background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 20px rgba(225, 29, 72, 0.35),
+                inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .sidebar-nav-item.active:hover {
+    transform: none;
+    background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+  }
+
+  /* ── Blood group chip ── */
+  .blood-group-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.75rem;
+    border-radius: 9999px;
+    background: rgba(225, 29, 72, 0.08);
+    border: 1px solid rgba(225, 29, 72, 0.25);
+    color: #be123c;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* ── Status badge ── */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .status-badge.eligible {
+    background: rgba(225, 29, 72, 0.08);
+    color: #b80035;
+    border: 1px solid rgba(184, 0, 53, 0.20);
+  }
+
+  .status-badge.ineligible {
+    background: rgba(100, 116, 139, 0.10);
+    color: #64748b;
+    border: 1px solid rgba(100, 116, 139, 0.20);
+  }
+
+  /* ── Buttons ── */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.5rem;
+    border-radius: 0.5rem;
+    background: #e11d48;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    box-shadow: 0 4px 14px rgba(225, 29, 72, 0.35);
+    transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
+    cursor: pointer;
+    border: none;
+    white-space: nowrap;
+  }
+
+  .btn-primary:hover {
+    background: #be123c;
+    box-shadow: 0 6px 20px rgba(190, 18, 60, 0.45);
+    transform: translateY(-1px);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(190, 18, 60, 0.30);
+  }
+
+  .btn-primary:disabled {
+    background: #906f70;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.5rem;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.60);
+    color: #0d1c2f;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid rgba(225, 29, 72, 0.20);
+    transition: all 0.18s ease;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(225, 29, 72, 0.40);
+  }
+
+  .btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.5rem;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: #be123c;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1.5px solid #be123c;
+    transition: all 0.18s ease;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .btn-outline:hover {
+    background: rgba(225, 29, 72, 0.06);
+  }
+
+  /* ── Form inputs ── */
+  .input-field {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.65);
+    border: 1px solid #94a3b8;
+    color: #0d1c2f;
+    font-size: 15px;
+    font-family: 'Inter', sans-serif;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    outline: none;
+  }
+
+  .input-field::placeholder {
+    color: #906f70;
+  }
+
+  .input-field:focus {
+    border-color: #e11d48;
+    box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.15);
+    background: rgba(255, 255, 255, 0.85);
+  }
+
+  .input-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #0d1c2f;
+    margin-bottom: 0.375rem;
+  }
+
+  /* ── Skeleton loading ── */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgba(225, 29, 72, 0.04) 25%,
+      rgba(225, 29, 72, 0.10) 50%,
+      rgba(225, 29, 72, 0.04) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.6s ease-in-out infinite;
+    border-radius: 0.5rem;
+  }
+
+  @keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ── Dividers ── */
+  .divider {
+    height: 1px;
+    background: rgba(229, 189, 190, 0.5);
+    margin: 0;
+  }
+
+  /* ── Error state container ── */
+  .error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  /* ── Empty state container ── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    text-align: center;
+    gap: 1rem;
+    color: #5c3f40;
+  }
+
+  /* ── Pulse emergency indicator ── */
+  .emergency-ping {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .emergency-ping::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: #e11d48;
+    animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+    opacity: 0.6;
+  }
+
+  .emergency-ping::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: #e11d48;
+  }
+
+  /* ── Notification badge ── */
+  .notification-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: #e11d48;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    border: 2px solid #f8f9ff;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* ── Page section wrapper ── */
+  .page-wrapper {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    width: 100%;
+  }
+
+  /* ── Card left-accent (critical blood request indicator) ── */
+  .card-critical-accent {
+    border-left: 3px solid #e11d48 !important;
+  }
+
+  /* ── Section heading ── */
+  .section-heading {
+    font-size: 20px;
+    font-weight: 700;
+    color: #0d1c2f;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}
+
+/* ─── CANVAS AMBIENT BACKGROUND ─────────────────────────────────────────── */
+#ambient-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+}
+
+/* ─── PRINT STYLES ───────────────────────────────────────────────────────── */
+@media print {
+  .topbar, .sidebar { display: none !important; }
+  .main-content { padding: 0 !important; }
+}

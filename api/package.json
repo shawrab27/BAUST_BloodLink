@@ -1,0 +1,22 @@
+{
+  "name": "baust-bloodlink-api",
+  "version": "1.0.0",
+  "description": "BAUST BloodLink — Serverless API Backend",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node dev-server.js",
+    "start": "node dev-server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^5.2.1",
+    "express-validator": "^7.2.0",
+    "firebase-admin": "^14.4.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.3"
+  }
+}
