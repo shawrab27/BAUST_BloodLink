@@ -5,9 +5,9 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "dev": "node dev-server.js",
-    "start": "node dev-server.js",
-    "test": "node --test test/*.test.js"
+    "dev": "node _src/dev-server.js",
+    "start": "node _src/dev-server.js",
+    "test": "node --test _src/test/*.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

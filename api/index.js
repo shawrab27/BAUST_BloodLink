@@ -49,23 +49,23 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ─── HEALTH (also handled by /api/health.js in Vercel, but available here for local dev)
-app.get('/api/health', require('./health'));
+app.get('/api/health', require('./_src/health'));
 
 // ─── ROUTES ──────────────────────────────────────────────────────────────────
 // Phase 2: Auth
-app.use('/api/auth', require('./routes/auth'));
+app.use('/api/auth', require('./_src/routes/auth'));
 // Phase 3: Blood Hub
-app.use('/api/blood-requests', require('./routes/bloodRequests'));
-app.use('/api/donors', require('./routes/donors'));
+app.use('/api/blood-requests', require('./_src/routes/bloodRequests'));
+app.use('/api/donors', require('./_src/routes/donors'));
 // Phase 4: Emergency SOS
-app.use('/api/emergency', require('./routes/emergency'));
-app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/emergency', require('./_src/routes/emergency'));
+app.use('/api/notifications', require('./_src/routes/notifications'));
 // Phase 5: Feed, Helpline, Messenger
-app.use('/api/posts', require('./routes/posts'));
-app.use('/api/helpline', require('./routes/helpline'));
-app.use('/api/messages', require('./routes/messages'));
+app.use('/api/posts', require('./_src/routes/posts'));
+app.use('/api/helpline', require('./_src/routes/helpline'));
+app.use('/api/messages', require('./_src/routes/messages'));
 // Phase 6: Admin
-app.use('/api/admin', require('./routes/admin'));
+app.use('/api/admin', require('./_src/routes/admin'));
 
 // ─── 404 FALLBACK ────────────────────────────────────────────────────────────
 app.use((req, res) => {
