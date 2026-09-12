@@ -52,10 +52,10 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/blood-requests', require('./routes/bloodRequests'));
 app.use('/api/donors', require('./routes/donors'));
 // Phase 4: Emergency SOS
-// app.use('/api/emergency', require('./routes/emergency'));
-// Phase 5: Feed, Notifications, Messenger
+app.use('/api/emergency', require('./routes/emergency'));
+app.use('/api/notifications', require('./routes/notifications'));
+// Phase 5: Feed, Messenger
 // app.use('/api/posts', require('./routes/posts'));
-// app.use('/api/notifications', require('./routes/notifications'));
 // app.use('/api/messages', require('./routes/messages'));
 // Phase 6: Admin
 // app.use('/api/admin', require('./routes/admin'));

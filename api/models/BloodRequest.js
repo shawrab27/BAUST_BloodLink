@@ -3,17 +3,18 @@ const mongoose = require('mongoose');
 /**
  * BloodRequest Schema — BAUST BloodLink
  *
- * Implements Phase 3 requirements:
+ * Requirements:
  * - Blood Group: enum ['A+','A-','B+','B-','AB+','AB-','O+','O-','BOMBAY']
- * - Component Type: whole_blood, packed_rbc, platelets, single_platelet, ffp
- * - Urgency: Critical, Urgent, Scheduled
- * - Idempotency support: indexed on requester and createdAt for 10-second duplicate check
+ * - Condition: enum ['Normal','Emergency'] (locked binary field, checked by Phase 4 Emergency SOS)
+ * - Patient Type: enum ['Student','Teacher','Staff','Civilian'] (required)
+ * - Units: 1 to 20
+ * - Idempotency: indexed on requester and createdAt for 10-second duplicate check
  * - Cursor-paginated listings (15-20 items per page)
  */
 
 const VALID_BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'BOMBAY'];
-const VALID_COMPONENT_TYPES = ['whole_blood', 'packed_rbc', 'platelets', 'single_platelet', 'ffp'];
-const VALID_URGENCY_LEVELS = ['Critical', 'Urgent', 'Scheduled'];
+const VALID_CONDITIONS = ['Normal', 'Emergency'];
+const VALID_PATIENT_TYPES = ['Student', 'Teacher', 'Staff', 'Civilian'];
 const VALID_STATUSES = ['Pending', 'Matching', 'Fulfilled', 'Cancelled'];
 
 const BloodRequestSchema = new mongoose.Schema(
@@ -24,6 +25,14 @@ const BloodRequestSchema = new mongoose.Schema(
       trim: true,
       minlength: [2, 'Patient name must be at least 2 characters'],
       maxlength: [100, 'Patient name cannot exceed 100 characters'],
+    },
+    patientType: {
+      type: String,
+      required: [true, 'Patient type is required'],
+      enum: {
+        values: VALID_PATIENT_TYPES,
+        message: '{VALUE} is not a valid patient type',
+      },
     },
     patientAge: {
       type: Number,
@@ -46,21 +55,14 @@ const BloodRequestSchema = new mongoose.Schema(
       max: [20, 'Maximum 20 units per requisition'],
       default: 1,
     },
-    componentType: {
+    condition: {
       type: String,
+      required: [true, 'Condition is required'],
       enum: {
-        values: VALID_COMPONENT_TYPES,
-        message: '{VALUE} is not a valid blood component type',
+        values: VALID_CONDITIONS,
+        message: '{VALUE} is not a valid condition',
       },
-      default: 'whole_blood',
-    },
-    urgency: {
-      type: String,
-      enum: {
-        values: VALID_URGENCY_LEVELS,
-        message: '{VALUE} is not a valid urgency level',
-      },
-      default: 'Urgent',
+      default: 'Normal',
     },
     hospital: {
       type: String,
@@ -151,7 +153,7 @@ BloodRequestSchema.index({ status: 1, bloodGroup: 1, createdAt: -1 });
 module.exports = {
   BloodRequest: mongoose.models.BloodRequest || mongoose.model('BloodRequest', BloodRequestSchema),
   VALID_BLOOD_GROUPS,
-  VALID_COMPONENT_TYPES,
-  VALID_URGENCY_LEVELS,
+  VALID_CONDITIONS,
+  VALID_PATIENT_TYPES,
   VALID_STATUSES,
 };

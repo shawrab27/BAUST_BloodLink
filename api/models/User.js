@@ -196,11 +196,12 @@ UserSchema.methods.toSafeObject = function () {
   return user;
 };
 
-// Export model and constants for reuse
-module.exports = {
-  User: mongoose.models.User || mongoose.model('User', UserSchema),
-  VALID_DEPARTMENTS,
-  VALID_BLOOD_GROUPS,
-  VALID_GENDERS,
-  VALID_USER_TYPES,
-};
+// Export model and constants for reuse (supports both direct and destructured import)
+const UserModel = mongoose.models.User || mongoose.model('User', UserSchema);
+UserModel.User = UserModel;
+UserModel.VALID_DEPARTMENTS = VALID_DEPARTMENTS;
+UserModel.VALID_BLOOD_GROUPS = VALID_BLOOD_GROUPS;
+UserModel.VALID_GENDERS = VALID_GENDERS;
+UserModel.VALID_USER_TYPES = VALID_USER_TYPES;
+
+module.exports = UserModel;

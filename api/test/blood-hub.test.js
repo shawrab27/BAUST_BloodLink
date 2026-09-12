@@ -6,8 +6,8 @@ const app = require('../index');
 const {
   BloodRequest,
   VALID_BLOOD_GROUPS,
-  VALID_COMPONENT_TYPES,
-  VALID_URGENCY_LEVELS,
+  VALID_CONDITIONS,
+  VALID_PATIENT_TYPES,
   VALID_STATUSES,
 } = require('../models/BloodRequest');
 const { JWT_SECRET } = require('../middleware/auth');
@@ -52,16 +52,19 @@ describe('BAUST BloodLink Phase 3 — Blood Hub Core Tests', () => {
       assert.strictEqual(VALID_BLOOD_GROUPS.includes('X-'), false);
     });
 
-    test('Component types enum includes all 5 medical preparations', () => {
-      const expected = ['whole_blood', 'packed_rbc', 'platelets', 'single_platelet', 'ffp'];
-      assert.deepStrictEqual(VALID_COMPONENT_TYPES, expected);
-      assert.strictEqual(VALID_COMPONENT_TYPES.includes('whole_blood'), true);
-      assert.strictEqual(VALID_COMPONENT_TYPES.includes('platelets'), true);
+    test('Condition is a locked binary enum [Normal, Emergency]', () => {
+      const expected = ['Normal', 'Emergency'];
+      assert.deepStrictEqual(VALID_CONDITIONS, expected);
+      assert.strictEqual(VALID_CONDITIONS.includes('Normal'), true);
+      assert.strictEqual(VALID_CONDITIONS.includes('Emergency'), true);
+      assert.strictEqual(VALID_CONDITIONS.includes('Critical'), false);
     });
 
-    test('Urgency levels enum includes Critical, Urgent, and Scheduled', () => {
-      const expected = ['Critical', 'Urgent', 'Scheduled'];
-      assert.deepStrictEqual(VALID_URGENCY_LEVELS, expected);
+    test('Patient Type enum includes Student, Teacher, Staff, and Civilian', () => {
+      const expected = ['Student', 'Teacher', 'Staff', 'Civilian'];
+      assert.deepStrictEqual(VALID_PATIENT_TYPES, expected);
+      assert.strictEqual(VALID_PATIENT_TYPES.includes('Civilian'), true);
+      assert.strictEqual(VALID_PATIENT_TYPES.includes('Visitor'), false);
     });
 
     test('Status enum includes Pending, Matching, Fulfilled, and Cancelled', () => {
@@ -72,11 +75,11 @@ describe('BAUST BloodLink Phase 3 — Blood Hub Core Tests', () => {
     test('Schema instantiates successfully with valid data', () => {
       const reqDoc = new BloodRequest({
         patientName: 'Md. Karim Uddin',
+        patientType: 'Civilian',
         patientAge: 45,
         bloodGroup: 'B+',
         units: 2,
-        componentType: 'whole_blood',
-        urgency: 'Critical',
+        condition: 'Emergency',
         hospital: 'CMH Saidpur Cantonment',
         hospitalAddress: 'Saidpur Cantonment, Nilphamari',
         hospitalBed: 'ICU Bed 04',
@@ -88,7 +91,9 @@ describe('BAUST BloodLink Phase 3 — Blood Hub Core Tests', () => {
       });
 
       assert.strictEqual(reqDoc.patientName, 'Md. Karim Uddin');
+      assert.strictEqual(reqDoc.patientType, 'Civilian');
       assert.strictEqual(reqDoc.bloodGroup, 'B+');
+      assert.strictEqual(reqDoc.condition, 'Emergency');
       assert.strictEqual(reqDoc.units, 2);
       assert.strictEqual(reqDoc.status, 'Pending');
     });
@@ -96,6 +101,7 @@ describe('BAUST BloodLink Phase 3 — Blood Hub Core Tests', () => {
     test('Schema enforces minimum 1 unit and maximum 20 units', () => {
       const invalidMin = new BloodRequest({
         patientName: 'Test Patient',
+        patientType: 'Student',
         bloodGroup: 'A+',
         units: 0,
         hospital: 'BAUST Medical Center',
@@ -109,6 +115,7 @@ describe('BAUST BloodLink Phase 3 — Blood Hub Core Tests', () => {
 
       const invalidMax = new BloodRequest({
         patientName: 'Test Patient',
+        patientType: 'Student',
         bloodGroup: 'A+',
         units: 25,
         hospital: 'BAUST Medical Center',
@@ -170,8 +177,10 @@ describe('BAUST BloodLink Phase 3 — Blood Hub Core Tests', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           patientName: 'Test Patient',
+          patientType: 'Student',
           bloodGroup: 'O+',
           units: 1,
+          condition: 'Normal',
           hospital: 'CMH Saidpur',
           contactName: 'Attendant',
           contactPhone: '01711111111',
@@ -193,8 +202,10 @@ describe('BAUST BloodLink Phase 3 — Blood Hub Core Tests', () => {
         },
         body: JSON.stringify({
           patientName: 'Test Patient',
+          patientType: 'Student',
           bloodGroup: 'INVALID+',
           units: 1,
+          condition: 'Normal',
           hospital: 'CMH Saidpur',
           contactName: 'Attendant',
           contactPhone: '01711111111',
@@ -209,6 +220,33 @@ describe('BAUST BloodLink Phase 3 — Blood Hub Core Tests', () => {
       assert.ok(bgErr);
     });
 
+    test('POST /api/blood-requests rejects invalid patientType with 400', async () => {
+      const res = await fetch(`${baseUrl}/api/blood-requests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${mockToken}`,
+        },
+        body: JSON.stringify({
+          patientName: 'Test Patient',
+          patientType: 'UnknownRole',
+          bloodGroup: 'A+',
+          units: 1,
+          condition: 'Normal',
+          hospital: 'CMH Saidpur',
+          contactName: 'Attendant',
+          contactPhone: '01711111111',
+          requiredDate: new Date().toISOString(),
+        }),
+      });
+
+      assert.strictEqual(res.status, 400);
+      const data = await res.json();
+      assert.strictEqual(data.error, 'Validation Error');
+      const typeErr = data.errors.find((e) => e.field === 'patientType');
+      assert.ok(typeErr);
+    });
+
     test('POST /api/blood-requests rejects units > 20 with 400', async () => {
       const res = await fetch(`${baseUrl}/api/blood-requests`, {
         method: 'POST',
@@ -218,8 +256,10 @@ describe('BAUST BloodLink Phase 3 — Blood Hub Core Tests', () => {
         },
         body: JSON.stringify({
           patientName: 'Test Patient',
+          patientType: 'Teacher',
           bloodGroup: 'A+',
           units: 50,
+          condition: 'Normal',
           hospital: 'CMH Saidpur',
           contactName: 'Attendant',
           contactPhone: '01711111111',
@@ -242,10 +282,10 @@ describe('BAUST BloodLink Phase 3 — Blood Hub Core Tests', () => {
         },
         body: JSON.stringify({
           patientName: 'Test Patient Unique',
+          patientType: 'Student',
           bloodGroup: 'O+',
           units: 2,
-          componentType: 'whole_blood',
-          urgency: 'Critical',
+          condition: 'Emergency',
           hospital: 'Saidpur CMH Ward 4',
           contactName: 'Attendant Brother',
           contactPhone: '+8801712345678',
@@ -258,6 +298,8 @@ describe('BAUST BloodLink Phase 3 — Blood Hub Core Tests', () => {
       assert.strictEqual(data.message, 'Blood requisition created successfully');
       assert.ok(data.bloodRequest);
       assert.strictEqual(data.bloodRequest.bloodGroup, 'O+');
+      assert.strictEqual(data.bloodRequest.patientType, 'Student');
+      assert.strictEqual(data.bloodRequest.condition, 'Emergency');
       assert.strictEqual(data.bloodRequest.units, 2);
     });
 
@@ -271,10 +313,10 @@ describe('BAUST BloodLink Phase 3 — Blood Hub Core Tests', () => {
         },
         body: JSON.stringify({
           patientName: 'Test Patient Duplicate Attempt',
+          patientType: 'Student',
           bloodGroup: 'O+',
           units: 2,
-          componentType: 'whole_blood',
-          urgency: 'Critical',
+          condition: 'Emergency',
           hospital: 'Saidpur CMH Ward 4',
           contactName: 'Attendant Brother',
           contactPhone: '+8801712345678',

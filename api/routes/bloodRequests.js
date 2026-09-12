@@ -5,8 +5,8 @@ const { connectDB } = require('../config/db');
 const {
   BloodRequest,
   VALID_BLOOD_GROUPS,
-  VALID_COMPONENT_TYPES,
-  VALID_URGENCY_LEVELS,
+  VALID_CONDITIONS,
+  VALID_PATIENT_TYPES,
 } = require('../models/BloodRequest');
 const { User } = require('../models/User');
 const { verifyToken, validateRequest } = require('../middleware/auth');
@@ -18,11 +18,11 @@ let DEMO_REQUESTS = [
   {
     _id: '6751b0000000000000000001',
     patientName: 'Patient #B702',
+    patientType: 'Civilian',
     diagnosis: 'Trauma ICU • Hemorrhage control',
     bloodGroup: 'B+',
     units: 2,
-    componentType: 'whole_blood',
-    urgency: 'Critical',
+    condition: 'Emergency',
     hospital: 'CMH Saidpur Cantonment',
     hospitalAddress: 'Saidpur Cantonment, Nilphamari',
     hospitalBed: 'Trauma ICU Bed 04',
@@ -45,11 +45,11 @@ let DEMO_REQUESTS = [
   {
     _id: '6751b0000000000000000002',
     patientName: 'Patient #A319',
+    patientType: 'Student',
     diagnosis: 'Apheresis Unit • Acute Thrombocytopenia',
     bloodGroup: 'O-',
     units: 1,
-    componentType: 'single_platelet',
-    urgency: 'Critical',
+    condition: 'Emergency',
     hospital: 'Rangpur Medical College',
     hospitalAddress: 'Medical East Gate, Rangpur',
     hospitalBed: 'Apheresis Bed 02',
@@ -72,11 +72,11 @@ let DEMO_REQUESTS = [
   {
     _id: '6751b0000000000000000003',
     patientName: 'Patient #N104',
+    patientType: 'Staff',
     diagnosis: 'Orthopedic Elective • Hip Replacement',
     bloodGroup: 'A+',
     units: 1,
-    componentType: 'packed_rbc',
-    urgency: 'Scheduled',
+    condition: 'Normal',
     hospital: 'Saidpur Upazila Health Complex',
     hospitalAddress: 'Saidpur Town, Nilphamari',
     hospitalBed: 'Surgical Ward 3B',
@@ -99,11 +99,11 @@ let DEMO_REQUESTS = [
   {
     _id: '6751b0000000000000000004',
     patientName: 'Patient #N208',
+    patientType: 'Teacher',
     diagnosis: 'Maternity Support • Emergency C-Section',
     bloodGroup: 'AB+',
     units: 2,
-    componentType: 'whole_blood',
-    urgency: 'Scheduled',
+    condition: 'Normal',
     hospital: 'Prime Medical College Hospital',
     hospitalAddress: 'Badarganj Road, Pirgachha',
     hospitalBed: 'Maternity Unit 12',
@@ -189,7 +189,7 @@ router.get('/', async (req, res, next) => {
     }
 
     const limit = Math.min(parseInt(req.query.limit, 10) || 15, 20);
-    const { status, bloodGroup, urgency, cursor } = req.query;
+    const { status, bloodGroup, condition, cursor } = req.query;
 
     if (!isDbConnected) {
       let filtered = [...DEMO_REQUESTS];
@@ -201,8 +201,8 @@ router.get('/', async (req, res, next) => {
         const bg = bloodGroup === 'Bombay' || bloodGroup === 'Bombay (hh)' ? 'BOMBAY' : bloodGroup;
         filtered = filtered.filter((r) => r.bloodGroup === bg);
       }
-      if (urgency && urgency !== 'All') {
-        filtered = filtered.filter((r) => r.urgency === urgency);
+      if (condition && condition !== 'All') {
+        filtered = filtered.filter((r) => r.condition === condition);
       }
 
       if (cursor) {
@@ -234,8 +234,8 @@ router.get('/', async (req, res, next) => {
       const bg = bloodGroup === 'Bombay' || bloodGroup === 'Bombay (hh)' ? 'BOMBAY' : bloodGroup;
       query.bloodGroup = bg;
     }
-    if (urgency && urgency !== 'All') {
-      query.urgency = urgency;
+    if (condition && condition !== 'All') {
+      query.condition = condition;
     }
 
     if (cursor) {
@@ -287,20 +287,19 @@ router.post(
       .trim()
       .isLength({ min: 2, max: 100 })
       .withMessage('Patient or case name must be between 2 and 100 characters'),
+    body('patientType')
+      .isIn(VALID_PATIENT_TYPES)
+      .withMessage(`Patient type must be one of: ${VALID_PATIENT_TYPES.join(', ')}`),
     body('bloodGroup')
       .isIn(VALID_BLOOD_GROUPS)
       .withMessage(`Blood group must be one of: ${VALID_BLOOD_GROUPS.join(', ')}`),
     body('units')
       .isInt({ min: 1, max: 20 })
       .withMessage('Units must be an integer between 1 and 20'),
-    body('componentType')
+    body('condition')
       .optional()
-      .isIn(VALID_COMPONENT_TYPES)
-      .withMessage(`Component type must be one of: ${VALID_COMPONENT_TYPES.join(', ')}`),
-    body('urgency')
-      .optional()
-      .isIn(VALID_URGENCY_LEVELS)
-      .withMessage(`Urgency must be one of: ${VALID_URGENCY_LEVELS.join(', ')}`),
+      .isIn(VALID_CONDITIONS)
+      .withMessage(`Condition must be one of: ${VALID_CONDITIONS.join(', ')}`),
     body('hospital')
       .trim()
       .notEmpty()
@@ -332,11 +331,11 @@ router.post(
 
       const {
         patientName,
+        patientType,
         patientAge,
         bloodGroup,
         units = 1,
-        componentType = 'whole_blood',
-        urgency = 'Urgent',
+        condition = 'Normal',
         hospital,
         hospitalAddress,
         hospitalBed,
@@ -374,11 +373,11 @@ router.post(
         const newReq = {
           _id: new mongoose.Types.ObjectId().toString(),
           patientName,
+          patientType,
           patientAge: patientAge ? Number(patientAge) : null,
           bloodGroup,
           units,
-          componentType,
-          urgency,
+          condition,
           hospital,
           hospitalAddress: hospitalAddress || '',
           hospitalBed: hospitalBed || '',
@@ -429,11 +428,11 @@ router.post(
       // Create new Blood Request
       const bloodRequest = new BloodRequest({
         patientName,
+        patientType,
         patientAge: patientAge ? Number(patientAge) : null,
         bloodGroup,
         units,
-        componentType,
-        urgency,
+        condition,
         hospital,
         hospitalAddress: hospitalAddress || '',
         hospitalBed: hospitalBed || '',

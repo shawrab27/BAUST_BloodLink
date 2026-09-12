@@ -19,7 +19,7 @@ function BloodHubScreen() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filterUrgency, setFilterUrgency] = useState('All');
+  const [filterCondition, setFilterCondition] = useState('All');
   const [respondingTo, setRespondingTo] = useState(null);
   const [isSubmittingResponse, setIsSubmittingResponse] = useState(false);
   const [responseSuccessMessage, setResponseSuccessMessage] = useState('');
@@ -30,7 +30,7 @@ function BloodHubScreen() {
     try {
       const [statsRes, reqsRes] = await Promise.all([
         fetch('/api/blood-requests/stats'),
-        fetch(`/api/blood-requests?limit=15${filterUrgency !== 'All' ? `&urgency=${filterUrgency}` : ''}`),
+        fetch(`/api/blood-requests?limit=15${filterCondition !== 'All' ? `&condition=${filterCondition}` : ''}`),
       ]);
 
       if (statsRes.ok) {
@@ -49,7 +49,7 @@ function BloodHubScreen() {
     } finally {
       setLoading(false);
     }
-  }, [filterUrgency]);
+  }, [filterCondition]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -358,14 +358,13 @@ function BloodHubScreen() {
             <div className="relative">
               <select
                 className="appearance-none px-3 py-1.5 pr-7 rounded-xl bg-surface-container text-on-surface text-[12px] font-semibold hover:bg-surface-container-high transition-colors focus:outline-none cursor-pointer"
-                value={filterUrgency}
-                onChange={(e) => setFilterUrgency(e.target.value)}
-                id="filter-urgency-select"
+                value={filterCondition}
+                onChange={(e) => setFilterCondition(e.target.value)}
+                id="filter-condition-select"
               >
                 <option value="All">Filter: All</option>
-                <option value="Critical">Critical Only</option>
-                <option value="Urgent">Urgent</option>
-                <option value="Scheduled">Scheduled</option>
+                <option value="Emergency">Emergency Only</option>
+                <option value="Normal">Normal</option>
               </select>
               <span className="material-symbols-outlined pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[14px] text-on-surface-variant">
                 expand_more
@@ -437,9 +436,16 @@ function BloodHubScreen() {
                 {requests.map((req) => (
                   <tr key={req._id} className="hover:bg-primary/[0.02] transition-colors group">
                     <td className="py-4 px-5 font-semibold text-on-surface">
-                      <span>{req.patientName}</span>
+                      <div className="flex items-center gap-2">
+                        <span>{req.patientName}</span>
+                        {req.patientType && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface-container-high text-on-surface-variant border border-outline-variant/30">
+                            {req.patientType}
+                          </span>
+                        )}
+                      </div>
                       {req.diagnosis && (
-                        <span className="text-on-surface-variant font-normal block sm:inline sm:before:content-['•_'] text-xs">
+                        <span className="text-on-surface-variant font-normal block text-xs mt-0.5">
                           {req.diagnosis}
                         </span>
                       )}
@@ -448,7 +454,7 @@ function BloodHubScreen() {
                       <span
                         className="inline-flex items-center justify-center px-3 py-1 rounded-full text-white font-extrabold text-[12px] shadow-sm tracking-wide"
                         style={{
-                          background: req.urgency === 'Critical' ? '#b80035' : '#db2e4e',
+                          background: req.condition === 'Emergency' ? '#b80035' : '#db2e4e',
                         }}
                       >
                         {req.bloodGroup}
@@ -456,9 +462,6 @@ function BloodHubScreen() {
                     </td>
                     <td className="py-4 px-4 font-semibold text-on-surface">
                       {req.units} {req.units === 1 ? 'Unit' : 'Units'}
-                      <span className="block text-[11px] text-on-surface-variant font-normal uppercase">
-                        {req.componentType?.replace('_', ' ')}
-                      </span>
                     </td>
                     <td className="py-4 px-4 text-on-surface font-medium">
                       <div className="flex items-center gap-1.5">
@@ -474,7 +477,7 @@ function BloodHubScreen() {
                       )}
                     </td>
                     <td className="py-4 px-4">
-                      {req.urgency === 'Critical' ? (
+                      {req.condition === 'Emergency' ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold border border-primary/20">
                           <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                           Emergency
@@ -482,7 +485,7 @@ function BloodHubScreen() {
                       ) : (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface text-[11px] font-bold border border-outline-variant/40">
                           <span className="w-1.5 h-1.5 rounded-full bg-outline" />
-                          {req.urgency || 'Scheduled'}
+                          Normal
                         </span>
                       )}
                     </td>

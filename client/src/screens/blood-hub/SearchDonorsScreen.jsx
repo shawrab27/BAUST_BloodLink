@@ -49,7 +49,6 @@ function SearchDonorsScreen() {
   const [error, setError] = useState(null);
   const [cursor, setCursor] = useState(null);
   const [hasMore, setHasMore] = useState(false);
-  const [contactRevealed, setContactRevealed] = useState({});
 
   const fetchDonors = useCallback(
     async (isLoadMore = false) => {
@@ -115,10 +114,6 @@ function SearchDonorsScreen() {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     fetchDonors(false);
-  };
-
-  const toggleContact = (id) => {
-    setContactRevealed((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   return (
@@ -430,41 +425,18 @@ function SearchDonorsScreen() {
                         </span>
                       </div>
                     </div>
-
-                    {/* Contact Number Display (Toggled) */}
-                    {contactRevealed[donor._id] && (
-                      <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-center animate-fade-in">
-                        <span className="text-[11px] text-on-surface-variant block">Donor Direct Hotline:</span>
-                        <a
-                          href={`tel:${donor.phone}`}
-                          className="text-sm font-extrabold text-primary hover:underline flex items-center justify-center gap-1 mt-0.5"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">call</span>
-                          <span>{donor.phone || '+880 1712-345678'}</span>
-                        </a>
-                      </div>
-                    )}
                   </div>
 
-                  {/* Actions */}
-                  <div className="pt-4 flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleContact(donor._id)}
-                      className="flex-1 py-2 px-3 rounded-xl border border-outline-variant/50 hover:bg-surface-container text-on-surface text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
-                    >
-                      <span className="material-symbols-outlined text-[16px] text-primary">
-                        {contactRevealed[donor._id] ? 'visibility_off' : 'call'}
-                      </span>
-                      <span>{contactRevealed[donor._id] ? 'Hide Phone' : 'Call Donor'}</span>
-                    </button>
-
+                  {/* Action: Open Request Blood Form pre-filled for this donor */}
+                  <div className="pt-4">
                     <button
                       type="button"
                       onClick={() =>
-                        navigate(`/blood-hub/request?bloodGroup=${donor.bloodGroup}`)
+                        navigate(
+                          `/blood-hub/request?bloodGroup=${encodeURIComponent(donor.bloodGroup)}&donorId=${donor._id}&donorName=${encodeURIComponent(donor.name)}`
+                        )
                       }
-                      className="flex-1 py-2 px-3 rounded-xl text-white text-xs font-bold shadow-sm hover:brightness-105 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                      className="w-full py-2.5 px-4 rounded-xl text-white text-xs font-bold shadow-sm hover:brightness-105 active:scale-95 transition-all flex items-center justify-center gap-1.5"
                       style={{
                         background:
                           'linear-gradient(135deg, rgb(225, 29, 72) 0%, rgb(184, 0, 53) 100%)',
@@ -473,7 +445,7 @@ function SearchDonorsScreen() {
                       <span className="material-symbols-outlined text-[16px]">
                         send_time_extension
                       </span>
-                      <span>Request</span>
+                      <span>Request Blood</span>
                     </button>
                   </div>
                 </div>
