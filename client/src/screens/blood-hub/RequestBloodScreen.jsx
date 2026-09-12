@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import LocationPicker from '../../components/common/LocationPicker';
 
 const BLOOD_GROUPS = [
   { id: 'A+', label: 'A+', sub: 'Pos' },
@@ -46,6 +47,11 @@ function RequestBloodScreen() {
   const [bloodGroup, setBloodGroup] = useState(searchParams.get('bloodGroup') || 'O+');
   const [units, setUnits] = useState(1);
   const [hospital, setHospital] = useState('CMH Saidpur Cantonment');
+  const [hospitalCoordinates, setHospitalCoordinates] = useState({
+    lat: 25.7766,
+    lng: 88.8912,
+    address: 'CMH Saidpur Cantonment',
+  });
   const [hospitalBed, setHospitalBed] = useState('');
   const [reqDate, setReqDate] = useState(() => {
     const today = new Date();
@@ -118,7 +124,11 @@ function RequestBloodScreen() {
           units: Number(units),
           condition,
           hospital,
-          hospitalAddress: '',
+          hospitalAddress: hospitalCoordinates.address || hospital,
+          hospitalCoordinates: {
+            lat: hospitalCoordinates.lat,
+            lng: hospitalCoordinates.lng,
+          },
           hospitalBed: hospitalBed.trim(),
           contactName: contactName.trim(),
           contactPhone: contactPhone.trim(),
@@ -512,6 +522,28 @@ function RequestBloodScreen() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Live Location Picker via react-leaflet (OpenStreetMap) */}
+            <div className="pt-1">
+              <label className="input-label mb-2 flex items-center justify-between">
+                <span className="flex items-center gap-1.5 font-semibold text-on-surface">
+                  <span className="material-symbols-outlined text-[16px] text-primary">map</span>
+                  Pinpoint Facility Location (OpenStreetMap)
+                </span>
+                <span className="text-[11px] font-medium text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">
+                  react-leaflet · Zero Google API Keys
+                </span>
+              </label>
+              <LocationPicker
+                value={hospitalCoordinates}
+                onChange={(loc) => {
+                  setHospitalCoordinates(loc);
+                  if (loc.address && !loc.address.startsWith('GeoPoint')) {
+                    setHospital(loc.address);
+                  }
+                }}
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">

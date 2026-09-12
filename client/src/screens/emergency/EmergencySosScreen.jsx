@@ -78,11 +78,9 @@ function EmergencySosScreen() {
   ]);
 
   const [stats, setStats] = useState({
-    node: 'Saidpur & Rangpur Cantonment Live SOS Node',
-    responseLatency: '42s',
-    averageArrivalMinutes: '14–22 Mins',
-    activeEmergencies: 3,
-    disasterVolunteersCount: 28,
+    activeEmergencies: 0,
+    disasterVolunteersCount: 0,
+    availableDonorsCount: 0,
   });
 
   const [filterText, setFilterText] = useState('');
@@ -236,7 +234,7 @@ function EmergencySosScreen() {
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold">
             <span className="w-2 h-2 rounded-full bg-primary animate-ping" />
-            Response Latency: <span className="font-mono font-bold text-on-surface">{stats.responseLatency}</span>
+            <span>Campus Emergency SOS Active</span>
           </span>
           <span className="text-xs text-on-surface-variant font-medium hidden md:inline">
             7s Live Polling Active
@@ -276,10 +274,10 @@ function EmergencySosScreen() {
 
             <div className="text-left sm:text-right">
               <div className="text-xs font-bold text-outline uppercase tracking-wider">
-                {stats.node}
+                BAUST Medical Desk
               </div>
               <div className="text-xs text-primary font-bold mt-1">
-                Average Arrival: <span className="font-mono">{stats.averageArrivalMinutes}</span>
+                Emergency Hotline: <span className="font-mono">+880 1769-662215</span>
               </div>
             </div>
           </div>
@@ -520,9 +518,9 @@ function EmergencySosScreen() {
                     <div className="flex items-center gap-2 text-xs text-on-surface-variant mt-1">
                       <span>
                         <span className="material-symbols-outlined text-primary text-[12px] align-middle">
-                          location_on
+                          home
                         </span>{' '}
-                        Main Boys Hostel (350m)
+                        Main Boys Hostel
                       </span>
                       <span>•</span>
                       <span className="font-mono text-on-surface font-semibold">8 Bags Donated</span>
@@ -543,7 +541,7 @@ function EmergencySosScreen() {
                     <span className="material-symbols-outlined text-[14px]">call</span>
                     <span>Call Donor</span>
                   </a>
-                  <div className="text-[10px] font-mono text-outline mt-1.5">ETA: ~6 Mins</div>
+                  <div className="text-[10px] font-mono text-outline mt-1.5">Standby Active</div>
                 </div>
               </div>
 
@@ -568,9 +566,9 @@ function EmergencySosScreen() {
                     <div className="flex items-center gap-2 text-xs text-on-surface-variant mt-1">
                       <span>
                         <span className="material-symbols-outlined text-primary text-[12px] align-middle">
-                          location_on
+                          school
                         </span>{' '}
-                        Academic Bldg 2 (180m)
+                        Academic Building
                       </span>
                       <span>•</span>
                       <span className="font-mono text-on-surface font-semibold">4 Bags Donated</span>
@@ -590,15 +588,15 @@ function EmergencySosScreen() {
                     <span className="material-symbols-outlined text-[14px]">call</span>
                     <span>Call Donor</span>
                   </a>
-                  <div className="text-[10px] font-mono text-outline mt-1.5">ETA: ~12 Mins</div>
+                  <div className="text-[10px] font-mono text-outline mt-1.5">Standby Active</div>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="mt-5 pt-3 border-t border-outline-variant/20 flex items-center justify-between text-xs text-on-surface-variant">
-            <span>2 additional campus donors notified via push notifications.</span>
-            <span className="font-bold text-primary">Protocol #MATCH-104</span>
+            <span>Live donor match response stream active.</span>
+            <span className="font-bold text-primary">Status: En Route</span>
           </div>
         </div>
 
@@ -703,8 +701,8 @@ function EmergencySosScreen() {
           </div>
 
           <div className="mt-5 pt-3 border-t border-outline-variant/20 flex items-center justify-between text-xs text-on-surface-variant">
-            <span>Saidpur CMH Blood Bank cross-match requisition sent.</span>
-            <span className="font-mono text-primary font-bold">Protocol #ESC-802</span>
+            <span>BAUST Medical Center emergency coordination initiated.</span>
+            <span className="font-semibold text-primary">Emergency Transfusion Protocol</span>
           </div>
         </div>
       </div>
