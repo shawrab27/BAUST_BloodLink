@@ -17,7 +17,7 @@ const app = express();
 
 // ─── CORS ────────────────────────────────────────────────────────────────────
 const allowedOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(',')
+  ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
   : [
       'http://localhost:5173',
       'http://localhost:4173',
@@ -29,7 +29,13 @@ app.use(
     origin: (origin, callback) => {
       // Allow requests with no origin (mobile apps, Postman, curl)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.vercel.app') ||
+        origin.endsWith('.baust.edu.bd')
+      ) {
+        return callback(null, true);
+      }
       callback(new Error(`CORS: Origin '${origin}' not allowed.`));
     },
     credentials: true,

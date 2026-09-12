@@ -698,6 +698,12 @@ router.patch('/blood-registry/requests/:id/approve', async (req, res, next) => {
     reqItem.reviewedBy = adminId;
     reqItem.reviewedAt = new Date();
 
+    const u = mockAdminUsers.find((user) => user._id.toString() === reqItem.user.toString());
+    if (u) {
+      u.bloodGroup = reqItem.requestedGroup;
+      u.isBloodGroupVerified = true;
+    }
+
     await logAuditEvent({
       action: 'APPROVE_BLOOD_GROUP_CHANGE',
       req,
