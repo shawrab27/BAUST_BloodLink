@@ -70,23 +70,28 @@ function Topbar({ user: propUser = null, notificationCount = 0, isAdmin = false 
     <header className="topbar">
       <div className="max-w-[1440px] h-full mx-auto px-margin flex items-center justify-between">
 
-        {/* ── LEFT: Official Logo — transparent PNG floating on glass ── */}
+        {/* ── LEFT: Official Logo + Text Brand Header ── */}
         <Link
           to="/feed"
-          className="flex items-center hover:opacity-90 transition-opacity flex-shrink-0"
+          className="flex items-center gap-2.5 hover:opacity-90 transition-opacity flex-shrink-0"
           aria-label="BAUST BloodLink Home"
           id="topbar-logo-link"
         >
           <img
             src="/official-logo.png"
-            alt="BAUST BloodLink — Donate, Connect, Save Lives"
-            className="h-[56px] w-auto object-contain"
-            style={{
-              background: 'transparent',
-              filter: 'none',
-              mixBlendMode: 'normal',
-            }}
+            alt="BAUST BloodLink Logo"
+            className="h-[44px] w-auto object-contain"
           />
+          <div className="flex flex-col">
+            <span className="text-lg font-bold tracking-tight text-on-surface leading-none">
+              BAUST BloodLink
+            </span>
+            <div className="flex items-center gap-1 mt-1">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-bold tracking-wider text-primary uppercase">
+                DONATE • CONNECT • SAVE LIVES
+              </span>
+            </div>
+          </div>
         </Link>
 
         {/* ── RIGHT: Controls ── */}
