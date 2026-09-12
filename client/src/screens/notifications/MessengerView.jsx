@@ -30,7 +30,7 @@ function MessengerView() {
   // ─── 1. FETCH CONVERSATIONS ────────────────────────────────────────────────
   const fetchConversations = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || localStorage.getItem('bloodlink_token');
       if (!token) return;
 
       const res = await fetch('/api/messages/conversations', {
@@ -60,7 +60,7 @@ function MessengerView() {
   const fetchMessages = useCallback(
     async (isInitial = false) => {
       if (!activeConv) return;
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || localStorage.getItem('bloodlink_token');
       if (!token) return;
 
       if (isInitial) setIsLoadingMessages(true);
@@ -97,7 +97,7 @@ function MessengerView() {
     if (activeConv) {
       fetchMessages(true);
       // Mark read
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || localStorage.getItem('bloodlink_token');
       if (token) {
         fetch(`/api/messages/${activeConv.conversationId}/read`, {
           method: 'PATCH',
@@ -121,7 +121,7 @@ function MessengerView() {
     const textToSend = (customText || inputText).trim();
     if (!textToSend || !activeConv) return;
 
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || localStorage.getItem('bloodlink_token');
     if (!token) return;
 
     const recipientId = activeConv.recipient?._id;

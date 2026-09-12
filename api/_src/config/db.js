@@ -23,6 +23,10 @@ if (!global.mongoose) {
 
 const cached = global.mongoose;
 
+// Throttle retries on persistent connection failure so offline/in-memory mode doesn't stall requests
+let lastFailureTime = 0;
+const FAILURE_COOLDOWN_MS = 10000;
+
 async function connectDB() {
   // If already connected, return cached connection immediately
   if (cached.conn) {
@@ -36,24 +40,32 @@ async function connectDB() {
     );
   }
 
+  // If we recently failed to connect, fail fast to allow in-memory dataset to respond instantly
+  if (Date.now() - lastFailureTime < FAILURE_COOLDOWN_MS) {
+    throw new Error('MongoDB connection is temporarily unavailable. Using in-memory fallback.');
+  }
+
   // If a connection is already being established, wait for it
   if (!cached.promise) {
+    const isLocalhost = MONGODB_URI.includes('localhost') || MONGODB_URI.includes('127.0.0.1');
     const opts = {
       bufferCommands: false,   // Fail fast if not connected (don't queue ops)
       maxPoolSize: 10,          // Limit connections on Atlas M0 (500 total limit)
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
+      serverSelectionTimeoutMS: isLocalhost ? 1200 : 3000,
+      socketTimeoutMS: 20000,
     };
 
     cached.promise = mongoose
       .connect(MONGODB_URI, opts)
       .then((mongooseInstance) => {
-        console.log('[DB] MongoDB Atlas connected successfully.');
+        console.log('[DB] MongoDB connected successfully.');
+        lastFailureTime = 0;
         return mongooseInstance;
       })
       .catch((err) => {
-        // Clear promise so next cold start can retry
+        // Clear promise and set failure cooldown
         cached.promise = null;
+        lastFailureTime = Date.now();
         throw err;
       });
   }
@@ -62,6 +74,7 @@ async function connectDB() {
     cached.conn = await cached.promise;
   } catch (err) {
     cached.promise = null;
+    lastFailureTime = Date.now();
     throw err;
   }
 

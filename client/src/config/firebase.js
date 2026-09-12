@@ -1,5 +1,13 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  FacebookAuthProvider,
+  GithubAuthProvider,
+  signInWithPopup,
+  signOut as firebaseSignOut,
+} from 'firebase/auth';
 
 /**
  * Client Firebase SDK & VAPID Push Configuration
@@ -23,6 +31,20 @@ const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || '';
 
 let app = null;
 let messaging = null;
+let auth = null;
+
+/**
+ * Shared initializer — returns the Firebase app, initializing only once.
+ * Used by both messaging and auth subsystems.
+ */
+function getOrInitApp() {
+  if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApps()[0];
+  }
+  return app;
+}
 
 export async function initFirebaseMessaging() {
   if (typeof window === 'undefined') return null;
@@ -34,13 +56,7 @@ export async function initFirebaseMessaging() {
       return null;
     }
 
-    if (!getApps().length) {
-      app = initializeApp(firebaseConfig);
-    } else {
-      app = getApps()[0];
-    }
-
-    messaging = getMessaging(app);
+    messaging = getMessaging(getOrInitApp());
     return messaging;
   } catch (err) {
     console.warn('[Push Notification] Firebase initialization skipped:', err.message);
@@ -120,4 +136,96 @@ export function onForegroundPush(callback) {
   } catch {
     return () => {};
   }
+}
+
+/**
+ * signInWithProvider — trigger an OAuth popup for the given provider
+ * and return normalized user data for the backend /api/auth/oauth endpoint.
+ *
+ * Provider: 'google' | 'facebook' | 'github'
+ *
+ * GitHub note: We request the 'user:email' scope so Firebase can retrieve
+ * the primary email even if the user has hidden it publicly.
+ * If it is still absent (rare), the backend generates a stable placeholder.
+ *
+ * @returns {{ provider, oauthId, name, email, avatarUrl }}
+ */
+export async function signInWithProvider(providerName) {
+  // Check if real Firebase keys are present
+  const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+  const isDemoKey = !apiKey || apiKey === 'demo-api-key' || apiKey.startsWith('your_');
+
+  if (isDemoKey) {
+    console.info(`[OAuth] Live Firebase keys not configured in client/.env. Activating dev guest mode for ${providerName}.`);
+    return {
+      provider: providerName,
+      oauthId: `dev_${providerName}_${Date.now().toString().slice(-6)}`,
+      name: `${providerName.charAt(0).toUpperCase() + providerName.slice(1)} Guest`,
+      email: `${providerName}.guest_${Date.now().toString().slice(-4)}@baust.edu.bd`,
+      avatarUrl: providerName === 'github'
+        ? 'https://github.com/ghost.png'
+        : `https://api.dicebear.com/7.x/bottts/svg?seed=${providerName}_guest`,
+    };
+  }
+
+  const firebaseApp = getOrInitApp();
+  auth = getAuth(firebaseApp);
+
+  let provider;
+  switch (providerName) {
+    case 'google':
+      provider = new GoogleAuthProvider();
+      provider.addScope('email');
+      break;
+    case 'facebook':
+      provider = new FacebookAuthProvider();
+      provider.addScope('email');
+      break;
+    case 'github':
+      provider = new GithubAuthProvider();
+      provider.addScope('user:email'); // Request email even if hidden publicly
+      break;
+    default:
+      throw new Error(`Unknown provider: ${providerName}`);
+  }
+
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const fbUser = result.user;
+
+    return {
+      provider: providerName,
+      oauthId: fbUser.uid,
+      name: fbUser.displayName || fbUser.email?.split('@')[0] || `${providerName} User`,
+      email: fbUser.email || null, // may be null for GitHub with hidden email
+      avatarUrl: fbUser.photoURL || null,
+    };
+  } catch (err) {
+    if (
+      err?.code === 'auth/api-key-not-valid' ||
+      err?.code === 'auth/invalid-api-key' ||
+      err?.code === 'auth/configuration-not-found' ||
+      err?.code === 'auth/internal-error'
+    ) {
+      console.warn(`[OAuth] Firebase popup failed (${err.code}). Using dev fallback session.`);
+      return {
+        provider: providerName,
+        oauthId: `dev_${providerName}_${Date.now().toString().slice(-6)}`,
+        name: `${providerName.charAt(0).toUpperCase() + providerName.slice(1)} Guest`,
+        email: `${providerName}.guest_${Date.now().toString().slice(-4)}@baust.edu.bd`,
+        avatarUrl: providerName === 'github'
+          ? 'https://github.com/ghost.png'
+          : `https://api.dicebear.com/7.x/bottts/svg?seed=${providerName}_guest`,
+      };
+    }
+    throw err;
+  }
+}
+
+/**
+ * Sign out of Firebase Auth (call alongside your own JWT logout)
+ */
+export async function firebaseLogout() {
+  if (!auth) return;
+  await firebaseSignOut(auth).catch(() => {});
 }

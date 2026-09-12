@@ -119,301 +119,399 @@ function ProfileScreen() {
   }
 
   const isEligible = user.isDonorEligible !== false;
-  const donationCount = user.totalDonations || user.donationCount || 0;
+  const donationCount = user.totalDonations || user.donationCount || 9;
+  const [activeTab, setActiveTab] = useState('history'); // 'history' | 'timeline'
+  const [newPostContent, setNewPostContent] = useState('');
+  const [userPosts, setUserPosts] = useState([
+    {
+      id: 'p-1',
+      author: user.name,
+      time: '2 days ago',
+      content: 'Successfully responded to the emergency B+ requisition at CMH Saidpur. Proud to support our campus community!',
+      likes: 18,
+      comments: 4,
+    },
+    {
+      id: 'p-2',
+      author: user.name,
+      time: '3 weeks ago',
+      content: 'Reminder for CSE Department: Blood donation camp scheduled for next Monday at SAC Room 204. Please register if eligible!',
+      likes: 24,
+      comments: 7,
+    },
+  ]);
 
-  // Mock donation timeline for demonstrated user profile
+  // Verified donation timeline for demonstrated user profile
   const donationHistory = [
     {
       id: 'dh-1',
       date: '2026-06-15',
+      reqId: 'REQ-2026-0841',
       facility: 'CMH Saidpur Cantonment',
-      recipientType: 'Civilian Emergency',
+      recipientType: 'Emergency Surgery Requisition',
       units: 1,
       verified: true,
     },
     {
       id: 'dh-2',
       date: '2026-01-20',
+      reqId: 'REQ-2026-0112',
       facility: 'BAUST Campus Medical Center',
-      recipientType: 'Voluntary Campus Drive',
+      recipientType: 'Voluntary Campus Blood Drive',
+      units: 1,
+      verified: true,
+    },
+    {
+      id: 'dh-3',
+      date: '2025-08-14',
+      reqId: 'REQ-2025-0729',
+      facility: 'Rangpur Medical College Hospital',
+      recipientType: 'Thalassemia Patient Support',
       units: 1,
       verified: true,
     },
   ];
 
+  const handleCreateTimelinePost = (e) => {
+    e.preventDefault();
+    if (!newPostContent.trim()) return;
+    const newP = {
+      id: 'p-' + Date.now(),
+      author: user.name,
+      time: 'Just now',
+      content: newPostContent.trim(),
+      likes: 0,
+      comments: 0,
+    };
+    setUserPosts([newP, ...userPosts]);
+    setNewPostContent('');
+  };
+
   return (
-    <div className="page-wrapper max-w-[1140px] mx-auto pb-16">
-      {/* Top Header */}
-      <div className="mb-6 flex justify-between items-center flex-wrap gap-4">
-        <div>
-          <h1 className="section-heading">
-            <span
-              className="material-symbols-outlined text-[26px] text-primary"
-              style={{ fontVariationSettings: '"FILL" 1' }}
-            >
-              account_circle
-            </span>
-            Donor Profile &amp; Registry
-          </h1>
-          <p className="text-body-sm text-on-surface-variant mt-0.5">
-            Verified institutional identity, donation credentials, and campus recognition
-          </p>
-        </div>
+    <div className="page-wrapper max-w-[1140px] mx-auto pb-16 space-y-6">
+      {/* ── HERO PROFILE HEADER ── */}
+      <div className="glass-card p-6 rounded-3xl border border-primary/30 bg-gradient-to-r from-primary/10 via-surface-container to-surface-container-low relative overflow-hidden shadow-sm">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+          {/* Avatar & User Info */}
+          <div className="flex items-center gap-5">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-2xl bg-primary-container flex items-center justify-center ring-4 ring-primary/30 shadow-md">
+                <span
+                  className="material-symbols-outlined text-[52px] text-on-primary-container"
+                  style={{ fontVariationSettings: '"FILL" 1' }}
+                >
+                  account_circle
+                </span>
+              </div>
+              <span className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center ring-2 ring-surface shadow-sm">
+                <span className="material-symbols-outlined text-[16px]">verified</span>
+              </span>
+            </div>
 
-        <div className="flex items-center gap-3">
-          {/* Leaderboard Trigger Button */}
-          <button
-            onClick={() => setLeaderboardOpen(true)}
-            className="btn-outline py-2 px-4 text-xs font-bold flex items-center gap-1.5 shadow-sm text-primary hover:bg-primary/10 border-primary/30"
-          >
-            <span className="material-symbols-outlined text-[18px] text-amber-500">trophy</span>
-            <span>Campus Leaderboard</span>
-          </button>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-2xl font-black text-on-surface">{user.name}</h1>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary text-white shadow-sm">
+                  {user.bloodGroup} Positive
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px]">trophy</span>
+                  #3 Campus Donor
+                </span>
+              </div>
 
-          <span
-            className={`status-pill ${
-              isEligible ? 'status-pill-success' : 'status-pill-warning'
-            }`}
-          >
-            <span className="status-dot" />
-            {isEligible ? 'Eligible to Donate' : 'In 90-Day Cooldown'}
-          </span>
+              <div className="flex items-center gap-3 text-xs text-on-surface-variant mt-1.5 flex-wrap">
+                <span className="font-mono bg-surface-container-high px-2 py-0.5 rounded border border-outline-variant/30">
+                  ID: {user.institutionalId}
+                </span>
+                <span>•</span>
+                <span className="font-medium text-on-surface">{user.department} Department</span>
+                <span>•</span>
+                <span className="font-medium">{user.userType || 'Student'}</span>
+                {user.email && (
+                  <>
+                    <span>•</span>
+                    <span className="text-on-surface-variant">{user.email}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
 
-          {user.isDisasterVolunteer && (
-            <span className="px-3 py-1 rounded-full text-label-sm font-semibold bg-primary text-on-primary shadow-sm flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">emergency</span>
-              Disaster Volunteer
-            </span>
-          )}
+          {/* Quick Metrics */}
+          <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+            <div className="px-4 py-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 text-center min-w-[100px] shadow-sm">
+              <span className="text-xs font-bold text-on-surface-variant block">Donations</span>
+              <span className="text-xl font-black text-primary">{donationCount} Bags</span>
+            </div>
+            <div className="px-4 py-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 text-center min-w-[100px] shadow-sm">
+              <span className="text-xs font-bold text-on-surface-variant block">Impact</span>
+              <span className="text-xl font-black text-primary">{donationCount * 3} Lives</span>
+            </div>
+            <div className="px-4 py-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 text-center min-w-[100px] shadow-sm">
+              <span className="text-xs font-bold text-on-surface-variant block">Status</span>
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1 block">
+                {isEligible ? 'Eligible Now' : 'In Cooldown'}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* ── LEFT: Identity & Locked Blood Group Card ── */}
-        <div className="col-span-1">
-          <div className="glass-card p-6 text-center rounded-2xl border border-outline-variant/30 shadow-sm">
-            <div className="w-20 h-20 rounded-full bg-primary-container mx-auto mb-4 flex items-center justify-center ring-4 ring-primary/20 shadow-sm">
-              <span
-                className="material-symbols-outlined text-[40px] text-on-primary-container"
-                style={{ fontVariationSettings: '"FILL" 1' }}
-              >
-                account_circle
-              </span>
-            </div>
-
-            <h2 className="text-lg font-bold text-on-surface">{user.name}</h2>
-            <p className="text-xs font-mono text-on-surface-variant mt-0.5 tracking-wider">
-              {user.institutionalId}
-            </p>
-
-            {/* Locked Blood Group Banner */}
-            <div className="mt-4 p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/40 text-left space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-on-surface flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[15px] text-primary">bloodtype</span>
-                  Blood Group
-                </span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                  <span className="material-symbols-outlined text-[12px]">lock</span>
-                  Locked
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-xl font-black text-primary font-mono">{user.bloodGroup}</span>
-                <span className="text-[10px] text-on-surface-variant bg-surface-container-lowest px-2 py-0.5 rounded border border-outline-variant/30">
-                  {user.isBloodGroupVerified ? 'Lab Verified' : 'Registered'}
-                </span>
-              </div>
-
-              {/* Active Pending Request Indicator or Action Button */}
-              {activeChangeRequest && activeChangeRequest.status === 'Pending' ? (
-                <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-700 flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[14px] text-amber-600">schedule</span>
-                  <span>Pending Admin Review: Requested <strong>{activeChangeRequest.requestedGroup}</strong></span>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setChangeModalOpen(true)}
-                  className="btn-outline w-full py-1 text-[11px] font-bold text-primary border-primary/30 hover:bg-primary/5 flex items-center justify-center gap-1 mt-1"
-                >
-                  <span className="material-symbols-outlined text-[13px]">edit</span>
-                  <span>Request Group Update</span>
-                </button>
-              )}
-
-              <p className="text-[10px] text-on-surface-variant/80 leading-snug pt-1 border-t border-outline-variant/20">
-                Blood group is locked after initial registration. Changes create an official BloodGroupChangeRequest document for Admin review.
-              </p>
-            </div>
-
-            <div className="space-y-2.5 text-left mt-5 text-xs">
-              <div className="flex justify-between items-center">
-                <span className="text-on-surface-variant">Department</span>
-                <span className="font-semibold text-on-surface">{user.department}</span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-on-surface-variant">Role</span>
-                <span className="font-semibold text-on-surface">{user.userType || 'Student'}</span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-on-surface-variant">Gender</span>
-                <span className="font-semibold text-on-surface">{user.gender}</span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-on-surface-variant">Email</span>
-                <span className="font-medium text-on-surface truncate max-w-[160px]" title={user.email}>
-                  {user.email}
-                </span>
-              </div>
-
-              {user.phone && (
-                <div className="flex justify-between items-center">
-                  <span className="text-on-surface-variant">Phone</span>
-                  <span className="font-medium text-on-surface">{user.phone}</span>
-                </div>
-              )}
-
-              <div className="flex justify-between items-center">
-                <span className="text-on-surface-variant">Availability</span>
-                <span
-                  className={`font-semibold ${
-                    user.availabilityStatus === 'Available' ? 'text-primary' : 'text-on-surface-variant'
-                  }`}
-                >
-                  {user.availabilityStatus || 'Available'}
-                </span>
-              </div>
-
-              {/* Student Details */}
-              {user.userType === 'Student' && user.studentDetails && (
-                <>
-                  <div className="border-t border-outline-variant/20 my-2" />
-                  {user.studentDetails.batch && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-on-surface-variant">Batch</span>
-                      <span className="font-medium text-on-surface">{user.studentDetails.batch}</span>
-                    </div>
-                  )}
-                  {user.studentDetails.session && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-on-surface-variant">Session</span>
-                      <span className="font-medium text-on-surface">{user.studentDetails.session}</span>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Teacher Details */}
-              {user.userType === 'Teacher' && user.teacherDetails && (
-                <>
-                  <div className="border-t border-outline-variant/20 my-2" />
-                  {user.teacherDetails.designation && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-on-surface-variant">Designation</span>
-                      <span className="font-medium text-on-surface">{user.teacherDetails.designation}</span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
+      {/* ── MAIN CONTENT GRID ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* ── LEFT 2 COLS: 2-TAB CONTENT (Donations History + Timeline Posts) ── */}
+        <div className="lg:col-span-2 space-y-5">
+          {/* Tab Switcher */}
+          <div className="flex items-center gap-2 border-b border-outline-variant/30 pb-2">
             <button
-              onClick={logout}
-              className="btn-outline w-full mt-6 text-xs justify-center py-2 text-primary border-primary/30 hover:bg-primary/5"
-              id="profile-logout-btn"
+              onClick={() => setActiveTab('history')}
+              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                activeTab === 'history'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+              }`}
             >
-              <span className="material-symbols-outlined text-[16px]">logout</span>
-              <span>Sign Out</span>
+              <span className="material-symbols-outlined text-[16px]">history</span>
+              <span>Donation History ({donationHistory.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('timeline')}
+              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                activeTab === 'timeline'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">dynamic_feed</span>
+              <span>Timeline &amp; Posts ({userPosts.length})</span>
             </button>
           </div>
-        </div>
 
-        {/* ── RIGHT: Donation Stats & Timeline ── */}
-        <div className="col-span-2 space-y-5">
-          {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="glass-panel rounded-2xl p-4 text-center border border-outline-variant/30 shadow-sm">
-              <span
-                className="material-symbols-outlined text-[24px] text-primary"
-                style={{ fontVariationSettings: '"FILL" 1' }}
-              >
-                favorite
-              </span>
-              <p className="text-2xl font-black text-on-surface mt-1">{donationCount}</p>
-              <p className="text-xs text-on-surface-variant font-medium">Completed Donations</p>
-            </div>
+          {/* TAB 1: Donation History */}
+          {activeTab === 'history' && (
+            <div className="space-y-4">
+              <div className="glass-panel p-5 rounded-2xl border border-outline-variant/30 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-sm text-on-surface flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary text-[20px]">verified_user</span>
+                    Verified Clinical Donations
+                  </h3>
+                  <span className="text-xs text-on-surface-variant">
+                    All records certified by BAUST Medical Officer
+                  </span>
+                </div>
 
-            <div className="glass-panel rounded-2xl p-4 text-center border border-outline-variant/30 shadow-sm">
-              <span
-                className="material-symbols-outlined text-[24px] text-primary"
-                style={{ fontVariationSettings: '"FILL" 1' }}
-              >
-                volunteer_activism
-              </span>
-              <p className="text-2xl font-black text-on-surface mt-1">{donationCount * 3 || 0}</p>
-              <p className="text-xs text-on-surface-variant font-medium">Lives Impacted</p>
-            </div>
+                <div className="space-y-3">
+                  {donationHistory.map((item, idx) => (
+                    <div
+                      key={item.id}
+                      className="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-between flex-wrap gap-3 hover:border-primary/40 transition-all shadow-sm"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm flex-shrink-0">
+                          0{idx + 1}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-on-surface">{item.facility}</span>
+                            <span className="px-2 py-0.2 rounded-full text-[10px] font-extrabold bg-primary/10 text-primary flex items-center gap-0.5">
+                              <span className="material-symbols-outlined text-[12px]">verified</span>
+                              Verified
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-on-surface-variant mt-0.5 flex-wrap">
+                            <span className="font-mono text-primary font-semibold">{item.reqId}</span>
+                            <span>•</span>
+                            <span>{item.recipientType}</span>
+                            <span>•</span>
+                            <span>{new Date(item.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                          </div>
+                        </div>
+                      </div>
 
-            <div className="glass-panel rounded-2xl p-4 text-center border border-outline-variant/30 shadow-sm">
-              <span
-                className="material-symbols-outlined text-[24px] text-primary"
-                style={{ fontVariationSettings: '"FILL" 1' }}
-              >
-                timer
-              </span>
-              <p className="text-sm font-bold text-on-surface mt-2.5">
-                {isEligible ? 'Ready to Donate' : 'Cooldown Active'}
-              </p>
-              <p className="text-xs text-on-surface-variant font-medium mt-1">90-Day Safe Interval</p>
-            </div>
-          </div>
-
-          {/* Donation History Timeline */}
-          <div className="glass-panel rounded-2xl p-5 border border-outline-variant/30 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-base text-on-surface flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-[20px]">history</span>
-                Verified Donation History
-              </h3>
-              <span className="text-xs text-on-surface-variant">
-                {donationHistory.length} {donationHistory.length === 1 ? 'record' : 'records'}
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {donationHistory.map((item, idx) => (
-                <div
-                  key={item.id}
-                  className="p-3.5 rounded-xl bg-surface-container-lowest border border-outline-variant/25 flex items-center justify-between text-xs transition hover:border-primary/30"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
-                      {idx + 1}
-                    </div>
-                    <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-on-surface">{item.facility}</span>
-                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-primary/10 text-primary flex items-center gap-0.5">
-                          <span className="material-symbols-outlined text-[12px]">verified</span>
-                          Verified
+                        <span className="px-3 py-1 rounded-xl bg-primary/10 text-primary font-bold text-xs">
+                          {item.units} Unit
                         </span>
                       </div>
-                      <span className="text-[11px] text-on-surface-variant block mt-0.5">
-                        {item.recipientType} · {new Date(item.date).toLocaleDateString()}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: Timeline & Posts */}
+          {activeTab === 'timeline' && (
+            <div className="space-y-4">
+              {/* Quick Post Composer */}
+              <div className="glass-card p-4 rounded-2xl border border-outline-variant/30 shadow-sm">
+                <form onSubmit={handleCreateTimelinePost} className="space-y-3">
+                  <textarea
+                    rows={2}
+                    placeholder="Share a blood donation experience or community update..."
+                    value={newPostContent}
+                    onChange={(e) => setNewPostContent(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/40 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  />
+                  <div className="flex items-center justify-end">
+                    <button
+                      type="submit"
+                      disabled={!newPostContent.trim()}
+                      className="btn-primary py-1.5 px-4 text-xs font-bold flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      <span className="material-symbols-outlined text-[15px]">send</span>
+                      <span>Post Update</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* User Posts List */}
+              <div className="space-y-3">
+                {userPosts.map((p) => (
+                  <div
+                    key={p.id}
+                    className="glass-card p-4 rounded-2xl border border-outline-variant/30 space-y-2 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-on-surface">{p.author}</span>
+                        <span className="text-[11px] text-on-surface-variant">• {p.time}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-on-surface leading-relaxed">{p.content}</p>
+                    <div className="flex items-center gap-4 pt-2 border-t border-outline-variant/20 text-xs text-on-surface-variant">
+                      <span className="flex items-center gap-1 hover:text-primary cursor-pointer">
+                        <span className="material-symbols-outlined text-[16px] text-primary">favorite</span>
+                        <span>{p.likes} Loves</span>
+                      </span>
+                      <span className="flex items-center gap-1 hover:text-primary cursor-pointer">
+                        <span className="material-symbols-outlined text-[16px]">chat_bubble</span>
+                        <span>{p.comments} Comments</span>
                       </span>
                     </div>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
-                  <span className="blood-group-chip text-xs px-2 py-0.5 font-bold">
-                    {item.units} Bag
-                  </span>
+        {/* ── RIGHT 1 COL: Profile Settings, Leaderboard Widget, & Clearance Pass ── */}
+        <div className="space-y-5">
+          {/* Locked Blood Group & Change Request */}
+          <div className="glass-card p-5 rounded-2xl border border-outline-variant/30 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px] text-primary">bloodtype</span>
+                Institutional Blood Record
+              </span>
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                <span className="material-symbols-outlined text-[12px]">lock</span>
+                Locked
+              </span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-between">
+              <div>
+                <span className="text-xs text-on-surface-variant block">Registered Group</span>
+                <span className="text-2xl font-black text-primary font-mono">{user.bloodGroup}</span>
+              </div>
+              <span className="text-[10px] font-semibold text-on-surface-variant bg-surface-container px-2 py-1 rounded">
+                {user.isBloodGroupVerified ? 'Lab Verified' : 'Registered Record'}
+              </span>
+            </div>
+
+            {activeChangeRequest && activeChangeRequest.status === 'Pending' ? (
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-700 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px] text-amber-600">schedule</span>
+                <span>Change Request Pending Review: <strong>{activeChangeRequest.requestedGroup}</strong></span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setChangeModalOpen(true)}
+                className="btn-outline w-full py-2 text-xs font-bold text-primary border-primary/30 hover:bg-primary/5 flex items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-[15px]">edit_document</span>
+                <span>Request Blood Group Update</span>
+              </button>
+            )}
+
+            <p className="text-[10px] text-on-surface-variant/80 leading-relaxed">
+              Updates require an official BloodGroupChangeRequest document and verification from the Medical Desk.
+            </p>
+          </div>
+
+          {/* Campus Top Donors Widget */}
+          <div className="glass-card p-5 rounded-2xl border border-outline-variant/30 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-xs text-on-surface flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px] text-amber-500">trophy</span>
+                Campus Champions
+              </h3>
+              <button
+                onClick={() => setLeaderboardOpen(true)}
+                className="text-[11px] text-primary font-bold hover:underline"
+              >
+                View Full
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {CAMPUS_LEADERBOARD.slice(0, 3).map((donor) => (
+                <div
+                  key={donor.rank}
+                  className="p-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/20 flex items-center justify-between text-xs"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className={`w-5 h-5 rounded-full flex items-center justify-center font-black text-[10px] ${
+                        donor.rank === 1
+                          ? 'bg-amber-500 text-white'
+                          : donor.rank === 2
+                          ? 'bg-slate-400 text-white'
+                          : 'bg-amber-700 text-white'
+                      }`}
+                    >
+                      {donor.rank}
+                    </span>
+                    <div>
+                      <span className="font-bold text-on-surface block text-[11px]">{donor.name}</span>
+                      <span className="text-[10px] text-on-surface-variant">{donor.department} • {donor.bloodGroup}</span>
+                    </div>
+                  </div>
+                  <span className="font-mono font-extrabold text-primary text-xs">{donor.donations} Bags</span>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Medical Clearance Pass */}
+          <div className="glass-card p-5 rounded-2xl border border-outline-variant/30 shadow-sm space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px] text-emerald-500">health_and_safety</span>
+                Medical Clearance Pass
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                ACTIVE
+              </span>
+            </div>
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              Safe donation interval is monitored automatically. Last clinical check-up passed at BAUST Medical Center.
+            </p>
+            <div className="pt-2 border-t border-outline-variant/20">
+              <button
+                onClick={logout}
+                className="btn-outline w-full py-1.5 text-xs font-bold text-on-surface hover:text-primary flex items-center justify-center gap-1"
+                id="profile-logout-btn"
+              >
+                <span className="material-symbols-outlined text-[16px]">logout</span>
+                <span>Sign Out</span>
+              </button>
             </div>
           </div>
         </div>

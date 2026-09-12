@@ -1,11 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import AppLayout from './components/layout/AppLayout';
+import GuestBanner from './components/GuestBanner';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 // Screen imports
 import LoginScreen from './screens/auth/LoginScreen';
 import RegisterScreen from './screens/auth/RegisterScreen';
+import CompleteProfileScreen from './screens/auth/CompleteProfileScreen';
 import FeedScreen from './screens/feed/FeedScreen';
 import BloodHubScreen from './screens/blood-hub/BloodHubScreen';
 import SearchDonorsScreen from './screens/blood-hub/SearchDonorsScreen';
@@ -128,6 +130,18 @@ function AppRoutes() {
         }
       />
 
+      {/* ─── Complete Profile — accessible to any authenticated user (Guest or Verified) */}
+      <Route
+        path="/complete-profile"
+        element={
+          <ProtectedRoute>
+            <ErrorBoundary section="Complete Profile">
+              <CompleteProfileScreen />
+            </ErrorBoundary>
+          </ProtectedRoute>
+        }
+      />
+
       {/* ── Admin routes (protected) ───────────────────────────────────── */}
       <Route
         path="/admin/*"
@@ -150,109 +164,112 @@ function AppRoutes() {
         path="/*"
         element={
           <ProtectedRoute>
-            <AppLayout user={user} notificationCount={0}>
-              <Routes>
-                {/* Feed */}
-                <Route
-                  path="feed"
-                  element={
-                    <ErrorBoundary section="Feed">
-                      <FeedScreen />
-                    </ErrorBoundary>
-                  }
-                />
+            <>
+              <GuestBanner />
+              <AppLayout user={user} notificationCount={0}>
+                <Routes>
+                  {/* Feed */}
+                  <Route
+                    path="feed"
+                    element={
+                      <ErrorBoundary section="Feed">
+                        <FeedScreen />
+                      </ErrorBoundary>
+                    }
+                  />
 
-                {/* Blood Hub */}
-                <Route
-                  path="blood-hub"
-                  element={
-                    <ErrorBoundary section="Blood Hub">
-                      <BloodHubScreen />
-                    </ErrorBoundary>
-                  }
-                />
-                <Route
-                  path="blood-hub/search"
-                  element={
-                    <ErrorBoundary section="Donor Search">
-                      <SearchDonorsScreen />
-                    </ErrorBoundary>
-                  }
-                />
-                <Route
-                  path="blood-hub/request"
-                  element={
-                    <ErrorBoundary section="Blood Request">
-                      <RequestBloodScreen />
-                    </ErrorBoundary>
-                  }
-                />
+                  {/* Blood Hub */}
+                  <Route
+                    path="blood-hub"
+                    element={
+                      <ErrorBoundary section="Blood Hub">
+                        <BloodHubScreen />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="blood-hub/search"
+                    element={
+                      <ErrorBoundary section="Donor Search">
+                        <SearchDonorsScreen />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="blood-hub/request"
+                    element={
+                      <ErrorBoundary section="Blood Request">
+                        <RequestBloodScreen />
+                      </ErrorBoundary>
+                    }
+                  />
 
-                {/* Emergency SOS */}
-                <Route
-                  path="emergency"
-                  element={
-                    <ErrorBoundary section="Emergency SOS">
-                      <EmergencySosScreen />
-                    </ErrorBoundary>
-                  }
-                />
+                  {/* Emergency SOS */}
+                  <Route
+                    path="emergency"
+                    element={
+                      <ErrorBoundary section="Emergency SOS">
+                        <EmergencySosScreen />
+                      </ErrorBoundary>
+                    }
+                  />
 
-                {/* Helpline */}
-                <Route
-                  path="helpline"
-                  element={
-                    <ErrorBoundary section="Helpline">
-                      <HelplineScreen />
-                    </ErrorBoundary>
-                  }
-                />
+                  {/* Helpline */}
+                  <Route
+                    path="helpline"
+                    element={
+                      <ErrorBoundary section="Helpline">
+                        <HelplineScreen />
+                      </ErrorBoundary>
+                    }
+                  />
 
-                {/* Profile */}
-                <Route
-                  path="profile/*"
-                  element={
-                    <ErrorBoundary section="Profile">
-                      <ProfileScreen />
-                    </ErrorBoundary>
-                  }
-                />
+                  {/* Profile */}
+                  <Route
+                    path="profile/*"
+                    element={
+                      <ErrorBoundary section="Profile">
+                        <ProfileScreen />
+                      </ErrorBoundary>
+                    }
+                  />
 
-                {/* Notifications & Messenger */}
-                <Route
-                  path="notifications"
-                  element={
-                    <ErrorBoundary section="Notifications">
-                      <NotificationsScreen />
-                    </ErrorBoundary>
-                  }
-                />
+                  {/* Notifications & Messenger */}
+                  <Route
+                    path="notifications"
+                    element={
+                      <ErrorBoundary section="Notifications">
+                        <NotificationsScreen />
+                      </ErrorBoundary>
+                    }
+                  />
 
-                {/* 404 fallback */}
-                <Route
-                  path="*"
-                  element={
-                    <div className="page-wrapper">
-                      <div className="error-state min-h-[60vh]">
-                        <span className="material-symbols-outlined text-[64px] text-on-surface-variant">
-                          search_off
-                        </span>
-                        <div>
-                          <h1 className="text-headline-lg font-bold text-on-surface">Page Not Found</h1>
-                          <p className="text-body-md text-on-surface-variant mt-2">
-                            The page you're looking for doesn't exist.
-                          </p>
+                  {/* 404 fallback */}
+                  <Route
+                    path="*"
+                    element={
+                      <div className="page-wrapper">
+                        <div className="error-state min-h-[60vh]">
+                          <span className="material-symbols-outlined text-[64px] text-on-surface-variant">
+                            search_off
+                          </span>
+                          <div>
+                            <h1 className="text-headline-lg font-bold text-on-surface">Page Not Found</h1>
+                            <p className="text-body-md text-on-surface-variant mt-2">
+                              The page you're looking for doesn't exist.
+                            </p>
+                          </div>
+                          <Link to="/feed" className="btn-primary" id="notfound-go-home">
+                            <span className="material-symbols-outlined text-[18px]">home</span>
+                            Go to Feed
+                          </Link>
                         </div>
-                        <Link to="/feed" className="btn-primary" id="notfound-go-home">
-                          <span className="material-symbols-outlined text-[18px]">home</span>
-                          Go to Feed
-                        </Link>
                       </div>
-                    </div>
-                  }
-                />
-              </Routes>
-            </AppLayout>
+                    }
+                  />
+                </Routes>
+              </AppLayout>
+            </>
           </ProtectedRoute>
         }
       />

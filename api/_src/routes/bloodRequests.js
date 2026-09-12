@@ -9,7 +9,7 @@ const {
   VALID_PATIENT_TYPES,
 } = require('../models/BloodRequest');
 const { User } = require('../models/User');
-const { verifyToken, validateRequest } = require('../middleware/auth');
+const { verifyToken, validateRequest, requireVerifiedAccount } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -282,6 +282,7 @@ router.get('/', async (req, res, next) => {
 router.post(
   '/',
   verifyToken,
+  requireVerifiedAccount,
   [
     body('patientName')
       .trim()
@@ -489,6 +490,7 @@ router.get('/:id', async (req, res, next) => {
 router.patch(
   '/:id/respond',
   verifyToken,
+  requireVerifiedAccount,
   [
     body('status')
       .isIn(['Accepted', 'Declined', 'Completed'])

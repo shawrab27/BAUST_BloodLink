@@ -10,7 +10,7 @@ const {
   VALID_GENDERS,
   VALID_USER_TYPES,
 } = require('../models/User');
-const { verifyToken, validateRequest, JWT_SECRET } = require('../middleware/auth');
+const { verifyToken, validateRequest, requireVerifiedAccount, JWT_SECRET } = require('../middleware/auth');
 const BloodGroupChangeRequest = require('../models/BloodGroupChangeRequest');
 
 const router = express.Router();
@@ -154,14 +154,16 @@ function toSafeDatasetUser(u) {
 }
 
 /**
- * Helper to sign 8h JWT token
+ * Helper to sign 8h JWT token — embeds accountStatus so middleware
+ * can gate without a DB round-trip on every request.
  */
 function generateToken(user) {
   return jwt.sign(
     {
       id: user._id || user.id,
-      institutionalId: user.institutionalId,
-      userType: user.userType || user.role,
+      institutionalId: user.institutionalId || null,
+      userType: user.userType || user.role || 'Student',
+      accountStatus: user.accountStatus || 'Verified',
     },
     JWT_SECRET,
     { expiresIn: '8h' }
@@ -351,6 +353,261 @@ router.post(
           error: 'Conflict',
           message: `An account with that ${field} already exists.`,
           field,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      next(err);
+    }
+  }
+);
+
+// ─── POST /api/auth/oauth ─────────────────────────────────────────────────────────────────────────────
+/**
+ * OAuth Login / Guest account creation.
+ * Called by the frontend after a successful Firebase Auth sign-in popup.
+ *
+ * Flow:
+ * 1. Try to find user by oauthId (returning user, any provider)
+ * 2. Fall back to email match (same person, different device or provider)
+ * 3. If no match — create new Guest account from provider data
+ *
+ * GitHub email fallback: if provider cannot supply an email
+ * (user has hidden it even with user:email scope), we generate a stable
+ * placeholder — github_{uid}@placeholder.bloodlink.local — to satisfy
+ * the unique email constraint without breaking the account.
+ */
+router.post(
+  '/oauth',
+  [
+    body('provider').isIn(['google', 'facebook', 'github']).withMessage('Invalid OAuth provider'),
+    body('oauthId').notEmpty().withMessage('oauthId is required'),
+    body('name').trim().isLength({ min: 2 }).withMessage('Name must be at least 2 characters'),
+    body('email').optional().trim().isEmail().normalizeEmail(),
+    body('avatarUrl').optional().isString(),
+    validateRequest,
+  ],
+  async (req, res, next) => {
+    try {
+      const { provider, oauthId, name, email: rawEmail, avatarUrl } = req.body;
+
+      // GitHub fallback: generate placeholder if email missing
+      const email = rawEmail || `github_${oauthId}@placeholder.bloodlink.local`;
+
+      let isDbConnected = false;
+      if (process.env.MONGODB_URI) {
+        try { await connectDB(); isDbConnected = true; } catch { isDbConnected = false; }
+      }
+
+      if (isDbConnected) {
+        // 1. Match by oauthId first (fastest, most reliable)
+        let user = await User.findOne({ oauthId, authProvider: provider });
+
+        // 2. Fall back to email (same person, first time on this device)
+        if (!user && rawEmail) {
+          user = await User.findOne({ email });
+          if (user && !user.oauthId) {
+            // Link the OAuth identity to existing local account
+            user.oauthId = oauthId;
+            user.authProvider = provider;
+            if (avatarUrl && !user.avatarUrl) user.avatarUrl = avatarUrl;
+            await user.save();
+          }
+        }
+
+        // 3. Create new Guest account
+        if (!user) {
+          user = new User({
+            authProvider: provider,
+            oauthId,
+            accountStatus: 'Guest',
+            name,
+            email,
+            avatarUrl: avatarUrl || null,
+            userType: 'Student', // default, can be updated in complete-profile
+            // All campus-specific fields left null until complete-profile
+          });
+          await user.save();
+        }
+
+        const token = generateToken(user);
+        return res.status(200).json({
+          message: user.accountStatus === 'Guest' ? 'Guest session started' : 'Login successful',
+          token,
+          user: user.toSafeObject(),
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      // ── In-memory fallback (no MongoDB) ───────────────────────────────────────────────
+      let memUser = inMemoryUsers.find((u) => u.oauthId === oauthId && u.authProvider === provider);
+      if (!memUser && rawEmail) {
+        memUser = inMemoryUsers.find((u) => u.email === email);
+      }
+      if (!memUser) {
+        memUser = {
+          _id: `6751a00000000000000000${(inMemoryUsers.length + 20).toString().padStart(2, '0')}`,
+          authProvider: provider,
+          oauthId,
+          accountStatus: 'Guest',
+          name,
+          email,
+          avatarUrl: avatarUrl || null,
+          userType: 'Student',
+          createdAt: new Date().toISOString(),
+        };
+        inMemoryUsers.push(memUser);
+      }
+
+      const safeUser = { ...memUser };
+      delete safeUser.passwordHash;
+      safeUser.isGuest = safeUser.accountStatus === 'Guest';
+
+      const token = generateToken(safeUser);
+      return res.status(200).json({
+        message: memUser.accountStatus === 'Guest' ? 'Guest session started' : 'Login successful',
+        token,
+        user: safeUser,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      if (err.code === 11000) {
+        // Duplicate email or oauthId — try to find and return existing user
+        return res.status(409).json({
+          error: 'Conflict',
+          message: 'An account with this email or social identity already exists.',
+          timestamp: new Date().toISOString(),
+        });
+      }
+      next(err);
+    }
+  }
+);
+
+// ─── POST /api/auth/complete-profile ───────────────────────────────────────────────────────────────────────
+/**
+ * Upgrade a Guest account to Verified by supplying campus details.
+ * Updates the SAME User document — NOT a new account — so post/feed history carries over.
+ * Validates identically to registration (same 16-char ID, blood group, department rules).
+ */
+router.post(
+  '/complete-profile',
+  verifyToken,
+  [
+    body('institutionalId')
+      .trim().toUpperCase()
+      .matches(/^[a-zA-Z0-9]{16}$/)
+      .withMessage('Institutional ID must be exactly 16 alphanumeric characters'),
+    body('gender').isIn(VALID_GENDERS).withMessage(`Gender must be one of: ${VALID_GENDERS.join(', ')}`),
+    body('department').isIn(VALID_DEPARTMENTS).withMessage(`Department must be one of: ${VALID_DEPARTMENTS.join(', ')}`),
+    body('bloodGroup').isIn(VALID_BLOOD_GROUPS).withMessage(`Blood group must be one of: ${VALID_BLOOD_GROUPS.join(', ')}`),
+    body('userType').optional().isIn(VALID_USER_TYPES).withMessage(`User type must be one of: ${VALID_USER_TYPES.join(', ')}`),
+    body('phone').optional().trim(),
+    body('isDisasterVolunteer').optional().isBoolean(),
+    validateRequest,
+  ],
+  async (req, res, next) => {
+    try {
+      const {
+        institutionalId,
+        gender,
+        department,
+        bloodGroup,
+        userType,
+        studentDetails,
+        teacherDetails,
+        staffDetails,
+        phone,
+        isDisasterVolunteer,
+      } = req.body;
+
+      let isDbConnected = false;
+      if (process.env.MONGODB_URI) {
+        try { await connectDB(); isDbConnected = true; } catch { isDbConnected = false; }
+      }
+
+      if (isDbConnected) {
+        // Check for institutionalId conflict first
+        const conflict = await User.findOne({ institutionalId });
+        if (conflict && conflict._id.toString() !== req.user.id) {
+          return res.status(409).json({
+            error: 'Conflict',
+            message: `Institutional ID '${institutionalId}' is already registered to another account.`,
+            field: 'institutionalId',
+            timestamp: new Date().toISOString(),
+          });
+        }
+
+        const resolved = userType || req.user.userType || 'Student';
+        const updates = {
+          institutionalId,
+          gender,
+          department,
+          bloodGroup,
+          userType: resolved,
+          accountStatus: 'Verified',
+          availabilityStatus: 'Available',
+          ...(phone !== undefined && { phone }),
+          ...(isDisasterVolunteer !== undefined && { isDisasterVolunteer }),
+          ...(resolved === 'Student' && studentDetails && { studentDetails }),
+          ...(resolved === 'Teacher' && teacherDetails && { teacherDetails }),
+          ...(resolved === 'Staff' && staffDetails && { staffDetails }),
+        };
+
+        const user = await User.findByIdAndUpdate(req.user.id, updates, {
+          new: true,
+          runValidators: true,
+        });
+
+        if (!user) {
+          return res.status(404).json({ error: 'Not Found', message: 'User account not found.' });
+        }
+
+        const token = generateToken(user); // re-issue token with updated accountStatus
+        return res.status(200).json({
+          message: 'Profile completed. Your campus account is now verified.',
+          token,
+          user: user.toSafeObject(),
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      // In-memory fallback
+      const memIdx = inMemoryUsers.findIndex(
+        (u) => u._id === req.user.id || u.institutionalId === req.user.institutionalId
+      );
+      if (memIdx === -1) {
+        return res.status(404).json({ error: 'Not Found', message: 'User account not found.' });
+      }
+
+      const resolved = userType || inMemoryUsers[memIdx].userType || 'Student';
+      inMemoryUsers[memIdx] = {
+        ...inMemoryUsers[memIdx],
+        institutionalId,
+        gender,
+        department,
+        bloodGroup,
+        userType: resolved,
+        accountStatus: 'Verified',
+        availabilityStatus: 'Available',
+        ...(phone !== undefined && { phone }),
+        ...(isDisasterVolunteer !== undefined && { isDisasterVolunteer }),
+      };
+
+      const safeUser = toSafeDatasetUser(inMemoryUsers[memIdx]);
+      safeUser.accountStatus = 'Verified';
+      const token = generateToken(safeUser);
+      return res.status(200).json({
+        message: 'Profile completed. Your campus account is now verified.',
+        token,
+        user: safeUser,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      if (err.code === 11000) {
+        return res.status(409).json({
+          error: 'Conflict',
+          message: 'An account with this Institutional ID already exists.',
+          field: 'institutionalId',
           timestamp: new Date().toISOString(),
         });
       }

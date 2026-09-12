@@ -4,6 +4,20 @@ const mongoose = require('mongoose');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { verifyToken } = require('../middleware/auth');
+const { connectDB } = require('../config/db');
+
+async function isConnected() {
+  if (mongoose.connection.readyState === 1) return true;
+  if (process.env.MONGODB_URI) {
+    try {
+      await connectDB();
+      return mongoose.connection.readyState === 1;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
 
 /**
  * In-memory fallback notifications for demo/offline testing
@@ -35,22 +49,23 @@ let inMemoryNotifications = [
  */
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const isConnected = mongoose.connection && mongoose.connection.readyState === 1;
+    const dbActive = await isConnected();
+    const userId = req.user.userId || req.user.id || req.user._id;
 
-    if (isConnected) {
+    if (dbActive) {
       const page = parseInt(req.query.page, 10) || 1;
       const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
       const skip = (page - 1) * limit;
 
       const [notifications, unreadCount, total] = await Promise.all([
-        Notification.find({ recipient: (req.user.id || req.user._id) })
+        Notification.find({ recipient: userId })
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limit)
           .populate('bloodRequest', 'patientName bloodGroup hospital condition status')
           .lean(),
-        Notification.countDocuments({ recipient: (req.user.id || req.user._id), isRead: false }),
-        Notification.countDocuments({ recipient: (req.user.id || req.user._id) }),
+        Notification.countDocuments({ recipient: userId, isRead: false }),
+        Notification.countDocuments({ recipient: userId }),
       ]);
 
       return res.json({
@@ -92,11 +107,12 @@ router.get('/', verifyToken, async (req, res) => {
 router.patch('/:id/read', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const isConnected = mongoose.connection && mongoose.connection.readyState === 1;
+    const dbActive = await isConnected();
+    const userId = req.user.userId || req.user.id || req.user._id;
 
-    if (isConnected) {
+    if (dbActive) {
       const updated = await Notification.findOneAndUpdate(
-        { _id: id, recipient: (req.user.id || req.user._id) },
+        { _id: id, recipient: userId },
         { isRead: true },
         { new: true }
       );
@@ -122,11 +138,12 @@ router.patch('/:id/read', verifyToken, async (req, res) => {
  */
 router.patch('/read-all', verifyToken, async (req, res) => {
   try {
-    const isConnected = mongoose.connection && mongoose.connection.readyState === 1;
+    const dbActive = await isConnected();
+    const userId = req.user.userId || req.user.id || req.user._id;
 
-    if (isConnected) {
+    if (dbActive) {
       const result = await Notification.updateMany(
-        { recipient: (req.user.id || req.user._id), isRead: false },
+        { recipient: userId, isRead: false },
         { isRead: true }
       );
       return res.json({ success: true, updatedCount: result.modifiedCount });

@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 
 const CATEGORIES = [
   { id: 'All', label: 'All Contacts', icon: 'contacts' },
-  { id: 'Medical', label: 'Medical Center & Ambulance', icon: 'local_hospital' },
-  { id: 'Committee', label: 'Blood Committee', icon: 'groups' },
-  { id: 'Campus', label: 'Campus Security & Proctor', icon: 'security' },
-  { id: 'WhatsApp', label: 'WhatsApp Broadcast', icon: 'chat' },
+  { id: 'Medical', label: 'Medical & Hospitals', icon: 'local_hospital' },
+  { id: 'Committee', label: 'Executive Committee', icon: 'groups' },
+  { id: 'Campus', label: 'Campus Security & Logistics', icon: 'security' },
+  { id: 'WhatsApp', label: 'WhatsApp Community', icon: 'chat' },
 ];
 
 function HelplineScreen() {
@@ -53,20 +53,20 @@ function HelplineScreen() {
   });
 
   return (
-    <div className="page-wrapper max-w-[1080px] mx-auto pb-16">
+    <div className="page-wrapper max-w-[1080px] mx-auto pb-16 space-y-6">
       {/* 24/7 Emergency Sticky Banner */}
-      <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-primary/15 via-primary/10 to-transparent border border-primary/30 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
+      <div className="p-5 rounded-2xl bg-gradient-to-r from-primary/20 via-primary/10 to-transparent border border-primary/30 flex items-center justify-between shadow-sm flex-wrap gap-4">
+        <div className="flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-xl bg-primary text-white flex items-center justify-center flex-shrink-0 shadow-md animate-pulse">
             <span className="material-symbols-outlined text-[28px]">emergency</span>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-on-surface text-base">BAUST Emergency Medical Desk</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary text-white">24/7 ACTIVE</span>
+              <span className="font-extrabold text-on-surface text-base">BAUST Emergency Clinical &amp; Ambulance Relay Desk</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-primary text-white tracking-wide uppercase">24/7 LIVE</span>
             </div>
             <p className="text-xs text-on-surface-variant mt-0.5">
-              Ground Floor, Academic Building South · Direct campus triage and ambulance dispatch
+              Ground Floor, Academic Building South · Direct campus doctor triage, CMH Cantonment liaison &amp; rapid transport
             </p>
           </div>
         </div>
@@ -80,17 +80,47 @@ function HelplineScreen() {
         </a>
       </div>
 
-      {/* Page Header */}
-      <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+      {/* Official WhatsApp Community Panel */}
+      <div className="p-5 rounded-2xl bg-surface-container border border-outline-variant/30 flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center flex-shrink-0">
+            <span className="material-symbols-outlined text-[28px]">groups</span>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-on-surface">Official BAUST BloodLink WhatsApp Community</h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                1,450+ Active Donors
+              </span>
+            </div>
+            <p className="text-xs text-on-surface-variant mt-0.5">
+              Instant requisition broadcasts, live emergency coordination, and volunteer network for Saidpur &amp; Rangpur zone.
+            </p>
+          </div>
+        </div>
+
+        <a
+          href="https://chat.whatsapp.com/sample-bloodlink-baust"
+          target="_blank"
+          rel="noreferrer"
+          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-all"
+        >
+          <span className="material-symbols-outlined text-[16px]">chat</span>
+          <span>Join WhatsApp Group</span>
+        </a>
+      </div>
+
+      {/* Page Header & Search */}
+      <div className="flex items-center justify-between flex-wrap gap-4 pt-2">
         <div>
           <h1 className="section-heading">
             <span className="material-symbols-outlined text-[26px] text-primary" style={{ fontVariationSettings: '"FILL" 1' }}>
               medical_services
             </span>
-            Campus Helpline &amp; Committee Directory
+            Helpline &amp; Executive Directory
           </h1>
           <p className="text-body-sm text-on-surface-variant mt-1">
-            Verified emergency contacts, medical officers, ambulance transport, and student committee members
+            Verified contacts for medical officers, ambulance units, hospital partners, student executive committee, and campus security
           </p>
         </div>
 
@@ -101,7 +131,7 @@ function HelplineScreen() {
           </span>
           <input
             type="text"
-            placeholder="Search by name, role, phone..."
+            placeholder="Search by name, role, hospital, phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="input-field pl-9 py-2 text-xs w-full"
@@ -110,7 +140,7 @@ function HelplineScreen() {
       </div>
 
       {/* Category Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6 border-b border-outline-variant/30">
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-outline-variant/30">
         {CATEGORIES.map((cat) => {
           const isSelected = activeCategory === cat.id;
           const count = cat.id === 'All' ? contacts.length : (grouped[cat.id] || []).length;
@@ -165,7 +195,7 @@ function HelplineScreen() {
             <div className="glass-panel p-10 text-center rounded-2xl">
               <span className="material-symbols-outlined text-[48px] text-on-surface-variant">search_off</span>
               <p className="text-body-md text-on-surface-variant mt-2">
-                No helpline contacts matched your criteria.
+                No contacts found matching &ldquo;{searchQuery}&rdquo;.
               </p>
             </div>
           ) : (
@@ -198,7 +228,7 @@ function HelplineScreen() {
 
                       {c.isAvailable24_7 && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary flex-shrink-0">
-                          24/7
+                          24/7 Available
                         </span>
                       )}
                     </div>
@@ -258,3 +288,4 @@ function HelplineScreen() {
 }
 
 export default HelplineScreen;
+

@@ -6,6 +6,8 @@ const Post = require('../models/Post');
 const Comment = require('../models/Comment');
 const Repost = require('../models/Repost');
 const PostLove = require('../models/PostLove');
+const User = require('../models/User');
+const BloodRequest = require('../models/BloodRequest');
 const { verifyToken, requireAdmin, JWT_SECRET } = require('../middleware/auth');
 const { connectDB } = require('../config/db');
 
@@ -120,6 +122,126 @@ function optionalAuth(req, res, next) {
   }
   next();
 }
+
+/**
+ * GET /api/posts/sidebar-stats
+ * Returns live aggregated telemetry & registry numbers for Feed widgets
+ */
+router.get('/sidebar-stats', async (req, res) => {
+  try {
+    const dbActive = await isConnected();
+
+    if (dbActive) {
+      const [totalUsers, activeRequests, totalPosts, bloodCountsAgg, topDonors] = await Promise.all([
+        User.countDocuments({ isActive: true }),
+        BloodRequest.countDocuments({ status: { $in: ['Pending', 'In-Progress'] } }),
+        Post.countDocuments({}),
+        User.aggregate([
+          { $match: { isActive: true } },
+          { $group: { _id: '$bloodGroup', count: { $sum: 1 } } },
+        ]),
+        User.find({ isActive: true })
+          .sort({ donationCount: -1, createdAt: 1 })
+          .limit(3)
+          .select('name bloodGroup department userType donationCount studentDetails teacherDetails')
+          .lean(),
+      ]);
+
+      const bloodMap = {
+        'A+': 0,
+        'B+': 0,
+        'O+': 0,
+        'AB+': 0,
+        'O-': 0,
+        'A-': 0,
+        'B-': 0,
+        'AB-': 0,
+      };
+
+      bloodCountsAgg.forEach((item) => {
+        if (item._id && bloodMap[item._id] !== undefined) {
+          bloodMap[item._id] = item.count;
+        }
+      });
+
+      const formattedHonorRoll = topDonors.map((d, index) => {
+        let deptBatch = d.department || 'BAUST';
+        if (d.studentDetails && d.studentDetails.batch) {
+          deptBatch += ` ${d.studentDetails.batch} Batch`;
+        } else if (d.teacherDetails && d.teacherDetails.designation) {
+          deptBatch += ` • ${d.teacherDetails.designation}`;
+        }
+        return {
+          rank: index + 1,
+          name: d.name,
+          subtitle: `${deptBatch} • ${d.donationCount || 0} Donations`,
+          bloodGroup: d.bloodGroup,
+          donationCount: d.donationCount || 0,
+        };
+      });
+
+      return res.status(200).json({
+        success: true,
+        verifiedDonors: Math.max(totalUsers, 1),
+        activeRequests: activeRequests,
+        totalPosts: totalPosts,
+        bloodGroups: bloodMap,
+        honorRoll: formattedHonorRoll.length > 0 ? formattedHonorRoll : [
+          { rank: 1, name: 'Kazi Rayhan', subtitle: 'ME 7th Batch • 4 Donations', bloodGroup: 'B+', donationCount: 4 },
+          { rank: 2, name: 'Sabbir Hossain', subtitle: 'CSE 10th Batch • 3 Donations', bloodGroup: 'A+', donationCount: 3 },
+          { rank: 3, name: 'Farzana Akter', subtitle: 'BBA 8th Batch • 3 Donations', bloodGroup: 'O+', donationCount: 3 },
+        ],
+      });
+    }
+
+    // Mock Fallback
+    return res.status(200).json({
+      success: true,
+      verifiedDonors: 1248,
+      activeRequests: 14,
+      totalPosts: mockPosts.length,
+      bloodGroups: {
+        'A+': 18,
+        'B+': 14,
+        'O+': 22,
+        'AB+': 6,
+        'O-': 1,
+        'A-': 4,
+        'B-': 5,
+        'AB-': 2,
+      },
+      honorRoll: [
+        { rank: 1, name: 'Kazi Rayhan', subtitle: 'ME 7th Batch • 4 Donations', bloodGroup: 'B+', donationCount: 4 },
+        { rank: 2, name: 'Sabbir Hossain', subtitle: 'CSE 10th Batch • 3 Donations', bloodGroup: 'A+', donationCount: 3 },
+        { rank: 3, name: 'Farzana Akter', subtitle: 'BBA 8th Batch • 3 Donations', bloodGroup: 'O+', donationCount: 3 },
+      ],
+    });
+  } catch (err) {
+    console.error('Error fetching sidebar stats:', err);
+    return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to fetch sidebar telemetry.' });
+  }
+});
+
+/**
+ * POST /api/posts/upload
+ * Upload/receive an image media payload for post attachments
+ */
+router.post('/upload', verifyToken, async (req, res) => {
+  try {
+    const { imageBase64, filename } = req.body;
+    if (!imageBase64) {
+      return res.status(400).json({ error: 'Validation Error', message: 'Image data is required.' });
+    }
+    // Return data URL directly or validated blob URI
+    return res.status(200).json({
+      success: true,
+      mediaUrl: imageBase64,
+      filename: filename || 'attachment.png',
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Upload Error', message: err.message });
+  }
+});
 
 /**
  * GET /api/posts

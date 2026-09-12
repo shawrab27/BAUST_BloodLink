@@ -257,7 +257,11 @@ router.get('/', async (req, res, next) => {
       });
     }
 
-    const andClauses = [];
+    const andClauses = [
+      // CRITICAL: Guests (OAuth accounts with incomplete profiles) must never appear
+      // as matchable donors. This is enforced at the DB query level, not just the UI.
+      { accountStatus: { $ne: 'Guest' } },
+    ];
 
     // 1. Blood group filter
     if (bloodGroup && bloodGroup !== 'All') {

@@ -62,6 +62,37 @@ function requireAdmin(req, res, next) {
 }
 
 /**
+ * requireVerifiedAccount — Server-side gate for all donor/request/message actions
+ *
+ * Enforced on every gated endpoint, not just hidden in the UI.
+ * A Guest hitting a gated route gets 403 with code PROFILE_COMPLETION_REQUIRED.
+ * The frontend catches this specific code and redirects to /complete-profile.
+ *
+ * Gated routes: POST /blood-requests, PATCH /blood-requests/:id/respond,
+ *   POST /emergency/sos, all /messages/*, WhatsApp join action.
+ * Guests CAN access: Feed (read+post+react), Helpline (read-only),
+ *   Blood Hub (browse only), Emergency briefing (read-only).
+ */
+function requireVerifiedAccount(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Authentication required.',
+      timestamp: new Date().toISOString(),
+    });
+  }
+  if (req.user.accountStatus === 'Guest') {
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: 'This action requires a verified campus account. Please complete your profile first.',
+      code: 'PROFILE_COMPLETION_REQUIRED',
+      timestamp: new Date().toISOString(),
+    });
+  }
+  next();
+}
+
+/**
  * validateRequest — Express-validator error handling middleware
  * "All mutating endpoints validate input with express-validator and return structured 4xx errors"
  */
@@ -87,6 +118,7 @@ function validateRequest(req, res, next) {
 module.exports = {
   verifyToken,
   requireAdmin,
+  requireVerifiedAccount,
   validateRequest,
   JWT_SECRET,
 };

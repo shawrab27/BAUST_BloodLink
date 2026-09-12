@@ -10,7 +10,7 @@ function NotificationsScreen() {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || localStorage.getItem('bloodlink_token');
       if (!token) return;
 
       const res = await fetch('/api/notifications?limit=25', {
@@ -36,7 +36,7 @@ function NotificationsScreen() {
 
   const handleMarkAllRead = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || localStorage.getItem('bloodlink_token');
       if (!token) return;
 
       const res = await fetch('/api/notifications/read-all', {

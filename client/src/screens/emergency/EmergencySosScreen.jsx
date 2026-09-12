@@ -329,12 +329,6 @@ function EmergencySosScreen() {
 
             {/* Real-Time Telemetry Badges */}
             <div className="flex flex-wrap items-center gap-3 bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl shadow-xs border border-rose-100/50">
-              <div className="flex items-center gap-2 pr-3">
-                <span className="w-2 h-2 rounded-full bg-primary" />
-                <span className="text-[11px] font-bold text-slate-500 uppercase">LATENCY:</span>
-                <span className="text-sm font-bold text-on-surface font-mono">{telemetry.latency || '38ms'}</span>
-              </div>
-              <div className="h-4 w-px bg-slate-200 hidden sm:block" />
               <div className="flex items-center gap-2 px-3">
                 <span className="material-symbols-outlined text-primary text-[17px]">hub</span>
                 <span className="text-[11px] text-on-surface font-bold">
@@ -377,8 +371,8 @@ function EmergencySosScreen() {
             </div>
           </div>
 
-          {/* 4-Tile Donor Readiness Mini Dashboard */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* 3-Tile Donor Readiness Mini Dashboard */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Tile 1: Top Blood Groups */}
             <div className="p-4 rounded-xl bg-slate-50/80 backdrop-blur-sm space-y-2 border border-slate-200/50">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
@@ -431,23 +425,6 @@ function EmergencySosScreen() {
                   {telemetry.readinessDashboard?.gapWarning?.badgeText || 'IMMEDIATE TRIAGE NOTICE'}
                 </span>
               </div>
-            </div>
-
-            {/* Tile 4: Emergency Transit Window */}
-            <div className="p-4 rounded-xl bg-slate-50/80 backdrop-blur-sm space-y-2 flex flex-col justify-between border border-slate-200/50">
-              <span className="text-[11px] font-bold text-primary uppercase tracking-wider block">
-                Emergency Transit Window
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-primary font-mono">
-                  {telemetry.readinessDashboard?.transitWindow?.timeRange || '14–20'}
-                </span>
-                <span className="text-sm font-bold text-on-surface">Minutes</span>
-              </div>
-              <span className="text-[11px] text-slate-600 flex items-center gap-1 font-semibold">
-                <span className="material-symbols-outlined text-sm text-primary">local_shipping</span>
-                {telemetry.readinessDashboard?.transitWindow?.route || 'Saidpur CMH & BAUST Clinic via Highway'}
-              </span>
             </div>
           </div>
 

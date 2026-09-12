@@ -48,13 +48,50 @@ const StaffDetailsSchema = new mongoose.Schema(
 
 const UserSchema = new mongoose.Schema(
   {
+    // ── OAuth / Auth Provider fields ──────────────────────────────────────
+    authProvider: {
+      type: String,
+      enum: ['local', 'google', 'facebook', 'github'],
+      default: 'local',
+    },
+    oauthId: {
+      type: String,
+      default: null,
+      index: true,
+      sparse: true, // allow multiple nulls
+    },
+    /**
+     * accountStatus:
+     * - 'Verified': Full campus account (local registration OR completed OAuth upgrade)
+     * - 'Guest': OAuth login only — no institutionalId/bloodGroup yet
+     *
+     * CRITICAL: Every gated route checks req.user.accountStatus === 'Verified' server-side.
+     * Hiding UI buttons is cosmetic only and never the real gate.
+     */
+    accountStatus: {
+      type: String,
+      enum: ['Guest', 'Verified'],
+      default: 'Verified', // existing local accounts remain Verified
+    },
+
+    // ── Core identity — required for Verified accounts only ───────────────
     institutionalId: {
       type: String,
-      required: [true, 'Institutional ID is required'],
       unique: true,
+      sparse: true, // allows multiple null values for Guest accounts
       trim: true,
       uppercase: true,
       match: [/^[a-zA-Z0-9]{16}$/, 'Institutional ID must be exactly 16 alphanumeric characters'],
+      validate: {
+        validator: function (v) {
+          // Required only for Verified accounts
+          if (this.accountStatus === 'Verified' && this.authProvider === 'local') {
+            return !!v;
+          }
+          return true;
+        },
+        message: 'Institutional ID is required for campus accounts',
+      },
     },
     name: {
       type: String,
@@ -73,31 +110,59 @@ const UserSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      // Not required for OAuth users
       minlength: [8, 'Password must be at least 8 characters'],
+      validate: {
+        validator: function (v) {
+          if (this.authProvider === 'local') return !!v && v.length >= 8;
+          return true; // OAuth users have no password
+        },
+        message: 'Password is required for local accounts (min 8 characters)',
+      },
     },
     gender: {
       type: String,
-      required: [true, 'Gender is required'],
       enum: {
-        values: VALID_GENDERS,
+        values: [...VALID_GENDERS, null],
         message: '{VALUE} is not a valid gender. Allowed: Male, Female',
+      },
+      default: null,
+      validate: {
+        validator: function (v) {
+          if (this.accountStatus === 'Verified') return VALID_GENDERS.includes(v);
+          return true;
+        },
+        message: 'Gender is required for verified campus accounts',
       },
     },
     department: {
       type: String,
-      required: [true, 'Department is required'],
       enum: {
-        values: VALID_DEPARTMENTS,
+        values: [...VALID_DEPARTMENTS, null],
         message: '{VALUE} is not a valid BAUST department',
+      },
+      default: null,
+      validate: {
+        validator: function (v) {
+          if (this.accountStatus === 'Verified') return VALID_DEPARTMENTS.includes(v);
+          return true;
+        },
+        message: 'Department is required for verified campus accounts',
       },
     },
     bloodGroup: {
       type: String,
-      required: [true, 'Blood group is required'],
       enum: {
-        values: VALID_BLOOD_GROUPS,
+        values: [...VALID_BLOOD_GROUPS, null],
         message: '{VALUE} is not a valid blood group',
+      },
+      default: null,
+      validate: {
+        validator: function (v) {
+          if (this.accountStatus === 'Verified') return VALID_BLOOD_GROUPS.includes(v);
+          return true;
+        },
+        message: 'Blood group is required for verified campus accounts',
       },
     },
     isBloodGroupVerified: {
@@ -174,8 +239,9 @@ const UserSchema = new mongoose.Schema(
 );
 
 // Pre-save hook: Hash password with bcrypt (salt rounds 10 minimum)
+// Skipped for OAuth accounts which have no password field
 UserSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('password') || !this.password) return next();
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -185,8 +251,9 @@ UserSchema.pre('save', async function (next) {
   }
 });
 
-// Compare password method
+// Compare password method — safe-guards against OAuth accounts with no password
 UserSchema.methods.comparePassword = async function (candidatePassword) {
+  if (!this.password) return false;
   return bcrypt.compare(candidatePassword, this.password);
 };
 
@@ -203,6 +270,7 @@ UserSchema.methods.toSafeObject = function () {
   const user = this.toObject();
   delete user.password;
   user.isDonorEligible = this.isEligibleDonor();
+  user.isGuest = this.accountStatus === 'Guest';
   return user;
 };
 

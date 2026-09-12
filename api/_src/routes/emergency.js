@@ -5,6 +5,7 @@ const CrisisRequisition = require('../models/CrisisRequisition');
 const { User } = require('../models/User');
 const { dispatchNotification } = require('../services/notificationService');
 const { connectDB } = require('../config/db');
+const { verifyToken, requireVerifiedAccount } = require('../middleware/auth');
 
 const VALID_BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'BOMBAY'];
 const VALID_PATIENT_COHORTS = ['student', 'faculty', 'cantonment', 'civilian'];
@@ -154,62 +155,142 @@ let inMemoryRequisitions = [...SEED_REQUISITIONS];
 // ─── GET /api/emergency/telemetry ───────────────────────────────────────────
 router.get(['/telemetry', '/readiness', '/stats'], async (req, res) => {
   try {
+    let isDbConnected = false;
+    if (process.env.MONGODB_URI) {
+      try {
+        await connectDB();
+        isDbConnected = true;
+      } catch {
+        isDbConnected = false;
+      }
+    }
+
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const availableFilter = {
+      isActive: true,
+      availabilityStatus: 'Available',
+      $or: [{ lastDonationDate: null }, { lastDonationDate: { $lt: ninetyDaysAgo } }]
+    };
+
+    let totalAvailableDonors = 0;
+    const bloodMap = { 'O+': 0, 'A+': 0, 'B+': 0, 'AB+': 0, 'O-': 0, 'A-': 0, 'B-': 0, 'AB-': 0, 'BOMBAY': 0 };
+    let disasterReserveCount = 0;
+    let totalUsersCount = 0;
+    let activeUnresolvedSOSCount = 0;
+    let rareGroupGapCount = 0;
+    const gapGroups = [];
+
+    if (isDbConnected) {
+      const [bloodCountsAgg, disasterCount, totalUsers, unresolvedSOS] = await Promise.all([
+        User.aggregate([
+          { $match: availableFilter },
+          { $group: { _id: '$bloodGroup', count: { $sum: 1 } } }
+        ]),
+        User.countDocuments({ isDisasterVolunteer: true, isActive: true }),
+        User.countDocuments({ isActive: true }),
+        CrisisRequisition.countDocuments({ status: { $ne: 'Fulfilled' } })
+      ]);
+
+      bloodCountsAgg.forEach((item) => {
+        if (item._id && bloodMap[item._id] !== undefined) {
+          bloodMap[item._id] = item.count;
+          totalAvailableDonors += item.count;
+        }
+      });
+      disasterReserveCount = disasterCount;
+      totalUsersCount = totalUsers;
+      activeUnresolvedSOSCount = unresolvedSOS;
+    } else {
+      totalAvailableDonors = 142;
+      disasterReserveCount = 28;
+      totalUsersCount = 1000;
+      activeUnresolvedSOSCount = 3;
+      bloodMap['O+'] = 18;
+      bloodMap['A+'] = 24;
+      bloodMap['B+'] = 14;
+      bloodMap['AB+'] = 9;
+      bloodMap['BOMBAY'] = 0;
+      bloodMap['O-'] = 1;
+    }
+
+    const disasterPercentage = totalUsersCount > 0 ? Math.round((disasterReserveCount / totalUsersCount) * 100) : 0;
+
+    const bombayCount = bloodMap['BOMBAY'];
+    const oNegativeCount = bloodMap['O-'];
+    if (bombayCount === 0) {
+      rareGroupGapCount++;
+      gapGroups.push('Bombay Phenotype (0)');
+    }
+    if (oNegativeCount === 0) {
+      rareGroupGapCount++;
+      gapGroups.push('O- (0)');
+    }
+
+    let gapWarning = null;
+    if (rareGroupGapCount > 0) {
+      gapWarning = {
+        title: 'Rare-Group Gap Warning',
+        description: `Critical Gap: ${gapGroups.join(' & ')}`,
+        badgeText: 'IMMEDIATE TRIAGE NOTICE',
+      };
+    }
+
+    let readinessScore = (totalAvailableDonors * 2) + (disasterReserveCount * 3) - (rareGroupGapCount * 10) - (activeUnresolvedSOSCount * 5) + 50;
+    readinessScore = Math.max(0, Math.min(100, readinessScore));
+
+    const formulaFormula = `Score = (${totalAvailableDonors} × 2) + (${disasterReserveCount} × 3) - (${rareGroupGapCount} × 10) - (${activeUnresolvedSOSCount} × 5) + 50 = ${readinessScore}`;
+
+    const topBloodGroupsReady = {
+      'O+': bloodMap['O+'],
+      'A+': bloodMap['A+'],
+      'B+': bloodMap['B+'],
+      'AB+': bloodMap['AB+']
+    };
+
     const telemetryData = {
       operationalLevel: 'ELEVATED STANDBY',
-      latency: '38ms',
       bridgeStatus: 'Saidpur CMH Bridge Active',
       syncStatus: 'Live Telemetry Synced',
       alertBanner: {
         level: 'Level 2 Alert',
         title: 'Moderate Seismic Tremor (Mag 4.2)',
         sector: 'Northern Regional Sector',
-        updatedText: 'Updated 3 mins ago',
+        updatedText: 'Updated Just Now',
         defenseStatus: 'Saidpur Civil Defense Synced',
       },
       readinessDashboard: {
-        topBloodGroupsReady: {
-          'O+': 18,
-          'A+': 24,
-          'B+': 14,
-          'AB+': 9,
-        },
+        topBloodGroupsReady,
         disasterReserveStandby: {
-          volunteersCount: 28,
-          percentage: 82,
+          volunteersCount: disasterReserveCount,
+          percentage: disasterPercentage,
           label: 'Volunteers Pre-cleared',
-        },
-        gapWarning: {
-          title: 'Rare-Group Gap Warning',
-          description: 'Critical Gap: Bombay Phenotype (0) & O- (1 Unit)',
-          badgeText: 'IMMEDIATE TRIAGE NOTICE',
-        },
-        transitWindow: {
-          timeRange: '14–20',
-          unit: 'Minutes',
-          route: 'Saidpur CMH & BAUST Clinic via Highway',
-        },
+        }
       },
       clinicalSummary:
-        'Intra-campus donor availability remains robust for common positive groups, but the regional tremor alert necessitates pre-positioning rare group reserves. With O- at single-unit inventory and zero active Bombay Phenotype donors checked in on campus, emergency coordinators should maintain direct priority liaison with Saidpur CMH blood bank.',
+        'Intra-campus donor availability remains robust for common positive groups, but the regional tremor alert necessitates pre-positioning rare group reserves. Emergency coordinators should maintain direct priority liaison with Saidpur CMH blood bank.',
       seismicLogs: [
         '[02:14 UTC] Seismic Shock recorded Mag 4.2 Saidpur Fault. CMH Cantonment initiated standby.',
-        '[02:16 UTC] BAUST BloodLink AI ran campus scan: 142 active check-ins detected.',
+        `[${new Date().toISOString().substring(11, 16)} UTC] BAUST BloodLink AI ran campus scan: ${totalAvailableDonors} active check-ins detected.`,
         '[02:18 UTC] Rare group deficit triggered alert level: ELEVATED STANDBY.',
       ],
       readinessScore: {
-        score: 78,
+        score: readinessScore,
         maxScore: 100,
         assessmentTitle: 'Institutional Assessment',
-        assessmentSubtitle: 'Elevated Capability • Tier 1 Preparedness',
-        formulaFormula: 'Score = (Available Donors × 0.4) + (Disaster Standby × 0.3) - (Gaps × 15) - (Unresolved SOS × 10)',
+        assessmentSubtitle: readinessScore > 70 ? 'Elevated Capability • Tier 1 Preparedness' : 'Critical Deficit • Action Required',
+        formulaFormula: formulaFormula,
         metrics: {
-          availableDonors: { label: 'Available Donors', value: '142 Ready' },
-          disasterReserve: { label: 'Disaster Reserve', value: '28 Pre-cleared' },
-          rareGroupGaps: { label: 'Rare Group Gaps', value: '2 Deficit Groups', isAlert: true },
-          activeUnresolvedSos: { label: 'Active Unresolved SOS', value: '3 Cases' },
+          availableDonors: { label: 'Available Donors', value: `${totalAvailableDonors} Ready` },
+          disasterReserve: { label: 'Disaster Reserve', value: `${disasterReserveCount} Pre-cleared` },
+          rareGroupGaps: { label: 'Rare Group Gaps', value: `${rareGroupGapCount} Deficit Groups`, isAlert: rareGroupGapCount > 0 },
+          activeUnresolvedSos: { label: 'Active Unresolved SOS', value: `${activeUnresolvedSOSCount} Cases` },
         },
       },
     };
+
+    if (gapWarning) {
+      telemetryData.readinessDashboard.gapWarning = gapWarning;
+    }
 
     return res.status(200).json(telemetryData);
   } catch (err) {
@@ -266,7 +347,8 @@ router.get(['/requisitions', '/active', '/tracker'], async (req, res) => {
 });
 
 // ─── POST /api/emergency/sos (Instant Dispatch Trigger) ─────────────────────
-router.post(['/sos', '/dispatch', '/trigger'], async (req, res) => {
+// Requires a Verified campus account — Guests can view telemetry but cannot dispatch SOS
+router.post(['/sos', '/dispatch', '/trigger'], verifyToken, requireVerifiedAccount, async (req, res) => {
   try {
     const {
       bloodGroup = 'O-',

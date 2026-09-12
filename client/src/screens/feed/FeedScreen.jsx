@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { FeedSkeleton } from '../../components/common/SkeletonLoader';
@@ -32,6 +32,32 @@ function FeedScreenContent() {
   const [isSubmittingPost, setIsSubmittingPost] = useState(false);
   const [postError, setPostError] = useState('');
 
+  // Media Attachment Upload state
+  const fileInputRef = useRef(null);
+  const [mediaPreview, setMediaPreview] = useState(null);
+
+  // Live Telemetry & Sidebar Stats
+  const [sidebarStats, setSidebarStats] = useState({
+    verifiedDonors: 1248,
+    activeRequests: 14,
+    totalPosts: 3,
+    bloodGroups: {
+      'A+': 18,
+      'B+': 14,
+      'O+': 22,
+      'AB+': 6,
+      'O-': 1,
+      'A-': 4,
+      'B-': 5,
+      'AB-': 2,
+    },
+    honorRoll: [
+      { rank: 1, name: 'Kazi Rayhan', subtitle: 'ME 7th Batch • 4 Donations', bloodGroup: 'B+', donationCount: 4 },
+      { rank: 2, name: 'Sabbir Hossain', subtitle: 'CSE 10th Batch • 3 Donations', bloodGroup: 'A+', donationCount: 3 },
+      { rank: 3, name: 'Farzana Akter', subtitle: 'BBA 8th Batch • 3 Donations', bloodGroup: 'O+', donationCount: 3 },
+    ],
+  });
+
   // Repost Modal state
   const [repostTarget, setRepostTarget] = useState(null);
   const [repostQuote, setRepostQuote] = useState('');
@@ -39,6 +65,25 @@ function FeedScreenContent() {
 
   // Comments state per post: { [postId]: { isOpen, comments: [], page, total, isLoading, isSubmitting, text: '' } }
   const [commentsState, setCommentsState] = useState({});
+
+  // ─── FETCH SIDEBAR STATS (Real Aggregations) ───────────────────────────────
+  const fetchSidebarStats = useCallback(async () => {
+    try {
+      const res = await fetch('/api/posts/sidebar-stats');
+      if (res.ok) {
+        const data = await res.json();
+        setSidebarStats(data);
+      }
+    } catch (err) {
+      console.error('Error fetching sidebar telemetry stats:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSidebarStats();
+    const interval = setInterval(fetchSidebarStats, 15000); // 15s refresh
+    return () => clearInterval(interval);
+  }, [fetchSidebarStats]);
 
   // ─── FETCH FEED (Cursor-based) ─────────────────────────────────────────────
   const fetchFeed = useCallback(async (reset = false, nextCursorVal = null, pillId = selectedPill) => {
@@ -91,12 +136,95 @@ function FeedScreenContent() {
     fetchFeed(true, null, selectedPill);
   }, [fetchFeed, selectedPill]);
 
+  // ─── SILENT FEED POLLING (8s interval to pick up other users' new posts) ───
+  const fetchFeedSilent = useCallback(async () => {
+    try {
+      const activeTag = CATEGORY_PILLS.find((p) => p.id === selectedPill)?.tag;
+      const token = localStorage.getItem('token') || localStorage.getItem('bloodlink_token');
+      const params = new URLSearchParams({ limit: '10' });
+      if (activeTag) params.append('tag', activeTag);
+
+      const res = await fetch(`/api/posts?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const incoming = data.posts || [];
+        setPosts((prev) => {
+          if (prev.length === 0) return incoming;
+          const existingIds = new Set(prev.map((p) => p._id));
+          const newItems = incoming.filter((p) => !existingIds.has(p._id));
+          if (newItems.length === 0) {
+            const incomingMap = new Map(incoming.map((p) => [p._id, p]));
+            return prev.map((p) => {
+              const fresh = incomingMap.get(p._id);
+              if (fresh) {
+                return {
+                  ...p,
+                  loveCount: fresh.loveCount,
+                  commentCount: fresh.commentCount,
+                  repostCount: fresh.repostCount,
+                  isLovedByMe: p.isLovedByMe !== undefined ? p.isLovedByMe : fresh.isLovedByMe,
+                  isRepostedByMe: p.isRepostedByMe !== undefined ? p.isRepostedByMe : fresh.isRepostedByMe,
+                };
+              }
+              return p;
+            });
+          }
+          return [...newItems, ...prev];
+        });
+      }
+    } catch (err) {
+      console.warn('Silent feed poll failed:', err);
+    }
+  }, [selectedPill]);
+
+  useEffect(() => {
+    const interval = setInterval(fetchFeedSilent, 8000); // 8s silent auto-poll
+    return () => clearInterval(interval);
+  }, [fetchFeedSilent]);
+
+  // ─── MEDIA ATTACHMENT HANDLER ──────────────────────────────────────────────
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setPostError('Please select a valid image file (JPEG, PNG, WebP).');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setPostError('Image size exceeds 5MB limit.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (loadEvt) => {
+      setMediaPreview(loadEvt.target.result);
+      setPostAttachmentType('image');
+      setIsComposerOpen(true);
+      setPostError('');
+    };
+    reader.onerror = () => {
+      setPostError('Failed to read selected image.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleTriggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   // ─── CREATE POST ───────────────────────────────────────────────────────────
   const handleCreatePost = async (e) => {
     e.preventDefault();
     setPostError('');
 
-    if (!newPostText.trim()) return;
+    if (!newPostText.trim() && !mediaPreview) return;
 
     const token = localStorage.getItem('token') || localStorage.getItem('bloodlink_token');
     if (!token) {
@@ -113,7 +241,10 @@ function FeedScreenContent() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ content: newPostText.trim() }),
+        body: JSON.stringify({
+          content: newPostText.trim(),
+          mediaUrl: mediaPreview || null,
+        }),
       });
 
       const data = await res.json();
@@ -121,11 +252,13 @@ function FeedScreenContent() {
         throw new Error(data.message || 'Failed to publish post');
       }
 
-      // Optimistically prepend post to feed
+      // Optimistically prepend post to feed immediately
       setPosts((prev) => [data.post, ...prev]);
       setNewPostText('');
+      setMediaPreview(null);
       setIsComposerOpen(false);
       setState('ready');
+      fetchSidebarStats(); // Refresh counters
     } catch (err) {
       setPostError(err.message || 'Failed to create post');
     } finally {
@@ -360,6 +493,14 @@ function FeedScreenContent() {
             {/* Expanded Post Composer */}
             {isComposerOpen && (
               <form onSubmit={handleCreatePost} className="mt-3 pt-3 border-t border-outline-variant/30 space-y-3 animate-fade-in">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  accept="image/*"
+                  className="hidden"
+                />
+
                 <textarea
                   rows={3}
                   value={newPostText}
@@ -370,6 +511,25 @@ function FeedScreenContent() {
                   autoFocus
                 />
 
+                {/* Media Preview Box */}
+                {mediaPreview && (
+                  <div className="relative rounded-xl overflow-hidden border border-outline-variant/40 max-h-[220px] w-fit bg-surface-container-low">
+                    <img
+                      src={mediaPreview}
+                      alt="Attachment Preview"
+                      className="max-h-[200px] w-auto object-cover rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setMediaPreview(null)}
+                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 hover:bg-black text-white flex items-center justify-center text-xs shadow-md transition-all"
+                      title="Remove Image"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">close</span>
+                    </button>
+                  </div>
+                )}
+
                 {postError && (
                   <p className="text-xs text-primary font-medium">{postError}</p>
                 )}
@@ -378,15 +538,15 @@ function FeedScreenContent() {
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => setPostAttachmentType('image')}
+                      onClick={handleTriggerFileInput}
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
-                        postAttachmentType === 'image'
+                        mediaPreview || postAttachmentType === 'image'
                           ? 'bg-primary/10 border-primary text-primary'
                           : 'bg-surface-container-low/80 hover:bg-surface-container border-outline-variant/40 text-on-surface'
                       }`}
                     >
                       <span className="material-symbols-outlined text-[17px] text-primary">image</span>
-                      <span>Image</span>
+                      <span>{mediaPreview ? 'Change Image' : 'Image'}</span>
                     </button>
                     <button
                       type="button"
@@ -432,7 +592,7 @@ function FeedScreenContent() {
                     </span>
                     <button
                       type="submit"
-                      disabled={isSubmittingPost || !newPostText.trim()}
+                      disabled={isSubmittingPost || (!newPostText.trim() && !mediaPreview)}
                       className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-white text-xs font-semibold shadow-md shadow-primary/25 hover:shadow-primary/40 active:scale-95 transition-all disabled:opacity-50"
                       style={{
                         background: 'linear-gradient(135deg, rgb(225, 29, 72) 0%, rgb(190, 18, 60) 100%)',
@@ -450,9 +610,16 @@ function FeedScreenContent() {
 
             {!isComposerOpen && (
               <div className="mt-3 pt-3 border-t border-outline-variant/40 flex flex-wrap items-center justify-between gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  accept="image/*"
+                  className="hidden"
+                />
                 <div className="flex flex-wrap items-center gap-1.5">
                   <button
-                    onClick={() => { setIsComposerOpen(true); setPostAttachmentType('image'); }}
+                    onClick={handleTriggerFileInput}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-low/80 hover:bg-surface-container border border-outline-variant/40 text-on-surface text-xs font-semibold transition-all shadow-xs"
                     type="button"
                   >
@@ -694,6 +861,18 @@ function FeedScreenContent() {
                       </p>
                     )}
 
+                    {/* Post Attached Media Image */}
+                    {post.mediaUrl && (
+                      <div className="mb-3 rounded-xl overflow-hidden border border-outline-variant/30 bg-surface-container-low max-h-[400px]">
+                        <img
+                          src={post.mediaUrl}
+                          alt="Attached media"
+                          className="w-full max-h-[400px] object-cover rounded-xl hover:scale-[1.01] transition-transform"
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
+
                     {/* Post Tags */}
                     {post.tags && post.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mb-3">
@@ -899,7 +1078,7 @@ function FeedScreenContent() {
             </div>
             <h3 className="text-base font-bold text-on-surface mb-1">Emergency Blood Needed?</h3>
             <p className="text-xs text-on-surface-variant leading-relaxed mb-4">
-              Broadcast an immediate SOS alert to 800+ matching verified campus donors and clinical volunteers within 5km radius.
+              Broadcast an immediate SOS alert to {sidebarStats.verifiedDonors}+ matching verified campus donors and clinical volunteers within 5km radius.
             </p>
             <button
               onClick={() => navigate('/emergency')}
@@ -938,11 +1117,15 @@ function FeedScreenContent() {
             <div className="grid grid-cols-2 gap-2 mb-4">
               <div className="p-2.5 rounded-xl bg-surface-container-low flex flex-col justify-between">
                 <span className="text-xs text-on-surface-variant">Verified Donors</span>
-                <span className="text-xl font-extrabold text-on-surface mt-0.5">1,248</span>
+                <span className="text-xl font-extrabold text-on-surface mt-0.5">
+                  {sidebarStats.verifiedDonors?.toLocaleString?.() || sidebarStats.verifiedDonors || 1248}
+                </span>
               </div>
               <div className="p-2.5 rounded-xl bg-primary/10 flex flex-col justify-between">
                 <span className="text-xs text-primary font-medium">Active Requests</span>
-                <span className="text-xl font-extrabold text-primary mt-0.5">14 live</span>
+                <span className="text-xl font-extrabold text-primary mt-0.5">
+                  {sidebarStats.activeRequests || 0} live
+                </span>
               </div>
             </div>
 
@@ -952,19 +1135,27 @@ function FeedScreenContent() {
             <div className="grid grid-cols-2 gap-2">
               <div className="p-2 rounded-xl bg-surface-container/60 flex items-center justify-between">
                 <span className="text-xs font-bold text-on-surface">A+</span>
-                <span className="text-xs font-semibold text-primary">18 Ready</span>
+                <span className="text-xs font-semibold text-primary">
+                  {sidebarStats.bloodGroups?.['A+'] || 18} Ready
+                </span>
               </div>
               <div className="p-2 rounded-xl bg-surface-container/60 flex items-center justify-between">
                 <span className="text-xs font-bold text-on-surface">B+</span>
-                <span className="text-xs font-semibold text-primary">14 Ready</span>
+                <span className="text-xs font-semibold text-primary">
+                  {sidebarStats.bloodGroups?.['B+'] || 14} Ready
+                </span>
               </div>
               <div className="p-2 rounded-xl bg-surface-container/60 flex items-center justify-between">
                 <span className="text-xs font-bold text-on-surface">O+</span>
-                <span className="text-xs font-semibold text-primary">22 Ready</span>
+                <span className="text-xs font-semibold text-primary">
+                  {sidebarStats.bloodGroups?.['O+'] || 22} Ready
+                </span>
               </div>
               <div className="p-2 rounded-xl bg-surface-container/60 flex items-center justify-between">
                 <span className="text-xs font-bold text-on-surface">AB+</span>
-                <span className="text-xs font-semibold text-on-surface-variant">6 Ready</span>
+                <span className="text-xs font-semibold text-on-surface-variant">
+                  {sidebarStats.bloodGroups?.['AB+'] || 6} Ready
+                </span>
               </div>
               <div className="p-2 rounded-xl bg-primary/15 col-span-2 flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
@@ -979,7 +1170,9 @@ function FeedScreenContent() {
                     CRITICAL
                   </span>
                 </div>
-                <span className="text-xs font-bold text-primary">1 Alert</span>
+                <span className="text-xs font-bold text-primary">
+                  {sidebarStats.bloodGroups?.['O-'] || 1} Alert
+                </span>
               </div>
             </div>
           </section>
@@ -995,49 +1188,31 @@ function FeedScreenContent() {
             </div>
 
             <div className="flex flex-col gap-2.5">
-              <div className="flex items-center justify-between p-2 rounded-xl bg-surface-container-low/80">
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-white text-xs shadow-sm"
-                    style={{
-                      background: 'linear-gradient(135deg, rgb(225, 29, 72) 0%, rgb(190, 18, 60) 100%)',
-                    }}
-                  >
-                    1
+              {(sidebarStats.honorRoll || []).map((honor) => (
+                <div key={honor.rank} className="flex items-center justify-between p-2 rounded-xl bg-surface-container-low/80">
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shadow-sm ${
+                        honor.rank === 1
+                          ? 'text-white'
+                          : 'bg-surface-container-high text-on-surface'
+                      }`}
+                      style={
+                        honor.rank === 1
+                          ? { background: 'linear-gradient(135deg, rgb(225, 29, 72) 0%, rgb(190, 18, 60) 100%)' }
+                          : {}
+                      }
+                    >
+                      {honor.rank}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-on-surface">{honor.name}</p>
+                      <p className="text-[10px] text-on-surface-variant">{honor.subtitle}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-bold text-on-surface">Kazi Rayhan</p>
-                    <p className="text-[10px] text-on-surface-variant">ME 7th Batch • 4 Donations</p>
-                  </div>
+                  <span className="material-symbols-outlined text-primary text-[18px]">verified</span>
                 </div>
-                <span className="material-symbols-outlined text-primary text-[18px]">verified</span>
-              </div>
-
-              <div className="flex items-center justify-between p-2 rounded-xl bg-surface-container-low/80">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-on-surface text-xs shadow-sm">
-                    2
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-on-surface">Sabbir Hossain</p>
-                    <p className="text-[10px] text-on-surface-variant">CSE 10th Batch • 3 Donations</p>
-                  </div>
-                </div>
-                <span className="material-symbols-outlined text-primary text-[18px]">verified</span>
-              </div>
-
-              <div className="flex items-center justify-between p-2 rounded-xl bg-surface-container-low/80">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-on-surface text-xs shadow-sm">
-                    3
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-on-surface">Farzana Akter</p>
-                    <p className="text-[10px] text-on-surface-variant">BBA 8th Batch • 3 Donations</p>
-                  </div>
-                </div>
-                <span className="material-symbols-outlined text-primary text-[18px]">verified</span>
-              </div>
+              ))}
             </div>
           </section>
 

@@ -19,6 +19,9 @@ out/
 .env.*
 !.env.example
 api/.env
+client/.env
+client/.env.*
+!.env.local.example
 
 # Vercel
 .vercel/

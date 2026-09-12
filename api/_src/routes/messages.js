@@ -3,8 +3,14 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const Message = require('../models/Message');
 const User = require('../models/User');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, requireVerifiedAccount } = require('../middleware/auth');
 const { connectDB } = require('../config/db');
+
+// All messaging routes require a verified campus account.
+// Guests get 403 PROFILE_COMPLETION_REQUIRED — the frontend redirects them to /complete-profile.
+router.use(verifyToken, requireVerifiedAccount);
+
+
 
 // In-memory fallback message store
 let mockMessages = [
