@@ -324,10 +324,9 @@ function RegisterScreen() {
         <div className="flex items-center gap-4">
           <Link to="/" className="flex items-center gap-3">
             <img
-              src="/official-logo.png"
+              src="/emblem.png"
               alt="BAUST BloodLink Logo"
-              className="h-12 w-auto object-contain"
-              style={{ background: 'transparent' }}
+              className="h-11 w-auto object-contain drop-shadow-xs"
             />
             <div>
               <div className="flex items-center gap-2">

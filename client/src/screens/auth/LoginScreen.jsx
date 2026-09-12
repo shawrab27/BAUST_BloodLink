@@ -101,7 +101,7 @@ function LoginScreen() {
               <img
                 alt="BAUST BloodLink Official Insignia"
                 className="relative h-24 w-auto object-contain drop-shadow-[0_6px_14px_rgba(184,0,53,0.18)]"
-                src="/official-logo.png"
+                src="/emblem.png"
               />
             </div>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-on-surface tracking-tight">

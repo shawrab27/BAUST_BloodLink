@@ -28,7 +28,7 @@ function FullScreenSpinner({ message = 'Verifying session...' }) {
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
       <div className="relative z-10 flex flex-col items-center gap-4">
         <img
-          src="/official-logo.png"
+          src="/emblem.png"
           alt="BAUST BloodLink"
           className="h-16 w-auto object-contain animate-pulse"
         />

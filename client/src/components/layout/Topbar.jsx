@@ -78,9 +78,9 @@ function Topbar({ user: propUser = null, notificationCount = 0, isAdmin = false 
           id="topbar-logo-link"
         >
           <img
-            src="/official-logo.png"
+            src="/emblem.png"
             alt="BAUST BloodLink Logo"
-            className="h-[44px] w-auto object-contain"
+            className="h-[42px] w-auto object-contain drop-shadow-sm"
           />
           <div className="flex flex-col">
             <span className="text-lg font-bold tracking-tight text-on-surface leading-none">
