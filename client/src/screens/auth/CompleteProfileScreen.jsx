@@ -193,19 +193,37 @@ function CompleteProfileScreen() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">
                 Gender <span className="text-red-500">*</span>
               </label>
-              <select
-                id="cp-gender"
-                className={inputCls('gender')}
-                value={form.gender}
-                onChange={(e) => set('gender', e.target.value)}
-              >
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
+              <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-100 border border-slate-200 shadow-inner">
+                <button
+                  type="button"
+                  id="cp-gender-male"
+                  onClick={() => set('gender', 'Male')}
+                  className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-bold text-xs tracking-wide transition-all cursor-pointer ${
+                    form.gender === 'Male'
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-sm ring-2 ring-blue-400/40 transform scale-[1.02]'
+                      : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/80 shadow-xs'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[17px] font-bold">male</span>
+                  <span>Male</span>
+                </button>
+                <button
+                  type="button"
+                  id="cp-gender-female"
+                  onClick={() => set('gender', 'Female')}
+                  className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-bold text-xs tracking-wide transition-all cursor-pointer ${
+                    form.gender === 'Female'
+                      ? 'bg-gradient-to-r from-rose-600 to-pink-700 text-white shadow-sm ring-2 ring-rose-400/40 transform scale-[1.02]'
+                      : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/80 shadow-xs'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[17px] font-bold">female</span>
+                  <span>Female</span>
+                </button>
+              </div>
             </div>
           </div>
 

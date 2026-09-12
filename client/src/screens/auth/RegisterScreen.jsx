@@ -402,10 +402,11 @@ function RegisterScreen() {
             </span>
             Donor &amp; Campus Member Onboarding
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-            Register with{' '}
-            <span className="bg-gradient-to-r from-primary via-ruby to-rose-600 bg-clip-text text-transparent">
-              BAUST BloodLink
+          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight flex items-center justify-center gap-2 flex-wrap">
+            <span>Register with</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="brand-baust">BAUST</span>
+              <span className="brand-bloodlink">BloodLink</span>
             </span>
           </h1>
           <p className="text-slate-600 text-sm sm:text-base mt-2 max-w-2xl mx-auto">
@@ -553,33 +554,38 @@ function RegisterScreen() {
 
               {/* Gender Segmented Toggle: [Male] and [Female] */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
-                  Gender <span className="text-rose-600 font-bold">*</span>
+                <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    Gender <span className="text-rose-600 font-bold">*</span>
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-500">
+                    Selected: <strong className="text-slate-900">{form.gender}</strong>
+                  </span>
                 </label>
-                <div className="grid grid-cols-2 gap-2.5 p-1 rounded-xl bg-slate-100/90 border border-slate-200/80">
+                <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-slate-100 border-2 border-slate-200/90 shadow-inner">
                   <button
                     type="button"
                     onClick={() => update('gender', 'Male')}
-                    className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-semibold text-xs tracking-wide transition-all ${
+                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 cursor-pointer ${
                       form.gender === 'Male'
-                        ? 'bg-gradient-to-r from-primary to-ruby text-white shadow-sm'
-                        : 'bg-transparent text-slate-600 hover:text-slate-900'
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-400/40 transform scale-[1.02]'
+                        : 'bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950 border border-slate-200/80 shadow-xs'
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[17px]">male</span>
-                    Male
+                    <span className="material-symbols-outlined text-[20px] font-bold">male</span>
+                    <span>Male</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => update('gender', 'Female')}
-                    className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-semibold text-xs tracking-wide transition-all ${
+                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 cursor-pointer ${
                       form.gender === 'Female'
-                        ? 'bg-gradient-to-r from-primary to-ruby text-white shadow-sm'
-                        : 'bg-transparent text-slate-600 hover:text-slate-900'
+                        ? 'bg-gradient-to-r from-rose-600 to-pink-700 text-white shadow-md shadow-rose-500/25 ring-2 ring-rose-400/40 transform scale-[1.02]'
+                        : 'bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950 border border-slate-200/80 shadow-xs'
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[17px]">female</span>
-                    Female
+                    <span className="material-symbols-outlined text-[20px] font-bold">female</span>
+                    <span>Female</span>
                   </button>
                 </div>
               </div>
