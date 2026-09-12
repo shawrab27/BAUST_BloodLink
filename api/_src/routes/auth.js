@@ -686,7 +686,7 @@ router.post(
 router.get('/blood-group-change-request', verifyToken, async (req, res, next) => {
   try {
     const userId = req.user.id || req.user.userId;
-    const dbActive = mongoose.connection.readyState === 1;
+    const dbActive = mongoose.connection && mongoose.connection.readyState === 1;
 
     if (dbActive) {
       const requestDoc = await BloodGroupChangeRequest.findOne({ user: userId })
@@ -695,7 +695,7 @@ router.get('/blood-group-change-request', verifyToken, async (req, res, next) =>
       return res.status(200).json({ request: requestDoc || null });
     }
 
-    const mockReq = mockBloodGroupRequests.find((r) => r.user.toString() === userId.toString());
+    const mockReq = mockBloodGroupRequests.find((r) => r.user && r.user.toString() === userId.toString());
     return res.status(200).json({ request: mockReq || null });
   } catch (err) {
     next(err);
