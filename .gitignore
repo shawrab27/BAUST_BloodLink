@@ -60,3 +60,5 @@ coverage/
 # Tooling internals
 .jolli/
 .vibecheck/
+.gemini/
+.claude/settings.local.json
