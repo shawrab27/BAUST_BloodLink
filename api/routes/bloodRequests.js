@@ -543,3 +543,4 @@ router.patch(
 );
 
 module.exports = router;
+module.exports.mockBloodRequests = DEMO_REQUESTS;

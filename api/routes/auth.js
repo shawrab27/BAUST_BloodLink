@@ -10,6 +10,7 @@ const {
   VALID_USER_TYPES,
 } = require('../models/User');
 const { verifyToken, validateRequest, JWT_SECRET } = require('../middleware/auth');
+const BloodGroupChangeRequest = require('../models/BloodGroupChangeRequest');
 
 const router = express.Router();
 
@@ -343,4 +344,116 @@ router.patch(
   }
 );
 
+// In-memory fallback for blood group change requests when DB is disconnected
+let mockBloodGroupRequests = [];
+
+/**
+ * POST /api/auth/blood-group-change-request
+ * Submit a request to update blood group (reviewed by Admin)
+ */
+router.post(
+  '/blood-group-change-request',
+  verifyToken,
+  [
+    body('requestedGroup')
+      .isIn(VALID_BLOOD_GROUPS)
+      .withMessage(`requestedGroup must be one of: ${VALID_BLOOD_GROUPS.join(', ')}`),
+    body('reason').optional().isString().trim(),
+    body('labReportUrl').optional().isString().trim(),
+    validateRequest,
+  ],
+  async (req, res, next) => {
+    try {
+      const { requestedGroup, reason, labReportUrl } = req.body;
+      const userId = req.user.id || req.user.userId;
+      const dbActive = mongoose.connection.readyState === 1;
+
+      if (dbActive) {
+        const user = await User.findById(userId);
+        if (!user) {
+          return res.status(404).json({ error: 'Not Found', message: 'User not found.' });
+        }
+
+        // Check if there is already a pending request
+        const existing = await BloodGroupChangeRequest.findOne({ user: userId, status: 'Pending' });
+        if (existing) {
+          return res.status(400).json({
+            error: 'Duplicate Request',
+            message: 'You already have a pending blood group verification request under review.',
+          });
+        }
+
+        const requestDoc = new BloodGroupChangeRequest({
+          user: userId,
+          currentGroup: user.bloodGroup,
+          requestedGroup,
+          reason: reason || '',
+          labReportUrl: labReportUrl || '',
+          status: 'Pending',
+        });
+
+        await requestDoc.save();
+        await requestDoc.populate('user', 'name institutionalId department userType bloodGroup');
+
+        return res.status(201).json({
+          message: 'Blood group verification request submitted for admin review.',
+          request: requestDoc,
+        });
+      }
+
+      // Mock fallback
+      const existing = mockBloodGroupRequests.find((r) => r.user.toString() === userId.toString() && r.status === 'Pending');
+      if (existing) {
+        return res.status(400).json({
+          error: 'Duplicate Request',
+          message: 'You already have a pending blood group verification request under review.',
+        });
+      }
+
+      const mockReq = {
+        _id: new mongoose.Types.ObjectId().toString(),
+        user: userId,
+        currentGroup: req.user.bloodGroup || 'A+',
+        requestedGroup,
+        reason: reason || '',
+        labReportUrl: labReportUrl || '',
+        status: 'Pending',
+        createdAt: new Date(),
+      };
+      mockBloodGroupRequests.unshift(mockReq);
+
+      return res.status(201).json({
+        message: 'Blood group verification request submitted for admin review.',
+        request: mockReq,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * GET /api/auth/blood-group-change-request
+ * Get user's active/latest blood group change request status
+ */
+router.get('/blood-group-change-request', verifyToken, async (req, res, next) => {
+  try {
+    const userId = req.user.id || req.user.userId;
+    const dbActive = mongoose.connection.readyState === 1;
+
+    if (dbActive) {
+      const requestDoc = await BloodGroupChangeRequest.findOne({ user: userId })
+        .sort({ createdAt: -1 })
+        .lean();
+      return res.status(200).json({ request: requestDoc || null });
+    }
+
+    const mockReq = mockBloodGroupRequests.find((r) => r.user.toString() === userId.toString());
+    return res.status(200).json({ request: mockReq || null });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
+module.exports.mockBloodGroupRequests = mockBloodGroupRequests;

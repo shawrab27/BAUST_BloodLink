@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+
+const VALID_BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'BOMBAY'];
 
 // Campus Top Donors Leaderboard Data
 const CAMPUS_LEADERBOARD = [
@@ -16,6 +18,74 @@ const CAMPUS_LEADERBOARD = [
 function ProfileScreen() {
   const { user, isAuthenticated, logout } = useAuth();
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+
+  // Blood group verification request state
+  const [changeModalOpen, setChangeModalOpen] = useState(false);
+  const [requestedGroup, setRequestedGroup] = useState('O+');
+  const [changeReason, setChangeReason] = useState('');
+  const [labReportUrl, setLabReportUrl] = useState('');
+  const [activeChangeRequest, setActiveChangeRequest] = useState(null);
+  const [isSubmittingChange, setIsSubmittingChange] = useState(false);
+  const [changeError, setChangeError] = useState('');
+  const [changeSuccess, setChangeSuccess] = useState('');
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const fetchChangeRequest = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/auth/blood-group-change-request', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setActiveChangeRequest(data.request);
+        }
+      } catch (err) {
+        console.error('Error fetching change request:', err);
+      }
+    };
+    fetchChangeRequest();
+  }, [isAuthenticated]);
+
+  const handleSubmitChangeRequest = async (e) => {
+    e.preventDefault();
+    setChangeError('');
+    setChangeSuccess('');
+    setIsSubmittingChange(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/auth/blood-group-change-request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          requestedGroup,
+          reason: changeReason.trim(),
+          labReportUrl: labReportUrl.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to submit blood group verification request');
+      }
+
+      setActiveChangeRequest(data.request);
+      setChangeSuccess('Verification request submitted for Admin review.');
+      setTimeout(() => {
+        setChangeModalOpen(false);
+        setChangeSuccess('');
+      }, 1500);
+    } catch (err) {
+      setChangeError(err.message);
+    } finally {
+      setIsSubmittingChange(false);
+    }
+  };
 
   if (!isAuthenticated || !user) {
     return (
@@ -135,7 +205,7 @@ function ProfileScreen() {
             </p>
 
             {/* Locked Blood Group Banner */}
-            <div className="mt-4 p-3 rounded-xl bg-surface-container-low border border-outline-variant/40 text-left space-y-1.5">
+            <div className="mt-4 p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/40 text-left space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-on-surface flex items-center gap-1">
                   <span className="material-symbols-outlined text-[15px] text-primary">bloodtype</span>
@@ -154,8 +224,25 @@ function ProfileScreen() {
                 </span>
               </div>
 
+              {/* Active Pending Request Indicator or Action Button */}
+              {activeChangeRequest && activeChangeRequest.status === 'Pending' ? (
+                <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-700 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[14px] text-amber-600">schedule</span>
+                  <span>Pending Admin Review: Requested <strong>{activeChangeRequest.requestedGroup}</strong></span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setChangeModalOpen(true)}
+                  className="btn-outline w-full py-1 text-[11px] font-bold text-primary border-primary/30 hover:bg-primary/5 flex items-center justify-center gap-1 mt-1"
+                >
+                  <span className="material-symbols-outlined text-[13px]">edit</span>
+                  <span>Request Group Update</span>
+                </button>
+              )}
+
               <p className="text-[10px] text-on-surface-variant/80 leading-snug pt-1 border-t border-outline-variant/20">
-                Blood group is locked after initial registration to prevent emergency requisition mismatch. Submit laboratory test reports to Admin to request changes.
+                Blood group is locked after initial registration. Changes create an official BloodGroupChangeRequest document for Admin review.
               </p>
             </div>
 
@@ -410,6 +497,132 @@ function ProfileScreen() {
                 Close Leaderboard
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── BLOOD GROUP VERIFICATION REQUEST MODAL ── */}
+      {changeModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+          <div className="glass-modal max-w-[480px] w-full p-6 rounded-2xl border border-primary/30 shadow-2xl space-y-4 text-left">
+            <div className="flex items-center justify-between border-b border-outline-variant/30 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-[24px]">verified_user</span>
+                <div>
+                  <h3 className="font-bold text-base text-on-surface">Request Blood Group Verification</h3>
+                  <span className="text-xs text-on-surface-variant">Submit official change for Administrator review</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setChangeModalOpen(false)}
+                className="text-on-surface-variant hover:text-on-surface"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            {changeError && (
+              <div className="p-3 rounded-lg bg-error-container text-on-error-container text-xs flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px]">error</span>
+                <span>{changeError}</span>
+              </div>
+            )}
+
+            {changeSuccess && (
+              <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 text-xs flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                <span>{changeSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmitChangeRequest} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-on-surface-variant font-semibold mb-1">
+                  Current Blood Group
+                </label>
+                <input
+                  type="text"
+                  value={user.bloodGroup}
+                  disabled
+                  className="w-full px-3 py-2 rounded-xl bg-surface-container-low border border-outline-variant/40 font-mono font-bold text-on-surface"
+                />
+              </div>
+
+              <div>
+                <label className="block text-on-surface-variant font-semibold mb-1">
+                  Correct / Requested Blood Group *
+                </label>
+                <select
+                  value={requestedGroup}
+                  onChange={(e) => setRequestedGroup(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 font-mono font-bold text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bg) => (
+                    <option key={bg} value={bg}>
+                      {bg}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-on-surface-variant font-semibold mb-1">
+                  Reason for Correction / Change *
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  value={changeReason}
+                  onChange={(e) => setChangeReason(e.target.value)}
+                  placeholder="e.g., Initial registration typo, new verified hospital lab test report"
+                  className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block text-on-surface-variant font-semibold mb-1">
+                  Lab Report Document / Evidence URL (Optional)
+                </label>
+                <input
+                  type="url"
+                  value={labReportUrl}
+                  onChange={(e) => setLabReportUrl(e.target.value)}
+                  placeholder="https://drive.google.com/... or cloud report link"
+                  className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <span className="text-[10px] text-on-surface-variant block mt-1">
+                  Admins will review the medical report before updating your institutional record.
+                </span>
+              </div>
+
+              <div className="pt-2 border-t border-outline-variant/20 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setChangeModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-outline-variant/40 text-on-surface font-semibold hover:bg-surface-container-low"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingChange}
+                  className="btn-primary py-2 px-5 font-bold flex items-center gap-1.5"
+                >
+                  {isSubmittingChange ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[15px]">send</span>
+                      <span>Submit for Review</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -220,3 +220,4 @@ router.delete('/:id', verifyToken, requireAdmin, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.mockHelplineContacts = SEED_HELPLINE_CONTACTS;

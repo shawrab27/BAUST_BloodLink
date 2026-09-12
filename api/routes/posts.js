@@ -620,3 +620,4 @@ router.delete('/:id', verifyToken, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.mockPosts = mockPosts;
