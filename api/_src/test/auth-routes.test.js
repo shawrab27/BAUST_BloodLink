@@ -1,6 +1,6 @@
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const app = require('../index');
+const app = require('../../index');
 
 describe('BAUST BloodLink Phase 2 — Auth Route Endpoints & Validation', () => {
   let server;

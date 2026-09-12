@@ -20,7 +20,7 @@ function Sidebar({ user = null }) {
       id: 'feed',
       label: 'Feed',
       icon: 'newspaper',
-      to: '/',
+      to: '/feed',
       exact: true,
     },
     {

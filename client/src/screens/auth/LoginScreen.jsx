@@ -17,7 +17,7 @@ function LoginScreen() {
   const [clientError, setClientError] = useState('');
   const [serverError, setServerError] = useState('');
 
-  const from = location.state?.from?.pathname || '/';
+  const from = location.state?.from?.pathname || '/feed';
 
   const handleSubmit = async (e) => {
     e.preventDefault();

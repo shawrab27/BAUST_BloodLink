@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 
-const app = require('../index');
+const app = require('../../index');
 const Post = require('../models/Post');
 const Comment = require('../models/Comment');
 const Repost = require('../models/Repost');

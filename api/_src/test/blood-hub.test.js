@@ -2,7 +2,7 @@ const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
-const app = require('../index');
+const app = require('../../index');
 const {
   BloodRequest,
   VALID_BLOOD_GROUPS,

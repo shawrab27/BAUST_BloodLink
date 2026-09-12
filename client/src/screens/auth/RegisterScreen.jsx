@@ -294,7 +294,7 @@ function RegisterScreen() {
 
     const res = await register(payload);
     if (res.success) {
-      navigate('/', { replace: true });
+      navigate('/feed', { replace: true });
     } else {
       setServerError(res.error || 'Registration failed.');
       if (res.errors) {

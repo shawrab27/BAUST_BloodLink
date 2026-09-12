@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 
-const app = require('../index');
+const app = require('../../index');
 const AuditLog = require('../models/AuditLog');
 const BloodGroupChangeRequest = require('../models/BloodGroupChangeRequest');
 const { JWT_SECRET } = require('../middleware/auth');

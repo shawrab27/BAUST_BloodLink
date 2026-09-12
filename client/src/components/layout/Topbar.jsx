@@ -72,7 +72,7 @@ function Topbar({ user: propUser = null, notificationCount = 0, isAdmin = false 
 
         {/* ── LEFT: Official Logo — transparent PNG floating on glass ── */}
         <Link
-          to="/"
+          to="/feed"
           className="flex items-center hover:opacity-90 transition-opacity flex-shrink-0"
           aria-label="BAUST BloodLink Home"
           id="topbar-logo-link"

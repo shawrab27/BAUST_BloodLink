@@ -4,10 +4,10 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('bloodlink_user');
+    const saved = localStorage.getItem('bloodlink_user') || localStorage.getItem('user');
     return saved ? JSON.parse(saved) : null;
   });
-  const [token, setToken] = useState(() => localStorage.getItem('bloodlink_token'));
+  const [token, setToken] = useState(() => localStorage.getItem('bloodlink_token') || localStorage.getItem('token'));
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -17,11 +17,14 @@ export function AuthProvider({ children }) {
     setUser(null);
     localStorage.removeItem('bloodlink_token');
     localStorage.removeItem('bloodlink_user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
   }, []);
 
   // Fetch current user from server on load if token exists
   const fetchCurrentUser = useCallback(async (authToken) => {
     if (!authToken) {
+      setUser(null);
       setIsLoading(false);
       return;
     }
@@ -37,6 +40,7 @@ export function AuthProvider({ children }) {
         const data = await res.json();
         setUser(data.user);
         localStorage.setItem('bloodlink_user', JSON.stringify(data.user));
+        localStorage.setItem('user', JSON.stringify(data.user));
       } else {
         logout();
       }
@@ -78,7 +82,9 @@ export function AuthProvider({ children }) {
       setToken(data.token);
       setUser(data.user);
       localStorage.setItem('bloodlink_token', data.token);
+      localStorage.setItem('token', data.token);
       localStorage.setItem('bloodlink_user', JSON.stringify(data.user));
+      localStorage.setItem('user', JSON.stringify(data.user));
       return { success: true, user: data.user };
     } catch {
       const message = 'Unable to reach the server. Please check your network connection.';
@@ -112,7 +118,9 @@ export function AuthProvider({ children }) {
       setToken(data.token);
       setUser(data.user);
       localStorage.setItem('bloodlink_token', data.token);
+      localStorage.setItem('token', data.token);
       localStorage.setItem('bloodlink_user', JSON.stringify(data.user));
+      localStorage.setItem('user', JSON.stringify(data.user));
       return { success: true, user: data.user };
     } catch {
       const message = 'Unable to reach the server. Please check your network connection.';
@@ -127,6 +135,7 @@ export function AuthProvider({ children }) {
   const updateUser = (updatedUser) => {
     setUser(updatedUser);
     localStorage.setItem('bloodlink_user', JSON.stringify(updatedUser));
+    localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
   return (

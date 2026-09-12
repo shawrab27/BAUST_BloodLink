@@ -19,7 +19,7 @@ describe('BAUST BloodLink Phase 4 — Emergency SOS & FCM Tests', () => {
   before(async () => {
     // Start dev test server
     const express = require('express');
-    app = require('../index');
+    app = require('../../index');
     server = app.listen(0);
     const port = server.address().port;
     baseUrl = `http://localhost:${port}`;
