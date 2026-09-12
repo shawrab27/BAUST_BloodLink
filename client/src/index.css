@@ -470,6 +470,49 @@
     align-items: center;
     gap: 0.5rem;
   }
+
+  /* ─── BRAND STYLES & SHINE ANIMATION ─── */
+  .brand-baust {
+    color: #15803d; /* Vibrant Institutional Green */
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    text-shadow: 0 1px 2px rgba(21, 128, 61, 0.15);
+  }
+
+  .brand-bloodlink-shine {
+    background: linear-gradient(
+      115deg,
+      #b91c1c 0%,
+      #e11d48 22%,
+      #ff7597 45%,
+      #ffffff 50%,
+      #ff7597 55%,
+      #e11d48 78%,
+      #991b1b 100%
+    );
+    background-size: 250% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+    font-weight: 900;
+    letter-spacing: -0.025em;
+    display: inline-block;
+    animation: bloodlinkShine 4s ease-in-out infinite;
+    filter: drop-shadow(0 2px 8px rgba(225, 29, 72, 0.28));
+  }
+}
+
+@keyframes bloodlinkShine {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 /* ─── CANVAS AMBIENT BACKGROUND ─────────────────────────────────────────── */

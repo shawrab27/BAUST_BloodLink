@@ -329,12 +329,15 @@ function RegisterScreen() {
               className="h-11 w-auto object-contain drop-shadow-xs"
             />
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-lg tracking-tight text-slate-900">
-                  BAUST BloodLink
+              <div className="flex items-center gap-1.5 text-xl font-black tracking-tight leading-none">
+                <span className="brand-baust">
+                  BAUST
+                </span>
+                <span className="brand-bloodlink-shine">
+                  BloodLink
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
+              <p className="text-[11px] text-slate-500 font-medium hidden sm:block mt-0.5">
                 Campus Blood Transfusion &amp; Emergency Donor Network
               </p>
             </div>

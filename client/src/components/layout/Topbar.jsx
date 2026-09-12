@@ -73,21 +73,26 @@ function Topbar({ user: propUser = null, notificationCount = 0, isAdmin = false 
         {/* ── LEFT: Official Logo + Text Brand Header ── */}
         <Link
           to="/feed"
-          className="flex items-center gap-2.5 hover:opacity-90 transition-opacity flex-shrink-0"
+          className="flex items-center gap-3 hover:opacity-95 transition-all flex-shrink-0 group"
           aria-label="BAUST BloodLink Home"
           id="topbar-logo-link"
         >
           <img
             src="/emblem.png"
             alt="BAUST BloodLink Logo"
-            className="h-[42px] w-auto object-contain drop-shadow-sm"
+            className="h-[44px] w-auto object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-200"
           />
           <div className="flex flex-col">
-            <span className="text-lg font-bold tracking-tight text-on-surface leading-none">
-              BAUST BloodLink
-            </span>
-            <div className="flex items-center gap-1 mt-1">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-bold tracking-wider text-primary uppercase">
+            <div className="flex items-center gap-1.5 text-xl sm:text-[22px] leading-tight font-black tracking-tight">
+              <span className="brand-baust">
+                BAUST
+              </span>
+              <span className="brand-bloodlink-shine">
+                BloodLink
+              </span>
+            </div>
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[9.5px] font-bold tracking-wider text-primary uppercase">
                 DONATE • CONNECT • SAVE LIVES
               </span>
             </div>
@@ -96,16 +101,6 @@ function Topbar({ user: propUser = null, notificationCount = 0, isAdmin = false 
 
         {/* ── RIGHT: Controls ── */}
         <div className="flex items-center gap-space-md">
-
-          {/* Quick Emergency Call Badge */}
-          <a
-            href="tel:+8801769660000"
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold hover:bg-primary/20 transition"
-            title="BAUST Emergency Hotline"
-          >
-            <span className="material-symbols-outlined text-[16px]">call</span>
-            <span>Hotline: +880 1769-660000</span>
-          </a>
 
           {/* Language Toggle */}
           <div className="flex items-center bg-surface-container-lowest/80 border border-outline-variant/40 rounded-full p-0.5 shadow-sm">

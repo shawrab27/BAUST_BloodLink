@@ -122,8 +122,13 @@ function LoginScreen() {
                 src="/emblem.png"
               />
             </div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-on-surface tracking-tight">
-              BAUST BloodLink
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tight flex items-center justify-center gap-2">
+              <span className="brand-baust">
+                BAUST
+              </span>
+              <span className="brand-bloodlink-shine">
+                BloodLink
+              </span>
             </h1>
             
             {/* Tagline Pill */}
