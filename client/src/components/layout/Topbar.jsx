@@ -87,7 +87,7 @@ function Topbar({ user: propUser = null, notificationCount = 0, isAdmin = false 
               <span className="brand-baust">
                 BAUST
               </span>
-              <span className="brand-bloodlink-shine">
+              <span className="brand-bloodlink">
                 BloodLink
               </span>
             </div>
