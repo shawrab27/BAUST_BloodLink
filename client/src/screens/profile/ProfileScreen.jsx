@@ -65,7 +65,9 @@ function ProfileScreen() {
         body: JSON.stringify({
           requestedGroup,
           reason: changeReason.trim(),
+          note: changeReason.trim(),
           labReportUrl: labReportUrl.trim(),
+          documentUrl: labReportUrl.trim(),
         }),
       });
 

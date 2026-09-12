@@ -5,10 +5,14 @@ const { VALID_BLOOD_GROUPS } = require('./BloodRequest');
  * BloodGroupChangeRequest Schema
  *
  * Requirements:
- * - Triggered by user on Profile Screen when requesting blood group change.
- * - Queried by Phase 6 Admin Approval Queue on Blood Registry Approval screen.
- * - On approval: writes requestedGroup to user.bloodGroup permanently and marks isBloodGroupVerified: true.
- * - On rejection: records rejection reason, status: 'Rejected'.
+ * - user (ref User)
+ * - currentGroup
+ * - requestedGroup
+ * - documentUrl / labReportUrl
+ * - note / reason
+ * - status: enum ['Pending', 'Approved', 'Rejected']
+ * - reviewedBy (ref User)
+ * - reviewedAt (Date)
  */
 const bloodGroupChangeRequestSchema = new mongoose.Schema(
   {
@@ -32,6 +36,17 @@ const bloodGroupChangeRequestSchema = new mongoose.Schema(
       type: String,
       trim: true,
       maxlength: [500, 'Reason cannot exceed 500 characters'],
+      default: '',
+    },
+    note: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'Note cannot exceed 500 characters'],
+      default: '',
+    },
+    documentUrl: {
+      type: String,
+      trim: true,
       default: '',
     },
     labReportUrl: {
@@ -64,6 +79,15 @@ const bloodGroupChangeRequestSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Synchronize note/reason and documentUrl/labReportUrl before saving
+bloodGroupChangeRequestSchema.pre('save', function (next) {
+  if (!this.note && this.reason) this.note = this.reason;
+  if (!this.reason && this.note) this.reason = this.note;
+  if (!this.documentUrl && this.labReportUrl) this.documentUrl = this.labReportUrl;
+  if (!this.labReportUrl && this.documentUrl) this.labReportUrl = this.documentUrl;
+  next();
+});
 
 bloodGroupChangeRequestSchema.index({ status: 1, createdAt: -1 });
 

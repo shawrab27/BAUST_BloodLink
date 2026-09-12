@@ -55,6 +55,32 @@ const postSchema = new mongoose.Schema(
       ref: 'BloodRequest',
       default: null,
     },
+    isPinned: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    isFlagged: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    isHidden: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    reportedBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
+    reportReason: {
+      type: String,
+      trim: true,
+      default: '',
+    },
   },
   {
     timestamps: true,

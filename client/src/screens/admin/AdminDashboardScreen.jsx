@@ -20,12 +20,18 @@ function AdminDashboardScreen() {
   const [loadingMetrics, setLoadingMetrics] = useState(true);
   const [metricsError, setMetricsError] = useState('');
 
-  // Feed moderation state
+  // Feed moderation state (Posts & Comments)
+  const [feedModerationTab, setFeedModerationTab] = useState('posts'); // 'posts' | 'comments'
   const [posts, setPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [postsError, setPostsError] = useState('');
   const [deleteModalPost, setDeleteModalPost] = useState(null);
   const [deleteReason, setDeleteReason] = useState('');
+  const [comments, setComments] = useState([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [commentsError, setCommentsError] = useState('');
+  const [deleteModalComment, setDeleteModalComment] = useState(null);
+  const [deleteCommentReason, setDeleteCommentReason] = useState('');
 
   // Blood registry approval queue state
   const [registryRequests, setRegistryRequests] = useState([]);
@@ -156,6 +162,101 @@ function AdminDashboardScreen() {
       setDeleteModalPost(null);
       setDeleteReason('');
       fetchPosts();
+    } catch (err) {
+      showNotification('', err.message);
+    }
+  };
+
+  const handleToggleHidePost = async (postId) => {
+    try {
+      const res = await fetch(`/api/admin/posts/${postId}/hide`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update post visibility');
+      showNotification(data.message);
+      fetchPosts();
+    } catch (err) {
+      showNotification('', err.message);
+    }
+  };
+
+  const handleDismissPost = async (postId) => {
+    try {
+      const res = await fetch(`/api/admin/posts/${postId}/dismiss`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to dismiss post report');
+      showNotification(data.message);
+      fetchPosts();
+    } catch (err) {
+      showNotification('', err.message);
+    }
+  };
+
+  // ─── 2B. FETCH & MODERATE COMMENTS ─────────────────────────────────────────
+  const fetchComments = useCallback(async () => {
+    setLoadingComments(true);
+    setCommentsError('');
+    try {
+      const res = await fetch('/api/admin/comments?limit=30', { headers: getHeaders() });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to fetch comments');
+      setComments(data.comments || []);
+    } catch (err) {
+      setCommentsError(err.message);
+    } finally {
+      setLoadingComments(false);
+    }
+  }, []);
+
+  const handleToggleHideComment = async (commentId) => {
+    try {
+      const res = await fetch(`/api/admin/comments/${commentId}/hide`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update comment visibility');
+      showNotification(data.message);
+      fetchComments();
+    } catch (err) {
+      showNotification('', err.message);
+    }
+  };
+
+  const handleDismissComment = async (commentId) => {
+    try {
+      const res = await fetch(`/api/admin/comments/${commentId}/dismiss`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to dismiss comment report');
+      showNotification(data.message);
+      fetchComments();
+    } catch (err) {
+      showNotification('', err.message);
+    }
+  };
+
+  const handleDeleteComment = async () => {
+    if (!deleteModalComment) return;
+    try {
+      const res = await fetch(`/api/admin/comments/${deleteModalComment._id}`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+        body: JSON.stringify({ reason: deleteCommentReason.trim() || 'Violated community guidelines' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to delete comment');
+      showNotification(data.message);
+      setDeleteModalComment(null);
+      setDeleteCommentReason('');
+      fetchComments();
     } catch (err) {
       showNotification('', err.message);
     }
@@ -390,6 +491,22 @@ function AdminDashboardScreen() {
     }
   };
 
+  const handleToggleSuspendUser = async (userId, currentSuspendedState) => {
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/status`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+        body: JSON.stringify({ isSuspended: !currentSuspendedState, isActive: currentSuspendedState }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to toggle account suspension');
+      showNotification(data.message);
+      fetchUsers();
+    } catch (err) {
+      showNotification('', err.message);
+    }
+  };
+
   // ─── 7. FETCH AUDIT LOGS ───────────────────────────────────────────────────
   const fetchAuditLogs = useCallback(async () => {
     setLoadingAudit(true);
@@ -415,8 +532,10 @@ function AdminDashboardScreen() {
   }, [fetchOverviewMetrics]);
 
   useEffect(() => {
-    if (activeTab === 'feed-moderation') fetchPosts();
-    else if (activeTab === 'blood-registry') fetchRegistryRequests();
+    if (activeTab === 'feed-moderation') {
+      fetchPosts();
+      fetchComments();
+    } else if (activeTab === 'blood-registry') fetchRegistryRequests();
     else if (activeTab === 'sos-monitor') fetchSosRequests();
     else if (activeTab === 'helpline-cms') fetchHelplines();
     else if (activeTab === 'user-management') fetchUsers();
@@ -424,6 +543,7 @@ function AdminDashboardScreen() {
   }, [
     activeTab,
     fetchPosts,
+    fetchComments,
     fetchRegistryRequests,
     fetchSosRequests,
     fetchHelplines,
@@ -589,16 +709,16 @@ function AdminDashboardScreen() {
                   accent="text-emerald-600"
                 />
                 <MetricCard
-                  title="Disaster Reserve"
-                  count={metrics?.disasterVolunteers ?? '—'}
-                  icon="e911_emergency"
-                  accent="text-rose-600"
-                />
-                <MetricCard
-                  title="Active SOS Cases"
-                  count={metrics?.emergencyRequests ?? '—'}
+                  title="Total SOS Alerts"
+                  count={metrics?.totalSosAlerts ?? metrics?.emergencyRequests ?? '—'}
                   icon="notifications_active"
                   accent="text-amber-600"
+                />
+                <MetricCard
+                  title="Active Emergencies"
+                  count={metrics?.activeEmergencyCount ?? '—'}
+                  icon="e911_emergency"
+                  accent="text-rose-600"
                 />
                 <MetricCard
                   title="Pending Approvals"
@@ -612,6 +732,36 @@ function AdminDashboardScreen() {
                   icon="receipt_long"
                   accent="text-slate-600"
                 />
+              </div>
+
+              {/* Donors by Blood Group Aggregation Section */}
+              <div className="glass-card p-5 rounded-2xl border border-outline-variant/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary text-[20px]">bloodtype</span>
+                    <h3 className="text-xs font-bold text-on-surface uppercase tracking-wider">
+                      Donor Distribution by Blood Group (Live DB Aggregation)
+                    </h3>
+                  </div>
+                  <span className="text-[11px] font-mono text-on-surface-variant">
+                    Total Active Donors: {metrics?.availableDonors ?? 0}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2.5">
+                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'BOMBAY'].map((bg) => {
+                    const count = metrics?.donorsByBloodGroup?.[bg] ?? 0;
+                    return (
+                      <div
+                        key={bg}
+                        className="p-3 rounded-xl bg-surface-container-low border border-outline-variant/30 text-center flex flex-col items-center justify-center hover:border-primary/40 transition shadow-sm"
+                      >
+                        <span className="text-xs font-black font-mono text-primary">{bg}</span>
+                        <span className="text-base font-black text-on-surface mt-1">{count}</span>
+                        <span className="text-[10px] text-on-surface-variant font-medium">donors</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Quick Jump Panels to the 6 Submodules */}
@@ -664,92 +814,249 @@ function AdminDashboardScreen() {
         </div>
       )}
 
-      {/* ─── TAB 2: FEED MODERATION ───────────────────────────────────────── */}
+      {/* ─── TAB 2: FEED MODERATION (POSTS & COMMENTS) ──────────────────── */}
       {activeTab === 'feed-moderation' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-on-surface">Campus Community Feed Moderation</h2>
-            <span className="text-xs text-on-surface-variant">{posts.length} posts loaded</span>
-          </div>
-
-          {loadingPosts ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-28 rounded-2xl bg-surface-container animate-pulse" />
-              ))}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-bold text-on-surface">Campus Feed Moderation</h2>
+              <p className="text-xs text-on-surface-variant">
+                Moderate reported and public campus discussions. Actions: Dismiss reports, Hide from feed, Delete permanently.
+              </p>
             </div>
-          ) : postsError ? (
-            <div className="glass-card p-6 text-center text-error border border-error/20 rounded-2xl">
-              <p className="text-xs font-bold">{postsError}</p>
-              <button onClick={fetchPosts} className="btn-outline text-xs mt-3">
-                Retry
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setFeedModerationTab('posts')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                  feedModerationTab === 'posts'
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[15px]">newspaper</span>
+                <span>Posts ({posts.length})</span>
+              </button>
+              <button
+                onClick={() => setFeedModerationTab('comments')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                  feedModerationTab === 'comments'
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[15px]">comment</span>
+                <span>Comments ({comments.length})</span>
               </button>
             </div>
-          ) : posts.length === 0 ? (
-            <div className="p-8 text-center text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/30">
-              No posts found in campus feed.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {posts.map((post) => (
-                <div
-                  key={post._id}
-                  className="glass-card p-4 rounded-2xl border border-outline-variant/30 flex flex-col md:flex-row md:items-center justify-between gap-4"
-                >
-                  <div className="space-y-1.5 max-w-2xl">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-xs text-on-surface">
-                        {post.author?.name || 'Unknown Author'}
-                      </span>
-                      <span className="text-[10px] font-mono text-on-surface-variant bg-surface-container-high px-1.5 py-0.5 rounded">
-                        {post.author?.institutionalId || 'ID N/A'}
-                      </span>
-                      <span className="blood-group-chip text-[9px] px-1 py-0">
-                        {post.author?.bloodGroup || 'N/A'}
-                      </span>
-                      {post.isPinned && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-700 border border-amber-500/30 flex items-center gap-0.5">
-                          <span className="material-symbols-outlined text-[12px]">push_pin</span>
-                          PINNED
+          </div>
+
+          {feedModerationTab === 'posts' ? (
+            loadingPosts ? (
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-28 rounded-2xl bg-surface-container animate-pulse" />
+                ))}
+              </div>
+            ) : postsError ? (
+              <div className="glass-card p-6 text-center text-error border border-error/20 rounded-2xl">
+                <p className="text-xs font-bold">{postsError}</p>
+                <button onClick={fetchPosts} className="btn-outline text-xs mt-3">
+                  Retry
+                </button>
+              </div>
+            ) : posts.length === 0 ? (
+              <div className="p-8 text-center text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/30">
+                No posts found in campus feed.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {posts.map((post) => (
+                  <div
+                    key={post._id}
+                    className="glass-card p-4 rounded-2xl border border-outline-variant/30 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  >
+                    <div className="space-y-1.5 max-w-2xl">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-xs text-on-surface">
+                          {post.author?.name || 'Unknown Author'}
                         </span>
+                        <span className="text-[10px] font-mono text-on-surface-variant bg-surface-container-high px-1.5 py-0.5 rounded">
+                          {post.author?.institutionalId || 'ID N/A'}
+                        </span>
+                        <span className="blood-group-chip text-[9px] px-1 py-0">
+                          {post.author?.bloodGroup || 'N/A'}
+                        </span>
+                        {post.isPinned && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-700 border border-amber-500/30 flex items-center gap-0.5">
+                            <span className="material-symbols-outlined text-[12px]">push_pin</span>
+                            PINNED
+                          </span>
+                        )}
+                        {post.isFlagged && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-700 border border-rose-500/30 flex items-center gap-0.5">
+                            <span className="material-symbols-outlined text-[12px]">flag</span>
+                            REPORTED
+                          </span>
+                        )}
+                        {post.isHidden && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-700 border border-slate-500/30 flex items-center gap-0.5">
+                            <span className="material-symbols-outlined text-[12px]">visibility_off</span>
+                            HIDDEN
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-on-surface leading-relaxed">{post.content}</p>
+                      <div className="flex items-center gap-3 text-[11px] text-on-surface-variant">
+                        <span>{new Date(post.createdAt).toLocaleString()}</span>
+                        <span>·</span>
+                        <span>❤️ {post.loveCount || 0}</span>
+                        <span>💬 {post.commentCount || 0}</span>
+                        <span>🔁 {post.repostCount || 0}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end md:self-center flex-wrap">
+                      {post.isFlagged && (
+                        <button
+                          onClick={() => handleDismissPost(post._id)}
+                          className="px-2.5 py-1 rounded-xl text-xs font-bold border border-emerald-500/40 text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20 flex items-center gap-1"
+                          title="Clear flagged status"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">done_all</span>
+                          <span>Dismiss</span>
+                        </button>
                       )}
-                    </div>
-                    <p className="text-xs text-on-surface leading-relaxed">{post.content}</p>
-                    <div className="flex items-center gap-3 text-[11px] text-on-surface-variant">
-                      <span>{new Date(post.createdAt).toLocaleString()}</span>
-                      <span>·</span>
-                      <span>❤️ {post.loveCount || 0}</span>
-                      <span>💬 {post.commentCount || 0}</span>
-                      <span>🔁 {post.repostCount || 0}</span>
+
+                      <button
+                        onClick={() => handleToggleHidePost(post._id)}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition flex items-center gap-1 ${
+                          post.isHidden
+                            ? 'border-indigo-500/40 text-indigo-700 bg-indigo-500/10 hover:bg-indigo-500/20'
+                            : 'border-slate-500/40 text-slate-700 bg-slate-500/10 hover:bg-slate-500/20'
+                        }`}
+                        title={post.isHidden ? 'Make visible in feed' : 'Hide from public feed'}
+                      >
+                        <span className="material-symbols-outlined text-[14px]">
+                          {post.isHidden ? 'visibility' : 'visibility_off'}
+                        </span>
+                        <span>{post.isHidden ? 'Unhide' : 'Hide'}</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleTogglePin(post._id)}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition flex items-center gap-1 ${
+                          post.isPinned
+                            ? 'border-amber-500/40 text-amber-700 bg-amber-500/10 hover:bg-amber-500/20'
+                            : 'border-outline-variant/40 text-on-surface hover:bg-surface-container-high'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[14px]">
+                          {post.isPinned ? 'keep_off' : 'push_pin'}
+                        </span>
+                        <span>{post.isPinned ? 'Unpin' : 'Pin'}</span>
+                      </button>
+
+                      <button
+                        onClick={() => setDeleteModalPost(post)}
+                        className="px-2.5 py-1 rounded-xl text-xs font-bold border border-error/30 text-error bg-error/5 hover:bg-error/10 flex items-center gap-1"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">delete</span>
+                        <span>Delete</span>
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 self-end md:self-center">
-                    <button
-                      onClick={() => handleTogglePin(post._id)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition flex items-center gap-1 ${
-                        post.isPinned
-                          ? 'border-amber-500/40 text-amber-700 bg-amber-500/10 hover:bg-amber-500/20'
-                          : 'border-outline-variant/40 text-on-surface hover:bg-surface-container-high'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[15px]">
-                        {post.isPinned ? 'keep_off' : 'push_pin'}
+                ))}
+              </div>
+            )
+          ) : (
+            /* Comments Moderation View */
+            loadingComments ? (
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-20 rounded-2xl bg-surface-container animate-pulse" />
+                ))}
+              </div>
+            ) : commentsError ? (
+              <div className="glass-card p-6 text-center text-error border border-error/20 rounded-2xl">
+                <p className="text-xs font-bold">{commentsError}</p>
+                <button onClick={fetchComments} className="btn-outline text-xs mt-3">
+                  Retry
+                </button>
+              </div>
+            ) : comments.length === 0 ? (
+              <div className="p-8 text-center text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/30">
+                No comments found for moderation.
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {comments.map((comment) => (
+                  <div
+                    key={comment._id}
+                    className="glass-card p-3.5 rounded-xl border border-outline-variant/30 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="space-y-1 max-w-2xl">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-on-surface">
+                          {comment.author?.name || 'Commenter'}
+                        </span>
+                        <span className="font-mono text-[10px] text-on-surface-variant bg-surface-container-high px-1.5 py-0.5 rounded">
+                          {comment.author?.institutionalId || 'ID N/A'}
+                        </span>
+                        {comment.isFlagged && (
+                          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-500/20 text-rose-700 border border-rose-500/30">
+                            FLAGGED
+                          </span>
+                        )}
+                        {comment.isHidden && (
+                          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-slate-500/20 text-slate-700 border border-slate-500/30">
+                            HIDDEN
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-on-surface leading-snug">{comment.content}</p>
+                      <span className="text-[10px] text-on-surface-variant">
+                        {new Date(comment.createdAt).toLocaleString()}
                       </span>
-                      <span>{post.isPinned ? 'Unpin' : 'Pin'}</span>
-                    </button>
+                    </div>
 
-                    <button
-                      onClick={() => setDeleteModalPost(post)}
-                      className="px-3 py-1.5 rounded-xl text-xs font-bold border border-error/30 text-error bg-error/5 hover:bg-error/10 flex items-center gap-1"
-                    >
-                      <span className="material-symbols-outlined text-[15px]">delete</span>
-                      <span>Delete</span>
-                    </button>
+                    <div className="flex items-center gap-2 self-end md:self-center">
+                      {comment.isFlagged && (
+                        <button
+                          onClick={() => handleDismissComment(comment._id)}
+                          className="px-2 py-1 rounded-lg text-xs font-bold border border-emerald-500/40 text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20 flex items-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">done</span>
+                          <span>Dismiss</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => handleToggleHideComment(comment._id)}
+                        className={`px-2 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1 ${
+                          comment.isHidden
+                            ? 'border-indigo-500/40 text-indigo-700 bg-indigo-500/10'
+                            : 'border-slate-500/40 text-slate-700 bg-slate-500/10'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[13px]">
+                          {comment.isHidden ? 'visibility' : 'visibility_off'}
+                        </span>
+                        <span>{comment.isHidden ? 'Unhide' : 'Hide'}</span>
+                      </button>
+
+                      <button
+                        onClick={() => setDeleteModalComment(comment)}
+                        className="px-2 py-1 rounded-lg text-xs font-bold border border-error/30 text-error bg-error/5 hover:bg-error/10 flex items-center gap-1"
+                      >
+                        <span className="material-symbols-outlined text-[13px]">delete</span>
+                        <span>Delete</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
           )}
         </div>
       )}
@@ -1180,6 +1487,21 @@ function AdminDashboardScreen() {
                         <option value="Unavailable">Unavailable</option>
                       </select>
                     </div>
+
+                    <button
+                      onClick={() => handleToggleSuspendUser(u._id, Boolean(u.isSuspended))}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1 ${
+                        u.isSuspended
+                          ? 'border-rose-500/40 text-rose-700 bg-rose-500/10 hover:bg-rose-500/20'
+                          : 'border-emerald-500/40 text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20'
+                      }`}
+                      title={u.isSuspended ? 'Account suspended - Click to reactivate' : 'Account active - Click to suspend'}
+                    >
+                      <span className="material-symbols-outlined text-[13px]">
+                        {u.isSuspended ? 'block' : 'check_circle'}
+                      </span>
+                      <span>{u.isSuspended ? 'Suspended' : 'Active'}</span>
+                    </button>
                   </div>
                 </div>
               ))}
@@ -1307,6 +1629,48 @@ function AdminDashboardScreen() {
               </button>
               <button
                 onClick={handleDeletePost}
+                className="px-4 py-2 rounded-xl font-bold bg-error text-white hover:bg-error/90"
+              >
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Comment Modal */}
+      {deleteModalComment && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="glass-modal max-w-[460px] w-full p-6 rounded-2xl border border-error/30 shadow-2xl space-y-4 text-left">
+            <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
+              <span className="material-symbols-outlined text-error text-[20px]">delete_forever</span>
+              Moderate Offending Comment
+            </h3>
+            <p className="text-xs text-on-surface-variant">
+              Deleting this comment removes it permanently from the post and records an entry into the audit trail.
+            </p>
+            <div>
+              <label className="block text-xs font-semibold text-on-surface mb-1">
+                Moderation Reason / Violation *
+              </label>
+              <input
+                type="text"
+                required
+                value={deleteCommentReason}
+                onChange={(e) => setDeleteCommentReason(e.target.value)}
+                placeholder="e.g., Harassment, profanity, inappropriate content"
+                className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 text-xs"
+              />
+            </div>
+            <div className="pt-2 border-t border-outline-variant/20 flex justify-end gap-2 text-xs">
+              <button
+                onClick={() => setDeleteModalComment(null)}
+                className="px-4 py-2 rounded-xl border border-outline-variant/40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteComment}
                 className="px-4 py-2 rounded-xl font-bold bg-error text-white hover:bg-error/90"
               >
                 Confirm Delete

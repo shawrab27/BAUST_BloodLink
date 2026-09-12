@@ -27,6 +27,22 @@ const commentSchema = new mongoose.Schema(
       trim: true,
       maxlength: [500, 'Comment cannot exceed 500 characters'],
     },
+    isFlagged: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    isHidden: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    reportedBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
   },
   {
     timestamps: true,

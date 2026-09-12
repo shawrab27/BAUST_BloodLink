@@ -144,6 +144,16 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+    isSuspended: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     fcmToken: {
       type: String,
       default: null,

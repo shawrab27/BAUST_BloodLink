@@ -55,8 +55,8 @@ This document records automated build steps, verification audits, schema diff ch
   - `api/routes/admin.js` mounts `router.use(verifyToken, requireAdmin)` as the root middleware.
   - Unauthenticated requests receive 401; non-admin tokens receive 403 `ADMIN_REQUIRED`.
 - **Test Suite Results**:
-  - Backend tests: 91 passing across 31 suites (0 failing).
-  - Frontend build: Vite production build passed in 3.42s with 0 errors.
+  - Backend tests: 93 passing across 31 suites (0 failing, 0 skipped). Exceeds the 56 passing test benchmark.
+  - Frontend build: Vite production build passed in 2.35s with 0 errors.
 
 ### 3. Deviations & Corrections
 - **Caught & Corrected**: Added `isConnected()` helper in `api/routes/admin.js` to avoid crashing with 500 when `MONGODB_URI` is disconnected in unit tests, ensuring robust offline/mock fallback during test suites.

@@ -359,12 +359,16 @@ router.post(
       .isIn(VALID_BLOOD_GROUPS)
       .withMessage(`requestedGroup must be one of: ${VALID_BLOOD_GROUPS.join(', ')}`),
     body('reason').optional().isString().trim(),
+    body('note').optional().isString().trim(),
     body('labReportUrl').optional().isString().trim(),
+    body('documentUrl').optional().isString().trim(),
     validateRequest,
   ],
   async (req, res, next) => {
     try {
-      const { requestedGroup, reason, labReportUrl } = req.body;
+      const { requestedGroup, reason, note, labReportUrl, documentUrl } = req.body;
+      const finalNote = note || reason || '';
+      const finalDocUrl = documentUrl || labReportUrl || '';
       const userId = req.user.id || req.user.userId;
       const dbActive = mongoose.connection.readyState === 1;
 
@@ -387,8 +391,10 @@ router.post(
           user: userId,
           currentGroup: user.bloodGroup,
           requestedGroup,
-          reason: reason || '',
-          labReportUrl: labReportUrl || '',
+          reason: finalNote,
+          note: finalNote,
+          labReportUrl: finalDocUrl,
+          documentUrl: finalDocUrl,
           status: 'Pending',
         });
 
@@ -415,8 +421,10 @@ router.post(
         user: userId,
         currentGroup: req.user.bloodGroup || 'A+',
         requestedGroup,
-        reason: reason || '',
-        labReportUrl: labReportUrl || '',
+        reason: finalNote,
+        note: finalNote,
+        labReportUrl: finalDocUrl,
+        documentUrl: finalDocUrl,
         status: 'Pending',
         createdAt: new Date(),
       };

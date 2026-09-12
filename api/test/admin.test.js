@@ -9,7 +9,7 @@ const BloodGroupChangeRequest = require('../models/BloodGroupChangeRequest');
 const { JWT_SECRET } = require('../middleware/auth');
 const { mockAuditLogs } = require('../routes/admin');
 const { mockBloodGroupRequests } = require('../routes/auth');
-const { mockPosts } = require('../routes/posts');
+const { mockPosts, mockComments } = require('../routes/posts');
 const { mockBloodRequests } = require('../routes/bloodRequests');
 
 describe('BAUST BloodLink Phase 6 — Admin Command Center (7 Modules + RBAC & Audit Log)', () => {
@@ -69,7 +69,7 @@ describe('BAUST BloodLink Phase 6 — Admin Command Center (7 Modules + RBAC & A
       assert.equal(data.code, 'ADMIN_REQUIRED');
     });
 
-    test('Admin token successfully passes RBAC gate to /api/admin/overview with 200 OK', async () => {
+    test('Admin token successfully passes RBAC gate to /api/admin/overview with 200 OK and aggregation metrics', async () => {
       const res = await fetch(`${baseUrl}/api/admin/overview`, {
         headers: { Authorization: `Bearer ${adminToken}` },
       });
@@ -78,7 +78,9 @@ describe('BAUST BloodLink Phase 6 — Admin Command Center (7 Modules + RBAC & A
       assert.ok(data.metrics);
       assert.equal(typeof data.metrics.totalUsers, 'number');
       assert.equal(typeof data.metrics.availableDonors, 'number');
-      assert.equal(typeof data.metrics.emergencyRequests, 'number');
+      assert.equal(typeof data.metrics.totalSosAlerts, 'number');
+      assert.equal(typeof data.metrics.activeEmergencyCount, 'number');
+      assert.ok(data.metrics.donorsByBloodGroup && typeof data.metrics.donorsByBloodGroup === 'object');
       assert.equal(typeof data.metrics.totalAuditLogs, 'number');
     });
   });
@@ -92,6 +94,28 @@ describe('BAUST BloodLink Phase 6 — Admin Command Center (7 Modules + RBAC & A
       assert.equal(res.status, 200);
       const data = await res.json();
       assert.ok(Array.isArray(data.posts));
+    });
+
+    test('Admin can hide and dismiss reported posts', async () => {
+      const postId = '6751c0000000000000000001';
+
+      // Hide
+      const hideRes = await fetch(`${baseUrl}/api/admin/posts/${postId}/hide`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      assert.equal(hideRes.status, 200);
+      const hideData = await hideRes.json();
+      assert.ok(hideData.post);
+
+      // Dismiss
+      const dismissRes = await fetch(`${baseUrl}/api/admin/posts/${postId}/dismiss`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      assert.equal(dismissRes.status, 200);
+      const dismissData = await dismissRes.json();
+      assert.equal(dismissData.post.isFlagged, false);
     });
 
     test('Admin can pin/unpin a post and action is recorded in AuditLog', async () => {
@@ -145,6 +169,63 @@ describe('BAUST BloodLink Phase 6 — Admin Command Center (7 Modules + RBAC & A
       assert.equal(audit.action, 'DELETE_POST');
       assert.equal(audit.targetId, deletePostId);
       assert.equal(audit.details.reason, 'Spam / Community rule violation');
+    });
+
+    test('Admin can list, hide, dismiss, and delete reported comments', async () => {
+      const commentId = '6751d0000000000000000001';
+      mockComments.push({
+        _id: commentId,
+        post: '6751c0000000000000000001',
+        author: { name: 'Commenter' },
+        content: 'Reported spam comment',
+        isFlagged: true,
+        isHidden: false,
+        createdAt: new Date(),
+      });
+
+      // 1. List flagged comments
+      const listRes = await fetch(`${baseUrl}/api/admin/comments?flagged=true`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      assert.equal(listRes.status, 200);
+      const listData = await listRes.json();
+      assert.ok(Array.isArray(listData.comments));
+
+      // 2. Hide comment
+      const hideRes = await fetch(`${baseUrl}/api/admin/comments/${commentId}/hide`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      assert.equal(hideRes.status, 200);
+      const hideData = await hideRes.json();
+      assert.equal(hideData.comment.isHidden, true);
+
+      // 3. Dismiss comment report
+      const dismissRes = await fetch(`${baseUrl}/api/admin/comments/${commentId}/dismiss`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      assert.equal(dismissRes.status, 200);
+      const dismissData = await dismissRes.json();
+      assert.equal(dismissData.comment.isFlagged, false);
+
+      // 4. Delete comment
+      const deleteRes = await fetch(`${baseUrl}/api/admin/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${adminToken}`,
+        },
+        body: JSON.stringify({ reason: 'Offensive language' }),
+      });
+      assert.equal(deleteRes.status, 200);
+      const deleteData = await deleteRes.json();
+      assert.equal(deleteData.deletedId, commentId);
+
+      // Verify audit log entry
+      const audit = mockAuditLogs[0];
+      assert.equal(audit.action, 'DELETE_COMMENT');
+      assert.equal(audit.targetId, commentId);
     });
   });
 
@@ -330,21 +411,25 @@ describe('BAUST BloodLink Phase 6 — Admin Command Center (7 Modules + RBAC & A
       assert.equal(audit.details.newRole, 'Teacher');
     });
 
-    test('Admin can update user availability status and logs to AuditLog', async () => {
+    test('Admin can update user status and toggle active/suspended', async () => {
       const res = await fetch(`${baseUrl}/api/admin/users/${studentId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${adminToken}`,
         },
-        body: JSON.stringify({ availabilityStatus: 'Unavailable' }),
+        body: JSON.stringify({ availabilityStatus: 'Unavailable', isSuspended: true }),
       });
 
       assert.equal(res.status, 200);
+      const data = await res.json();
+      assert.equal(data.user.isSuspended, true);
+
       const audit = mockAuditLogs[0];
-      assert.equal(audit.action, 'UPDATE_USER_AVAILABILITY_STATUS');
+      assert.equal(audit.action, 'UPDATE_USER_STATUS');
       assert.equal(audit.targetId, studentId);
       assert.equal(audit.details.availabilityStatus, 'Unavailable');
+      assert.equal(audit.details.isSuspended, true);
     });
   });
 

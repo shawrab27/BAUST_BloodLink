@@ -4,9 +4,13 @@ const mongoose = require('mongoose');
  * AuditLog Schema
  *
  * Requirements:
- * - Logs all administrative and sensitive operations.
- * - Queried by Phase 6 Module 7 (Audit Log Viewer).
- * - Read-only log for security compliance.
+ * - adminId / performedBy: ref User
+ * - action: String (e.g. APPROVE_BLOOD_GROUP_CHANGE, DELETE_POST, HIDE_POST, DISMISS_POST)
+ * - targetId: String
+ * - targetModel / targetType: String
+ * - timestamp / createdAt: Date
+ * - details: Mixed
+ * - ipAddress: String
  */
 const auditLogSchema = new mongoose.Schema(
   {
@@ -15,16 +19,24 @@ const auditLogSchema = new mongoose.Schema(
       required: [true, 'Action is required'],
       index: true,
     },
+    adminId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+    },
     performedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: [true, 'Performed By is required'],
+      index: true,
+    },
+    targetModel: {
+      type: String,
+      enum: ['User', 'Post', 'Comment', 'BloodGroupChangeRequest', 'BloodRequest', 'Helpline', 'System'],
       index: true,
     },
     targetType: {
       type: String,
-      required: [true, 'Target Type is required'],
-      enum: ['User', 'Post', 'BloodGroupChangeRequest', 'BloodRequest', 'Helpline', 'System'],
+      enum: ['User', 'Post', 'Comment', 'BloodGroupChangeRequest', 'BloodRequest', 'Helpline', 'System'],
       index: true,
     },
     targetId: {
@@ -44,6 +56,14 @@ const auditLogSchema = new mongoose.Schema(
     timestamps: { createdAt: true, updatedAt: false },
   }
 );
+
+auditLogSchema.pre('save', function (next) {
+  if (!this.adminId && this.performedBy) this.adminId = this.performedBy;
+  if (!this.performedBy && this.adminId) this.performedBy = this.adminId;
+  if (!this.targetModel && this.targetType) this.targetModel = this.targetType;
+  if (!this.targetType && this.targetModel) this.targetType = this.targetModel;
+  next();
+});
 
 auditLogSchema.index({ createdAt: -1 });
 

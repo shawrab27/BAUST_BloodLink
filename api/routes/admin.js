@@ -8,6 +8,7 @@ const { BloodRequest, VALID_STATUSES } = require('../models/BloodRequest');
 const BloodGroupChangeRequest = require('../models/BloodGroupChangeRequest');
 const Helpline = require('../models/Helpline');
 const Post = require('../models/Post');
+const Comment = require('../models/Comment');
 const AuditLog = require('../models/AuditLog');
 const { connectDB } = require('../config/db');
 
@@ -16,11 +17,13 @@ let mockAuditLogs = [
   {
     _id: '675200000000000000000001',
     action: 'INIT_ADMIN_SYSTEM',
+    adminId: '6751a0000000000000000004',
     performedBy: {
       _id: '6751a0000000000000000004',
       name: 'System Super Admin',
       institutionalId: 'ADM0120210004D56',
     },
+    targetModel: 'System',
     targetType: 'System',
     targetId: 'SYSTEM',
     details: { note: 'Initial admin subsystem booted' },
@@ -40,6 +43,8 @@ let mockAdminUsers = [
     userType: 'Student',
     bloodGroup: 'B+',
     availabilityStatus: 'Available',
+    isActive: true,
+    isSuspended: false,
     isDisasterVolunteer: true,
   },
   {
@@ -51,6 +56,8 @@ let mockAdminUsers = [
     userType: 'Student',
     bloodGroup: 'A+',
     availabilityStatus: 'Cooldown',
+    isActive: true,
+    isSuspended: false,
     isDisasterVolunteer: false,
   },
   {
@@ -62,6 +69,8 @@ let mockAdminUsers = [
     userType: 'Teacher',
     bloodGroup: 'O+',
     availabilityStatus: 'Available',
+    isActive: true,
+    isSuspended: false,
     isDisasterVolunteer: true,
   },
   {
@@ -73,6 +82,8 @@ let mockAdminUsers = [
     userType: 'Admin',
     bloodGroup: 'AB+',
     availabilityStatus: 'Available',
+    isActive: true,
+    isSuspended: false,
     isDisasterVolunteer: false,
   },
 ];
@@ -91,19 +102,22 @@ async function isConnected() {
 }
 
 /**
- * Helper to record audit logs both to MongoDB and to mock collection if offline
+ * Helper to record audit logs to MongoDB and in-memory cache
  */
-async function logAuditEvent({ action, req, targetType, targetId, details = {} }) {
+async function logAuditEvent({ action, req, targetModel, targetType, targetId, details = {} }) {
   const adminId = req.user.id || req.user.userId;
   const ipAddress = req.ip || req.headers['x-forwarded-for'] || '127.0.0.1';
+  const resolvedTargetModel = targetModel || targetType || 'System';
 
   try {
     const dbActive = await isConnected();
     if (dbActive) {
       await AuditLog.create({
         action,
+        adminId,
         performedBy: adminId,
-        targetType,
+        targetModel: resolvedTargetModel,
+        targetType: resolvedTargetModel,
         targetId: String(targetId || ''),
         details,
         ipAddress,
@@ -117,12 +131,14 @@ async function logAuditEvent({ action, req, targetType, targetId, details = {} }
   mockAuditLogs.unshift({
     _id: new mongoose.Types.ObjectId().toString(),
     action,
+    adminId,
     performedBy: {
       _id: adminId,
       name: req.user.name || 'Admin Officer',
       institutionalId: req.user.institutionalId || 'ADM0120210004D56',
     },
-    targetType,
+    targetModel: resolvedTargetModel,
+    targetType: resolvedTargetModel,
     targetId: String(targetId || ''),
     details,
     ipAddress,
@@ -133,7 +149,7 @@ async function logAuditEvent({ action, req, targetType, targetId, details = {} }
 // ─── RBAC GUARD ON ENTIRE ROUTER ─────────────────────────────────────────────
 router.use(verifyToken, requireAdmin);
 
-// ─── 1. OVERVIEW METRICS ──────────────────────────────────────────────────────
+// ─── 1. OVERVIEW METRICS (REAL DB AGGREGATIONS ONLY) ──────────────────────────
 router.get('/overview', async (req, res, next) => {
   try {
     const dbActive = await isConnected();
@@ -143,39 +159,51 @@ router.get('/overview', async (req, res, next) => {
         totalUsers,
         availableDonors,
         disasterVolunteers,
+        donorsByGroupRaw,
+        totalSosAlerts,
+        activeEmergencyCount,
         totalRequests,
-        emergencyRequests,
         fulfilledRequests,
         pendingGroupChanges,
         totalPosts,
-        pinnedPosts,
         totalHelplines,
         totalAuditLogs,
       ] = await Promise.all([
         User.countDocuments(),
-        User.countDocuments({ availabilityStatus: 'Available' }),
+        User.countDocuments({ availabilityStatus: 'Available', isSuspended: false }),
         User.countDocuments({ isDisasterVolunteer: true }),
-        BloodRequest.countDocuments(),
+        User.aggregate([
+          { $match: { availabilityStatus: 'Available', isSuspended: false } },
+          { $group: { _id: '$bloodGroup', count: { $sum: 1 } } },
+          { $sort: { _id: 1 } },
+        ]),
         BloodRequest.countDocuments({ condition: 'Emergency' }),
+        BloodRequest.countDocuments({ condition: 'Emergency', status: { $in: ['Pending', 'Matching'] } }),
+        BloodRequest.countDocuments(),
         BloodRequest.countDocuments({ status: 'Fulfilled' }),
         BloodGroupChangeRequest.countDocuments({ status: 'Pending' }),
         Post.countDocuments(),
-        Post.countDocuments({ isPinned: true }),
         Helpline.countDocuments(),
         AuditLog.countDocuments(),
       ]);
+
+      const donorsByBloodGroup = {};
+      donorsByGroupRaw.forEach((item) => {
+        if (item._id) donorsByBloodGroup[item._id] = item.count;
+      });
 
       return res.status(200).json({
         metrics: {
           totalUsers,
           availableDonors,
           disasterVolunteers,
+          donorsByBloodGroup,
+          totalSosAlerts,
+          activeEmergencyCount,
           totalRequests,
-          emergencyRequests,
           fulfilledRequests,
           pendingGroupChanges,
           totalPosts,
-          pinnedPosts,
           totalHelplines,
           totalAuditLogs,
         },
@@ -184,17 +212,25 @@ router.get('/overview', async (req, res, next) => {
     }
 
     // Mock fallback when DB is disconnected
+    const donorsByBloodGroup = {};
+    mockAdminUsers
+      .filter((u) => u.availabilityStatus === 'Available')
+      .forEach((u) => {
+        donorsByBloodGroup[u.bloodGroup] = (donorsByBloodGroup[u.bloodGroup] || 0) + 1;
+      });
+
     return res.status(200).json({
       metrics: {
         totalUsers: mockAdminUsers.length,
         availableDonors: mockAdminUsers.filter((u) => u.availabilityStatus === 'Available').length,
         disasterVolunteers: mockAdminUsers.filter((u) => u.isDisasterVolunteer).length,
+        donorsByBloodGroup,
+        totalSosAlerts: 6,
+        activeEmergencyCount: 2,
         totalRequests: 34,
-        emergencyRequests: 6,
         fulfilledRequests: 25,
         pendingGroupChanges: 2,
         totalPosts: 18,
-        pinnedPosts: 2,
         totalHelplines: 8,
         totalAuditLogs: mockAuditLogs.length,
       },
@@ -205,15 +241,17 @@ router.get('/overview', async (req, res, next) => {
   }
 });
 
-// ─── 2. FEED MODERATION ──────────────────────────────────────────────────────
+// ─── 2. FEED MODERATION (POSTS & COMMENTS: DISMISS, HIDE, DELETE) ─────────────
 router.get('/posts', async (req, res, next) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 15, 50);
     const cursor = req.query.cursor;
+    const flaggedOnly = req.query.flagged === 'true';
     const dbActive = await isConnected();
 
     if (dbActive) {
       const queryFilter = {};
+      if (flaggedOnly) queryFilter.isFlagged = true;
       if (cursor && mongoose.isValidObjectId(cursor)) {
         queryFilter._id = { $lt: cursor };
       }
@@ -221,7 +259,8 @@ router.get('/posts', async (req, res, next) => {
       const posts = await Post.find(queryFilter)
         .sort({ _id: -1 })
         .limit(limit + 1)
-        .populate('author', 'name institutionalId department userType bloodGroup');
+        .populate('author', 'name institutionalId department userType bloodGroup')
+        .populate('reportedBy', 'name institutionalId');
 
       const hasMore = posts.length > limit;
       const results = hasMore ? posts.slice(0, limit) : posts;
@@ -236,7 +275,8 @@ router.get('/posts', async (req, res, next) => {
 
     // Mock fallback
     const { mockPosts } = require('./posts');
-    const postsList = mockPosts || [];
+    let postsList = mockPosts || [];
+    if (flaggedOnly) postsList = postsList.filter((p) => p.isFlagged);
     return res.status(200).json({
       posts: postsList.slice(0, limit),
       nextCursor: null,
@@ -255,18 +295,14 @@ router.patch('/posts/:id/pin', async (req, res, next) => {
     let updatedPost;
     if (dbActive) {
       const post = await Post.findById(id);
-      if (!post) {
-        return res.status(404).json({ error: 'Not Found', message: 'Post not found.' });
-      }
+      if (!post) return res.status(404).json({ error: 'Not Found', message: 'Post not found.' });
       post.isPinned = !post.isPinned;
       await post.save();
       updatedPost = post;
     } else {
       const { mockPosts } = require('./posts');
       const p = (mockPosts || []).find((item) => item._id.toString() === id.toString());
-      if (!p) {
-        return res.status(404).json({ error: 'Not Found', message: 'Post not found.' });
-      }
+      if (!p) return res.status(404).json({ error: 'Not Found', message: 'Post not found.' });
       p.isPinned = !p.isPinned;
       updatedPost = p;
     }
@@ -274,13 +310,90 @@ router.patch('/posts/:id/pin', async (req, res, next) => {
     await logAuditEvent({
       action: updatedPost.isPinned ? 'PIN_POST' : 'UNPIN_POST',
       req,
-      targetType: 'Post',
+      targetModel: 'Post',
       targetId: id,
       details: { isPinned: updatedPost.isPinned },
     });
 
     return res.status(200).json({
       message: updatedPost.isPinned ? 'Post pinned to top of campus feed.' : 'Post unpinned.',
+      post: updatedPost,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/posts/:id/hide', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const dbActive = await isConnected();
+
+    let updatedPost;
+    if (dbActive) {
+      const post = await Post.findById(id);
+      if (!post) return res.status(404).json({ error: 'Not Found', message: 'Post not found.' });
+      post.isHidden = !post.isHidden;
+      await post.save();
+      updatedPost = post;
+    } else {
+      const { mockPosts } = require('./posts');
+      const p = (mockPosts || []).find((item) => item._id.toString() === id.toString());
+      if (!p) return res.status(404).json({ error: 'Not Found', message: 'Post not found.' });
+      p.isHidden = !p.isHidden;
+      updatedPost = p;
+    }
+
+    await logAuditEvent({
+      action: updatedPost.isHidden ? 'HIDE_POST' : 'UNHIDE_POST',
+      req,
+      targetModel: 'Post',
+      targetId: id,
+      details: { isHidden: updatedPost.isHidden },
+    });
+
+    return res.status(200).json({
+      message: updatedPost.isHidden ? 'Post is now hidden from public feed.' : 'Post unhidden.',
+      post: updatedPost,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/posts/:id/dismiss', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const dbActive = await isConnected();
+
+    let updatedPost;
+    if (dbActive) {
+      const post = await Post.findById(id);
+      if (!post) return res.status(404).json({ error: 'Not Found', message: 'Post not found.' });
+      post.isFlagged = false;
+      post.reportReason = '';
+      post.reportedBy = [];
+      await post.save();
+      updatedPost = post;
+    } else {
+      const { mockPosts } = require('./posts');
+      const p = (mockPosts || []).find((item) => item._id.toString() === id.toString());
+      if (!p) return res.status(404).json({ error: 'Not Found', message: 'Post not found.' });
+      p.isFlagged = false;
+      p.reportReason = '';
+      updatedPost = p;
+    }
+
+    await logAuditEvent({
+      action: 'DISMISS_POST_REPORT',
+      req,
+      targetModel: 'Post',
+      targetId: id,
+      details: { dismissed: true },
+    });
+
+    return res.status(200).json({
+      message: 'Report dismissed. Post flagged status cleared.',
       post: updatedPost,
     });
   } catch (err) {
@@ -296,9 +409,7 @@ router.delete('/posts/:id', async (req, res, next) => {
 
     if (dbActive) {
       const post = await Post.findByIdAndDelete(id);
-      if (!post) {
-        return res.status(404).json({ error: 'Not Found', message: 'Post not found.' });
-      }
+      if (!post) return res.status(404).json({ error: 'Not Found', message: 'Post not found.' });
     } else {
       const { mockPosts } = require('./posts');
       if (mockPosts) {
@@ -310,13 +421,168 @@ router.delete('/posts/:id', async (req, res, next) => {
     await logAuditEvent({
       action: 'DELETE_POST',
       req,
-      targetType: 'Post',
+      targetModel: 'Post',
       targetId: id,
       details: { reason },
     });
 
     return res.status(200).json({
       message: 'Post deleted successfully by Administrator.',
+      deletedId: id,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/comments', async (req, res, next) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 15, 50);
+    const cursor = req.query.cursor;
+    const flaggedOnly = req.query.flagged === 'true';
+    const dbActive = await isConnected();
+
+    if (dbActive) {
+      const queryFilter = {};
+      if (flaggedOnly) queryFilter.isFlagged = true;
+      if (cursor && mongoose.isValidObjectId(cursor)) {
+        queryFilter._id = { $lt: cursor };
+      }
+
+      const comments = await Comment.find(queryFilter)
+        .sort({ _id: -1 })
+        .limit(limit + 1)
+        .populate('author', 'name institutionalId department userType bloodGroup')
+        .populate('reportedBy', 'name institutionalId')
+        .populate('post', 'content author');
+
+      const hasMore = comments.length > limit;
+      const results = hasMore ? comments.slice(0, limit) : comments;
+      const nextCursor = hasMore ? results[results.length - 1]._id : null;
+
+      return res.status(200).json({
+        comments: results,
+        nextCursor,
+        hasMore,
+      });
+    }
+
+    // Mock fallback
+    const { mockComments } = require('./posts');
+    let commentsList = mockComments || [];
+    if (flaggedOnly) commentsList = commentsList.filter((c) => c.isFlagged);
+    return res.status(200).json({
+      comments: commentsList.slice(0, limit),
+      nextCursor: null,
+      hasMore: false,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/comments/:id/hide', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const dbActive = await isConnected();
+
+    let updatedComment;
+    if (dbActive) {
+      const comment = await Comment.findById(id);
+      if (!comment) return res.status(404).json({ error: 'Not Found', message: 'Comment not found.' });
+      comment.isHidden = !comment.isHidden;
+      await comment.save();
+      updatedComment = comment;
+    } else {
+      const { mockComments } = require('./posts');
+      const c = (mockComments || []).find((item) => item._id.toString() === id.toString());
+      if (!c) return res.status(404).json({ error: 'Not Found', message: 'Comment not found.' });
+      c.isHidden = !c.isHidden;
+      updatedComment = c;
+    }
+
+    await logAuditEvent({
+      action: updatedComment.isHidden ? 'HIDE_COMMENT' : 'UNHIDE_COMMENT',
+      req,
+      targetModel: 'Comment',
+      targetId: id,
+      details: { isHidden: updatedComment.isHidden },
+    });
+
+    return res.status(200).json({
+      message: updatedComment.isHidden ? 'Comment is now hidden from public feed.' : 'Comment unhidden.',
+      comment: updatedComment,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/comments/:id/dismiss', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const dbActive = await isConnected();
+
+    let updatedComment;
+    if (dbActive) {
+      const comment = await Comment.findById(id);
+      if (!comment) return res.status(404).json({ error: 'Not Found', message: 'Comment not found.' });
+      comment.isFlagged = false;
+      comment.reportedBy = [];
+      await comment.save();
+      updatedComment = comment;
+    } else {
+      const { mockComments } = require('./posts');
+      const c = (mockComments || []).find((item) => item._id.toString() === id.toString());
+      if (!c) return res.status(404).json({ error: 'Not Found', message: 'Comment not found.' });
+      c.isFlagged = false;
+      updatedComment = c;
+    }
+
+    await logAuditEvent({
+      action: 'DISMISS_COMMENT_REPORT',
+      req,
+      targetModel: 'Comment',
+      targetId: id,
+      details: { dismissed: true },
+    });
+
+    return res.status(200).json({
+      message: 'Report dismissed. Comment flagged status cleared.',
+      comment: updatedComment,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/comments/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const reason = req.body.reason || 'Violated community guidelines';
+    const dbActive = await isConnected();
+
+    if (dbActive) {
+      const comment = await Comment.findByIdAndDelete(id);
+      if (!comment) return res.status(404).json({ error: 'Not Found', message: 'Comment not found.' });
+    } else {
+      const { mockComments } = require('./posts');
+      if (mockComments) {
+        const idx = mockComments.findIndex((c) => c._id.toString() === id.toString());
+        if (idx !== -1) mockComments.splice(idx, 1);
+      }
+    }
+
+    await logAuditEvent({
+      action: 'DELETE_COMMENT',
+      req,
+      targetModel: 'Comment',
+      targetId: id,
+      details: { reason },
+    });
+
+    return res.status(200).json({
+      message: 'Comment deleted successfully by Administrator.',
       deletedId: id,
     });
   } catch (err) {
@@ -370,7 +636,7 @@ router.get('/blood-registry/requests', async (req, res, next) => {
 router.patch('/blood-registry/requests/:id/approve', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const adminNotes = req.body.adminNotes || 'Approved by Administrator after lab report verification.';
+    const adminNotes = req.body.adminNotes || req.body.note || 'Approved by Administrator after lab verification.';
     const adminId = req.user.id || req.user.userId;
     const dbActive = await isConnected();
 
@@ -404,7 +670,7 @@ router.patch('/blood-registry/requests/:id/approve', async (req, res, next) => {
       await logAuditEvent({
         action: 'APPROVE_BLOOD_GROUP_CHANGE',
         req,
-        targetType: 'BloodGroupChangeRequest',
+        targetModel: 'BloodGroupChangeRequest',
         targetId: id,
         details: {
           userId: changeReq.user,
@@ -435,7 +701,7 @@ router.patch('/blood-registry/requests/:id/approve', async (req, res, next) => {
     await logAuditEvent({
       action: 'APPROVE_BLOOD_GROUP_CHANGE',
       req,
-      targetType: 'BloodGroupChangeRequest',
+      targetModel: 'BloodGroupChangeRequest',
       targetId: id,
       details: {
         userId: reqItem.user,
@@ -458,15 +724,24 @@ router.patch(
   '/blood-registry/requests/:id/reject',
   [
     body('reason')
-      .trim()
-      .isLength({ min: 3 })
-      .withMessage('Rejection reason is required and must be at least 3 characters.'),
-    validateRequest,
+      .optional()
+      .trim(),
+    body('note')
+      .optional()
+      .trim(),
   ],
   async (req, res, next) => {
     try {
       const { id } = req.params;
-      const { reason } = req.body;
+      const rejectionReason = (req.body.reason || req.body.note || '').trim();
+
+      if (!rejectionReason || rejectionReason.length < 3) {
+        return res.status(400).json({
+          error: 'Validation Error',
+          message: 'Rejection reason is required and must be at least 3 characters.',
+        });
+      }
+
       const adminId = req.user.id || req.user.userId;
       const dbActive = await isConnected();
 
@@ -484,7 +759,7 @@ router.patch(
         }
 
         changeReq.status = 'Rejected';
-        changeReq.adminNotes = reason;
+        changeReq.adminNotes = rejectionReason;
         changeReq.reviewedBy = adminId;
         changeReq.reviewedAt = new Date();
         await changeReq.save();
@@ -492,11 +767,11 @@ router.patch(
         await logAuditEvent({
           action: 'REJECT_BLOOD_GROUP_CHANGE',
           req,
-          targetType: 'BloodGroupChangeRequest',
+          targetModel: 'BloodGroupChangeRequest',
           targetId: id,
           details: {
             userId: changeReq.user,
-            reason,
+            reason: rejectionReason,
           },
         });
 
@@ -514,18 +789,18 @@ router.patch(
       }
 
       reqItem.status = 'Rejected';
-      reqItem.adminNotes = reason;
+      reqItem.adminNotes = rejectionReason;
       reqItem.reviewedBy = adminId;
       reqItem.reviewedAt = new Date();
 
       await logAuditEvent({
         action: 'REJECT_BLOOD_GROUP_CHANGE',
         req,
-        targetType: 'BloodGroupChangeRequest',
+        targetModel: 'BloodGroupChangeRequest',
         targetId: id,
         details: {
           userId: reqItem.user,
-          reason,
+          reason: rejectionReason,
         },
       });
 
@@ -539,7 +814,7 @@ router.patch(
   }
 );
 
-// ─── 4. EMERGENCY SOS LIVE MONITOR ───────────────────────────────────────────
+// ─── 4. EMERGENCY SOS LIVE MONITOR (REAL-TIME, ASSIGNED VOLUNTEERS, OVERRIDES) ─
 router.get('/emergency/active', async (req, res, next) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
@@ -555,7 +830,8 @@ router.get('/emergency/active', async (req, res, next) => {
       const requests = await BloodRequest.find(queryFilter)
         .sort({ _id: -1 })
         .limit(limit + 1)
-        .populate('requester', 'name institutionalId phone department userType');
+        .populate('requester', 'name institutionalId phone department userType')
+        .populate('matchedDonors', 'name institutionalId phone bloodGroup availabilityStatus');
 
       const hasMore = requests.length > limit;
       const results = hasMore ? requests.slice(0, limit) : requests;
@@ -621,7 +897,7 @@ router.patch(
       await logAuditEvent({
         action: 'EMERGENCY_STATUS_OVERRIDE',
         req,
-        targetType: 'BloodRequest',
+        targetModel: 'BloodRequest',
         targetId: id,
         details: {
           newStatus: status,
@@ -639,7 +915,7 @@ router.patch(
   }
 );
 
-// ─── 5. HELPLINE / COMMITTEE CMS ─────────────────────────────────────────────
+// ─── 5. HELPLINE CMS (CRUD FOR MEDICAL, AMBULANCE, REGIONAL BLOOD BANKS) ───────
 router.get('/helpline', async (req, res, next) => {
   try {
     const dbActive = await isConnected();
@@ -715,7 +991,7 @@ router.post(
       await logAuditEvent({
         action: 'CREATE_HELPLINE_CONTACT',
         req,
-        targetType: 'Helpline',
+        targetModel: 'Helpline',
         targetId: contact._id,
         details: { category, name, role, phone },
       });
@@ -767,7 +1043,7 @@ router.put(
       await logAuditEvent({
         action: 'UPDATE_HELPLINE_CONTACT',
         req,
-        targetType: 'Helpline',
+        targetModel: 'Helpline',
         targetId: id,
         details: req.body,
       });
@@ -803,7 +1079,7 @@ router.delete('/helpline/:id', async (req, res, next) => {
     await logAuditEvent({
       action: 'DELETE_HELPLINE_CONTACT',
       req,
-      targetType: 'Helpline',
+      targetModel: 'Helpline',
       targetId: id,
       details: {},
     });
@@ -840,7 +1116,7 @@ router.patch(
       await logAuditEvent({
         action: 'REORDER_HELPLINE_CONTACTS',
         req,
-        targetType: 'Helpline',
+        targetModel: 'Helpline',
         targetId: 'BULK',
         details: { reorderedCount: orderList.length },
       });
@@ -854,7 +1130,7 @@ router.patch(
   }
 );
 
-// ─── 6. USER & ROLE ADMINISTRATION ───────────────────────────────────────────
+// ─── 6. USER ADMINISTRATION (SEARCH, ROLE MANAGEMENT, ACTIVE/SUSPENDED TOGGLE) ─
 router.get('/users', async (req, res, next) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 15, 50);
@@ -869,17 +1145,14 @@ router.get('/users', async (req, res, next) => {
       if (cursor && mongoose.isValidObjectId(cursor)) {
         queryFilter._id = { $lt: cursor };
       }
-      if (userType) {
-        queryFilter.userType = userType;
-      }
-      if (bloodGroup) {
-        queryFilter.bloodGroup = bloodGroup;
-      }
+      if (userType) queryFilter.userType = userType;
+      if (bloodGroup) queryFilter.bloodGroup = bloodGroup;
       if (search) {
         queryFilter.$or = [
           { name: { $regex: search, $options: 'i' } },
           { institutionalId: { $regex: search, $options: 'i' } },
           { email: { $regex: search, $options: 'i' } },
+          { department: { $regex: search, $options: 'i' } },
         ];
       }
 
@@ -909,7 +1182,8 @@ router.get('/users', async (req, res, next) => {
         (u) =>
           u.name.toLowerCase().includes(q) ||
           u.institutionalId.toLowerCase().includes(q) ||
-          (u.email && u.email.toLowerCase().includes(q))
+          (u.email && u.email.toLowerCase().includes(q)) ||
+          (u.department && u.department.toLowerCase().includes(q))
       );
     }
 
@@ -945,9 +1219,7 @@ router.patch(
           { new: true, runValidators: true }
         ).select('-password');
 
-        if (!updatedUser) {
-          return res.status(404).json({ error: 'Not Found', message: 'User not found.' });
-        }
+        if (!updatedUser) return res.status(404).json({ error: 'Not Found', message: 'User not found.' });
       } else {
         const u = mockAdminUsers.find((user) => user._id.toString() === id.toString());
         if (u) {
@@ -962,7 +1234,7 @@ router.patch(
       await logAuditEvent({
         action: 'UPDATE_USER_ROLE',
         req,
-        targetType: 'User',
+        targetModel: 'User',
         targetId: id,
         details: { newRole: userType },
       });
@@ -981,48 +1253,53 @@ router.patch(
   '/users/:id/status',
   [
     body('availabilityStatus')
+      .optional()
       .isIn(['Available', 'Cooldown', 'Unavailable'])
       .withMessage('availabilityStatus must be Available, Cooldown, or Unavailable'),
-    validateRequest,
+    body('isActive').optional().isBoolean(),
+    body('isSuspended').optional().isBoolean(),
   ],
   async (req, res, next) => {
     try {
       const { id } = req.params;
-      const { availabilityStatus } = req.body;
+      const { availabilityStatus, isActive, isSuspended } = req.body;
       const dbActive = await isConnected();
+
+      const updateFields = {};
+      if (availabilityStatus !== undefined) updateFields.availabilityStatus = availabilityStatus;
+      if (isActive !== undefined) updateFields.isActive = isActive;
+      if (isSuspended !== undefined) updateFields.isSuspended = isSuspended;
 
       let updatedUser;
       if (dbActive) {
         updatedUser = await User.findByIdAndUpdate(
           id,
-          { $set: { availabilityStatus } },
+          { $set: updateFields },
           { new: true, runValidators: true }
         ).select('-password');
 
-        if (!updatedUser) {
-          return res.status(404).json({ error: 'Not Found', message: 'User not found.' });
-        }
+        if (!updatedUser) return res.status(404).json({ error: 'Not Found', message: 'User not found.' });
       } else {
         const u = mockAdminUsers.find((user) => user._id.toString() === id.toString());
         if (u) {
-          u.availabilityStatus = availabilityStatus;
+          Object.assign(u, updateFields);
           updatedUser = u;
         } else {
-          updatedUser = { _id: id, availabilityStatus };
+          updatedUser = { _id: id, ...updateFields };
           mockAdminUsers.push(updatedUser);
         }
       }
 
       await logAuditEvent({
-        action: 'UPDATE_USER_AVAILABILITY_STATUS',
+        action: 'UPDATE_USER_STATUS',
         req,
-        targetType: 'User',
+        targetModel: 'User',
         targetId: id,
-        details: { availabilityStatus },
+        details: updateFields,
       });
 
       return res.status(200).json({
-        message: `User availability status updated to ${availabilityStatus}.`,
+        message: 'User status successfully updated.',
         user: updatedUser,
       });
     } catch (err) {
@@ -1031,13 +1308,13 @@ router.patch(
   }
 );
 
-// ─── 7. AUDIT LOG VIEWER ──────────────────────────────────────────────────────
+// ─── 7. AUDIT LOG VIEWER (IMMUTABLE RECORD WITH METADATA) ─────────────────────
 router.get('/audit-logs', async (req, res, next) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
     const cursor = req.query.cursor;
     const action = req.query.action;
-    const targetType = req.query.targetType;
+    const targetModel = req.query.targetModel || req.query.targetType;
     const dbActive = await isConnected();
 
     if (dbActive) {
@@ -1045,17 +1322,16 @@ router.get('/audit-logs', async (req, res, next) => {
       if (cursor && mongoose.isValidObjectId(cursor)) {
         queryFilter._id = { $lt: cursor };
       }
-      if (action) {
-        queryFilter.action = action;
-      }
-      if (targetType) {
-        queryFilter.targetType = targetType;
+      if (action) queryFilter.action = action;
+      if (targetModel) {
+        queryFilter.$or = [{ targetModel }, { targetType: targetModel }];
       }
 
       const logs = await AuditLog.find(queryFilter)
         .sort({ _id: -1 })
         .limit(limit + 1)
-        .populate('performedBy', 'name institutionalId userType department');
+        .populate('performedBy', 'name institutionalId userType department')
+        .populate('adminId', 'name institutionalId userType department');
 
       const hasMore = logs.length > limit;
       const results = hasMore ? logs.slice(0, limit) : logs;
@@ -1070,11 +1346,9 @@ router.get('/audit-logs', async (req, res, next) => {
 
     // Mock fallback
     let filtered = [...mockAuditLogs];
-    if (action) {
-      filtered = filtered.filter((l) => l.action === action);
-    }
-    if (targetType) {
-      filtered = filtered.filter((l) => l.targetType === targetType);
+    if (action) filtered = filtered.filter((l) => l.action === action);
+    if (targetModel) {
+      filtered = filtered.filter((l) => l.targetModel === targetModel || l.targetType === targetModel);
     }
 
     return res.status(200).json({
