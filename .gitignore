@@ -60,8 +60,10 @@ coverage/
 .stylelintcache
 .npm/
 
-# Tooling internals
+# Tooling internals & AI-tool configs
 .jolli/
 .vibecheck/
 .gemini/
-.claude/settings.local.json
+.claude/
+.cursor/
+.github/instructions/
