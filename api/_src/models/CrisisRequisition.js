@@ -49,7 +49,7 @@ const CrisisRequisitionSchema = new mongoose.Schema(
     bloodGroup: {
       type: String,
       required: [true, 'Blood group is required'],
-      enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'BOMBAY'],
+      enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
     },
     units: {
       type: Number,

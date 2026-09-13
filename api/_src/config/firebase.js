@@ -60,7 +60,9 @@ try {
  * @returns {Promise<{successCount: number, failureCount: number, skipped: boolean}>}
  */
 async function sendMulticastNotification({ tokens = [], title, body, data = {} }) {
-  const validTokens = (tokens || []).filter((t) => typeof t === 'string' && t.trim().length > 0);
+  // Deduplicate and filter valid tokens across all devices
+  const tokenList = Array.isArray(tokens) ? tokens.flat(Infinity) : [tokens];
+  const validTokens = [...new Set(tokenList.filter((t) => typeof t === 'string' && t.trim().length > 0))];
 
   if (!isInitialized || !admin || validTokens.length === 0) {
     return {
@@ -77,41 +79,56 @@ async function sendMulticastNotification({ tokens = [], title, body, data = {} }
       stringifiedData[key] = typeof value === 'string' ? value : JSON.stringify(value);
     }
 
-    const message = {
-      tokens: validTokens,
-      notification: {
-        title,
-        body,
-      },
-      data: stringifiedData,
-      android: {
-        priority: 'high',
-        notification: {
-          sound: 'default',
-          channelId: 'emergency_alerts',
-          priority: 'max',
-        },
-      },
-      webpush: {
-        headers: {
-          Urgency: 'high',
-        },
+    // Chunk in batches of 500 (Firebase Admin maximum multicast limit per request)
+    const CHUNK_SIZE = 500;
+    let totalSuccess = 0;
+    let totalFailure = 0;
+    const allResponses = [];
+
+    for (let i = 0; i < validTokens.length; i += CHUNK_SIZE) {
+      const batchTokens = validTokens.slice(i, i + CHUNK_SIZE);
+      const message = {
+        tokens: batchTokens,
         notification: {
           title,
           body,
-          icon: '/favicon.ico',
-          badge: '/favicon.ico',
-          requireInteraction: true,
         },
-      },
-    };
+        data: stringifiedData,
+        android: {
+          priority: 'high',
+          notification: {
+            sound: 'default',
+            channelId: 'emergency_alerts',
+            priority: 'max',
+          },
+        },
+        webpush: {
+          headers: {
+            Urgency: 'high',
+          },
+          notification: {
+            title,
+            body,
+            icon: '/favicon.ico',
+            badge: '/favicon.ico',
+            requireInteraction: true,
+          },
+        },
+      };
 
-    const response = await admin.messaging().sendEachForMulticast(message);
+      const response = await admin.messaging().sendEachForMulticast(message);
+      totalSuccess += response.successCount || 0;
+      totalFailure += response.failureCount || 0;
+      if (Array.isArray(response.responses)) {
+        allResponses.push(...response.responses);
+      }
+    }
+
     return {
-      successCount: response.successCount,
-      failureCount: response.failureCount,
+      successCount: totalSuccess,
+      failureCount: totalFailure,
       skipped: false,
-      responses: response.responses,
+      responses: allResponses,
     };
   } catch (error) {
     console.error('[FCM Multicast Error]', error.message);

@@ -252,12 +252,16 @@ router.get('/', optionalAuth, async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 30);
     const cursor = req.query.cursor;
     const tag = req.query.tag;
+    const author = req.query.author;
     const dbActive = await isConnected();
 
     if (dbActive) {
       const query = {};
       if (tag) {
         query.tags = tag.startsWith('#') ? tag : `#${tag}`;
+      }
+      if (author && mongoose.isValidObjectId(author)) {
+        query.author = author;
       }
       if (cursor) {
         const cursorDate = new Date(cursor);
@@ -313,6 +317,9 @@ router.get('/', optionalAuth, async (req, res) => {
       const normalizedTag = tag.startsWith('#') ? tag : `#${tag}`;
       filtered = filtered.filter((p) => p.tags && p.tags.includes(normalizedTag));
     }
+    if (author) {
+      filtered = filtered.filter((p) => p.author && (p.author._id === author || p.author.id === author || p.author === author));
+    }
     if (cursor) {
       const cursorDate = new Date(cursor);
       filtered = filtered.filter((p) => new Date(p.createdAt) < cursorDate);
@@ -347,7 +354,7 @@ router.get('/', optionalAuth, async (req, res) => {
  */
 router.post('/', verifyToken, async (req, res) => {
   try {
-    const { content, mediaUrl, tags, bloodRequestId } = req.body;
+    const { content, mediaUrl, tags, bloodRequestId, feeling } = req.body;
     const userId = req.user.userId || req.user.id || req.user._id;
 
     if (!content || !content.trim()) {
@@ -365,6 +372,11 @@ router.post('/', verifyToken, async (req, res) => {
       extractedTags = Array.from(new Set([...extractedTags, ...inTextTags]));
     }
 
+    const feelingData = feeling && typeof feeling === 'object' ? {
+      type: feeling.type ? String(feeling.type).trim() : null,
+      emoji: feeling.emoji ? String(feeling.emoji).trim() : null,
+    } : null;
+
     const dbActive = await isConnected();
     if (dbActive) {
       const post = new Post({
@@ -372,6 +384,7 @@ router.post('/', verifyToken, async (req, res) => {
         content: content.trim(),
         mediaUrl: mediaUrl && typeof mediaUrl === 'string' ? mediaUrl.trim() : null,
         tags: extractedTags,
+        feeling: feelingData,
         bloodRequestId: bloodRequestId && mongoose.isValidObjectId(bloodRequestId) ? bloodRequestId : null,
       });
 
@@ -402,6 +415,7 @@ router.post('/', verifyToken, async (req, res) => {
       content: content.trim(),
       mediaUrl: mediaUrl || null,
       tags: extractedTags,
+      feeling: feelingData,
       loveCount: 0,
       commentCount: 0,
       repostCount: 0,

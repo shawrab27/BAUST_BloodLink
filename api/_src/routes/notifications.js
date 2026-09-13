@@ -158,9 +158,12 @@ router.patch('/read-all', verifyToken, async (req, res) => {
   }
 });
 
+// In-memory token store for test/offline environments
+const inMemoryUserTokens = new Map();
+
 /**
  * POST /api/notifications/register-token
- * Registers or updates the user's FCM device push token.
+ * Registers or appends the user's FCM device push token (multi-device support).
  */
 router.post('/register-token', verifyToken, async (req, res) => {
   try {
@@ -170,10 +173,24 @@ router.post('/register-token', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'FCM device token is required' });
     }
 
-    const isConnected = mongoose.connection && mongoose.connection.readyState === 1;
-    if (isConnected) {
-      await User.findByIdAndUpdate((req.user.id || req.user._id), { fcmToken: token.trim() });
+    const cleanToken = token.trim();
+    const userId = req.user.userId || req.user.id || req.user._id;
+    const dbActive = await isConnected();
+
+    if (dbActive) {
+      await User.findByIdAndUpdate(userId, {
+        $addToSet: { fcmTokens: cleanToken },
+        fcmToken: cleanToken, // Backwards compatibility
+      });
     }
+
+    // Maintain in-memory token list for tests and fallback
+    const userKey = String(userId);
+    const existing = inMemoryUserTokens.get(userKey) || [];
+    if (!existing.includes(cleanToken)) {
+      existing.push(cleanToken);
+    }
+    inMemoryUserTokens.set(userKey, existing);
 
     return res.json({
       success: true,
@@ -182,6 +199,65 @@ router.post('/register-token', verifyToken, async (req, res) => {
   } catch (err) {
     console.error('[Register FCM Token Error]', err);
     return res.status(500).json({ error: 'Failed to register push token', message: err.message });
+  }
+});
+
+/**
+ * POST /api/notifications/test-push
+ * Sends a real FCM push notification to all of the calling user's registered device tokens.
+ */
+router.post('/test-push', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId || req.user.id || req.user._id;
+    let tokens = [];
+    const dbActive = await isConnected();
+
+    if (dbActive) {
+      const user = await User.findById(userId).select('fcmTokens fcmToken');
+      if (user) {
+        if (Array.isArray(user.fcmTokens)) tokens.push(...user.fcmTokens);
+        if (user.fcmToken) tokens.push(user.fcmToken);
+      }
+    }
+
+    const memTokens = inMemoryUserTokens.get(String(userId)) || [];
+    tokens.push(...memTokens);
+
+    tokens = [...new Set(tokens.filter((t) => typeof t === 'string' && t.trim().length > 0))];
+
+    if (tokens.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No registered device push tokens found for this account. Enable push notifications in your browser/device settings first.',
+        tokenCount: 0,
+      });
+    }
+
+    const { sendMulticastNotification } = require('../config/firebase');
+    const pushResult = await sendMulticastNotification({
+      tokens,
+      title: '🩸 BAUST BloodLink — Multi-Device Verification',
+      body: 'Verified! Real-time FCM push notification delivered successfully to your device.',
+      data: {
+        type: 'TestPush',
+        sender: 'BAUST BloodLink Push Engine',
+        timestamp: new Date().toISOString(),
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Test push notification dispatched to all registered device tokens.',
+      tokenCount: tokens.length,
+      pushResult,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error('[Test Push Error]', err);
+    return res.status(500).json({
+      error: 'Failed to send test push notification',
+      message: err.message,
+    });
   }
 });
 

@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
  * BloodRequest Schema — BAUST BloodLink
  *
  * Requirements:
- * - Blood Group: enum ['A+','A-','B+','B-','AB+','AB-','O+','O-','BOMBAY']
+ * - Blood Group: enum ['A+','A-','B+','B-','AB+','AB-','O+','O-']
  * - Condition: enum ['Normal','Emergency'] (locked binary field, checked by Phase 4 Emergency SOS)
  * - Patient Type: enum ['Student','Teacher','Staff','Civilian'] (required)
  * - Units: 1 to 20
@@ -12,7 +12,7 @@ const mongoose = require('mongoose');
  * - Cursor-paginated listings (15-20 items per page)
  */
 
-const VALID_BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'BOMBAY'];
+const VALID_BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const VALID_CONDITIONS = ['Normal', 'Emergency'];
 const VALID_PATIENT_TYPES = ['Student', 'Teacher', 'Staff', 'Civilian'];
 const VALID_STATUSES = ['Pending', 'Matching', 'Fulfilled', 'Cancelled'];

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import AvatarPickerModal from '../../components/profile/AvatarPickerModal';
 
 const ADMIN_TABS = [
   { id: 'overview', label: 'Overview', icon: 'dashboard' },
@@ -58,10 +59,18 @@ function AdminDashboardScreen() {
     category: 'Committee',
     name: '',
     role: '',
+    subtitle: '',
+    rankBadge: '',
+    avatarUrl: '',
     phone: '',
+    secondaryPhone: '',
     email: '',
     whatsappNumber: '',
+    whatsappLink: '',
+    qrCodeUrl: '',
     location: '',
+    timing: '',
+    notes: '',
     isAvailable24_7: false,
   });
 
@@ -71,6 +80,20 @@ function AdminDashboardScreen() {
   const [usersError, setUsersError] = useState('');
   const [userSearch, setUserSearch] = useState('');
   const [userTypeFilter, setUserTypeFilter] = useState('');
+  const [editUserModalUser, setEditUserModalUser] = useState(null);
+  const [avatarPickerForAdminUser, setAvatarPickerForAdminUser] = useState(false);
+  const [editUserForm, setEditUserForm] = useState({
+    name: '',
+    phone: '',
+    bloodGroup: '',
+    department: '',
+    userType: '',
+    avatarUrl: '',
+    donationCount: 0,
+    lastDonationDate: '',
+    isDisasterVolunteer: false,
+    availabilityStatus: 'Available',
+  });
 
   // Audit Log state
   const [auditLogs, setAuditLogs] = useState([]);
@@ -364,7 +387,7 @@ function AdminDashboardScreen() {
     setLoadingHelpline(true);
     setHelplineError('');
     try {
-      const res = await fetch('/api/admin/helpline', { headers: getHeaders() });
+      const res = await fetch('/api/helpline', { headers: getHeaders() });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to fetch helpline directory');
       setHelplines(data.contacts || []);
@@ -378,8 +401,8 @@ function AdminDashboardScreen() {
   const handleSaveHelpline = async (e) => {
     e.preventDefault();
     try {
-      const url = editingContact ? `/api/admin/helpline/${editingContact._id}` : '/api/admin/helpline';
-      const method = editingContact ? 'PUT' : 'POST';
+      const url = editingContact ? `/api/helpline/${editingContact._id}` : '/api/helpline';
+      const method = editingContact ? 'PATCH' : 'POST';
       const res = await fetch(url, {
         method,
         headers: getHeaders(),
@@ -399,7 +422,7 @@ function AdminDashboardScreen() {
   const handleDeleteHelpline = async (id) => {
     if (!confirm('Are you sure you want to delete this helpline contact?')) return;
     try {
-      const res = await fetch(`/api/admin/helpline/${id}`, {
+      const res = await fetch(`/api/helpline/${id}`, {
         method: 'DELETE',
         headers: getHeaders(),
       });
@@ -501,6 +524,44 @@ function AdminDashboardScreen() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to toggle account suspension');
       showNotification(data.message);
+      fetchUsers();
+    } catch (err) {
+      showNotification('', err.message);
+    }
+  };
+
+  const handleOpenEditUser = (u) => {
+    setEditUserModalUser(u);
+    setEditUserForm({
+      name: u.name || '',
+      phone: u.phone || '',
+      bloodGroup: u.bloodGroup || 'A+',
+      department: u.department || 'CSE',
+      userType: u.userType || 'Student',
+      avatarUrl: u.avatarUrl || '',
+      donationCount: u.donationCount || u.totalDonations || 0,
+      lastDonationDate: u.lastDonationDate ? new Date(u.lastDonationDate).toISOString().split('T')[0] : '',
+      isDisasterVolunteer: Boolean(u.isDisasterVolunteer),
+      availabilityStatus: u.availabilityStatus || 'Available',
+    });
+  };
+
+  const handleSaveUserDetails = async (e) => {
+    e.preventDefault();
+    if (!editUserModalUser) return;
+    try {
+      const res = await fetch(`/api/admin/users/${editUserModalUser._id}`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          ...editUserForm,
+          lastDonationDate: editUserForm.lastDonationDate ? new Date(editUserForm.lastDonationDate).toISOString() : null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update user profile');
+      showNotification(data.message || 'User profile updated successfully.');
+      setEditUserModalUser(null);
       fetchUsers();
     } catch (err) {
       showNotification('', err.message);
@@ -747,8 +808,8 @@ function AdminDashboardScreen() {
                     Total Active Donors: {metrics?.availableDonors ?? 0}
                   </span>
                 </div>
-                <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2.5">
-                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'BOMBAY'].map((bg) => {
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2.5">
+                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bg) => {
                     const count = metrics?.donorsByBloodGroup?.[bg] ?? 0;
                     return (
                       <div
@@ -1274,10 +1335,18 @@ function AdminDashboardScreen() {
                   category: 'Committee',
                   name: '',
                   role: '',
+                  subtitle: '',
+                  rankBadge: '',
+                  avatarUrl: '',
                   phone: '',
+                  secondaryPhone: '',
                   email: '',
                   whatsappNumber: '',
+                  whatsappLink: '',
+                  qrCodeUrl: '',
                   location: '',
+                  timing: '',
+                  notes: '',
                   isAvailable24_7: false,
                 });
                 setHelplineModalOpen(true);
@@ -1354,13 +1423,21 @@ function AdminDashboardScreen() {
                       onClick={() => {
                         setEditingContact(item);
                         setHelplineForm({
-                          category: item.category,
-                          name: item.name,
-                          role: item.role,
-                          phone: item.phone,
+                          category: item.category || 'Committee',
+                          name: item.name || '',
+                          role: item.role || '',
+                          subtitle: item.subtitle || '',
+                          rankBadge: item.rankBadge || '',
+                          avatarUrl: item.avatarUrl || '',
+                          phone: item.phone || '',
+                          secondaryPhone: item.secondaryPhone || '',
                           email: item.email || '',
                           whatsappNumber: item.whatsappNumber || '',
+                          whatsappLink: item.whatsappLink || '',
+                          qrCodeUrl: item.qrCodeUrl || '',
                           location: item.location || '',
+                          timing: item.timing || '',
+                          notes: item.notes || '',
                           isAvailable24_7: Boolean(item.isAvailable24_7),
                         });
                         setHelplineModalOpen(true);
@@ -1487,6 +1564,15 @@ function AdminDashboardScreen() {
                         <option value="Unavailable">Unavailable</option>
                       </select>
                     </div>
+
+                    <button
+                      onClick={() => handleOpenEditUser(u)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition flex items-center gap-1"
+                      title="Edit User Profile, Avatar & Donation Details"
+                    >
+                      <span className="material-symbols-outlined text-[13px]">edit</span>
+                      <span>Edit Details</span>
+                    </button>
 
                     <button
                       onClick={() => handleToggleSuspendUser(u._id, Boolean(u.isSuspended))}
@@ -1779,10 +1865,10 @@ function AdminDashboardScreen() {
       {/* Helpline Contact Modal (Create/Edit) */}
       {helplineModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-          <div className="glass-modal max-w-[500px] w-full p-6 rounded-2xl border border-primary/30 shadow-2xl space-y-4 text-left">
+          <div className="glass-modal max-w-[560px] max-h-[90vh] overflow-y-auto w-full p-6 rounded-2xl border border-primary/30 shadow-2xl space-y-4 text-left">
             <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
               <span className="material-symbols-outlined text-primary text-[20px]">support_agent</span>
-              {editingContact ? 'Edit Helpline Contact' : 'Create Helpline Contact'}
+              {editingContact ? 'Edit Helpline & Directory Details' : 'Create Helpline & Directory Contact'}
             </h3>
 
             <form onSubmit={handleSaveHelpline} className="space-y-3 text-xs">
@@ -1792,21 +1878,22 @@ function AdminDashboardScreen() {
                   <select
                     value={helplineForm.category}
                     onChange={(e) => setHelplineForm({ ...helplineForm, category: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
+                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 font-semibold text-primary"
                   >
-                    <option value="Committee">Committee</option>
-                    <option value="Medical">Medical</option>
-                    <option value="Campus">Campus</option>
-                    <option value="WhatsApp">WhatsApp</option>
+                    <option value="Committee">Committee Leadership</option>
+                    <option value="Medical">Medical Sector Emergency Desk</option>
+                    <option value="Campus">Campus Emergency & Logistics</option>
+                    <option value="WhatsApp">WhatsApp Community Broadcast</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold mb-1">Contact Name *</label>
+                  <label className="block font-semibold mb-1">Contact / Center Name *</label>
                   <input
                     type="text"
                     required
                     value={helplineForm.name}
                     onChange={(e) => setHelplineForm({ ...helplineForm, name: e.target.value })}
+                    placeholder="e.g. Engr. Fahim Shahriar or BAUST Medical Center"
                     className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
                   />
                 </div>
@@ -1820,16 +1907,17 @@ function AdminDashboardScreen() {
                     required
                     value={helplineForm.role}
                     onChange={(e) => setHelplineForm({ ...helplineForm, role: e.target.value })}
+                    placeholder="e.g. President or Primary Healthcare & Triage Desk"
                     className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold mb-1">Phone Number *</label>
+                  <label className="block font-semibold mb-1">Subtitle / Extra Info</label>
                   <input
                     type="text"
-                    required
-                    value={helplineForm.phone}
-                    onChange={(e) => setHelplineForm({ ...helplineForm, phone: e.target.value })}
+                    value={helplineForm.subtitle}
+                    onChange={(e) => setHelplineForm({ ...helplineForm, subtitle: e.target.value })}
+                    placeholder="e.g. Donor Registry & Verification"
                     className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
                   />
                 </div>
@@ -1837,32 +1925,104 @@ function AdminDashboardScreen() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold mb-1">Email</label>
+                  <label className="block font-semibold mb-1">Rank / Status Badge</label>
                   <input
-                    type="email"
-                    value={helplineForm.email}
-                    onChange={(e) => setHelplineForm({ ...helplineForm, email: e.target.value })}
+                    type="text"
+                    value={helplineForm.rankBadge}
+                    onChange={(e) => setHelplineForm({ ...helplineForm, rankBadge: e.target.value })}
+                    placeholder="e.g. 1st Rank, Campus Clinic, 24/7 On-Duty"
                     className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold mb-1">WhatsApp Number</label>
+                  <label className="block font-semibold mb-1">Member Photo / Avatar URL</label>
+                  <input
+                    type="url"
+                    value={helplineForm.avatarUrl}
+                    onChange={(e) => setHelplineForm({ ...helplineForm, avatarUrl: e.target.value })}
+                    placeholder="https://... image link"
+                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1">Primary Phone Number *</label>
                   <input
                     type="text"
-                    value={helplineForm.whatsappNumber}
-                    onChange={(e) => setHelplineForm({ ...helplineForm, whatsappNumber: e.target.value })}
+                    required
+                    value={helplineForm.phone}
+                    onChange={(e) => setHelplineForm({ ...helplineForm, phone: e.target.value })}
+                    placeholder="e.g. +880 1711-234567"
+                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Secondary Phone (Ambulance/STAT)</label>
+                  <input
+                    type="text"
+                    value={helplineForm.secondaryPhone}
+                    onChange={(e) => setHelplineForm({ ...helplineForm, secondaryPhone: e.target.value })}
+                    placeholder="e.g. +880 1769-660999"
+                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1">WhatsApp Community Link</label>
+                  <input
+                    type="url"
+                    value={helplineForm.whatsappLink}
+                    onChange={(e) => setHelplineForm({ ...helplineForm, whatsappLink: e.target.value })}
+                    placeholder="https://chat.whatsapp.com/invite/..."
+                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Custom QR Code Image URL</label>
+                  <input
+                    type="url"
+                    value={helplineForm.qrCodeUrl}
+                    onChange={(e) => setHelplineForm({ ...helplineForm, qrCodeUrl: e.target.value })}
+                    placeholder="https://... custom QR link"
+                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1">Campus Location</label>
+                  <input
+                    type="text"
+                    value={helplineForm.location}
+                    onChange={(e) => setHelplineForm({ ...helplineForm, location: e.target.value })}
+                    placeholder="e.g. Ground Floor, Academic Building 1"
+                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Working Hours / Timing</label>
+                  <input
+                    type="text"
+                    value={helplineForm.timing}
+                    onChange={(e) => setHelplineForm({ ...helplineForm, timing: e.target.value })}
+                    placeholder="e.g. 8:00 AM – 10:00 PM (24/7 On-Call)"
                     className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold mb-1">Campus Location</label>
+                <label className="block font-semibold mb-1">Notes / Extra Tag</label>
                 <input
                   type="text"
-                  value={helplineForm.location}
-                  onChange={(e) => setHelplineForm({ ...helplineForm, location: e.target.value })}
-                  placeholder="e.g. Ground Floor, Academic Building South"
+                  value={helplineForm.notes}
+                  onChange={(e) => setHelplineForm({ ...helplineForm, notes: e.target.value })}
+                  placeholder="e.g. Official Cantonment Blood Testing Partner"
                   className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
                 />
               </div>
@@ -1880,7 +2040,7 @@ function AdminDashboardScreen() {
                 </label>
               </div>
 
-              <div className="pt-2 border-t border-outline-variant/20 flex justify-end gap-2">
+              <div className="pt-3 border-t border-outline-variant/20 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setHelplineModalOpen(false)}
@@ -1896,6 +2056,187 @@ function AdminDashboardScreen() {
           </div>
         </div>
       )}
+
+      {/* Edit User Profile, Avatar & Donation Details Modal */}
+      {editUserModalUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="glass-modal max-w-[560px] max-h-[90vh] overflow-y-auto w-full p-6 rounded-3xl border border-primary/30 shadow-2xl space-y-4 text-left">
+            <div className="flex items-center justify-between border-b border-outline-variant/30 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-primary text-[24px]">manage_accounts</span>
+                <div>
+                  <h3 className="font-extrabold text-base text-on-surface">Edit User Profile &amp; Donation Record</h3>
+                  <span className="text-xs text-on-surface-variant font-mono">ID: {editUserModalUser.institutionalId || editUserModalUser._id}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditUserModalUser(null)}
+                className="text-on-surface-variant hover:text-on-surface"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUserDetails} className="space-y-3 text-xs">
+              {/* Avatar Section */}
+              <div className="p-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 overflow-hidden flex items-center justify-center flex-shrink-0 border border-primary/30">
+                    {editUserForm.avatarUrl ? (
+                      <img src={editUserForm.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="material-symbols-outlined text-[32px] text-primary">person</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="font-bold text-on-surface block">User Profile Avatar</span>
+                    <span className="text-[10px] text-on-surface-variant block">Select curated avatar or paste image link</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setAvatarPickerForAdminUser(true)}
+                  className="btn-outline py-1.5 px-3 text-xs font-bold"
+                >
+                  Pick Avatar
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1">Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editUserForm.name}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={editUserForm.phone}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, phone: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1">Blood Group *</label>
+                  <select
+                    value={editUserForm.bloodGroup}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, bloodGroup: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 font-bold text-primary"
+                  >
+                    {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bg) => (
+                      <option key={bg} value={bg}>{bg}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Department *</label>
+                  <select
+                    value={editUserForm.department}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, department: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
+                  >
+                    {['CSE', 'EEE', 'ME', 'ICT', 'ENG', 'BBA', 'AIS', 'IPE', 'CE'].map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Role *</label>
+                  <select
+                    value={editUserForm.userType}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, userType: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
+                  >
+                    {['Student', 'Teacher', 'Staff', 'Admin'].map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1">Last Donation Date</label>
+                  <input
+                    type="date"
+                    value={editUserForm.lastDonationDate}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, lastDonationDate: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Total Verified Donation Bags</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editUserForm.donationCount}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, donationCount: parseInt(e.target.value, 10) || 0 })}
+                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1">Availability Status</label>
+                  <select
+                    value={editUserForm.availabilityStatus}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, availabilityStatus: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
+                  >
+                    <option value="Available">Available</option>
+                    <option value="Cooldown">Cooldown</option>
+                    <option value="Unavailable">Unavailable</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-2 pt-5">
+                  <input
+                    type="checkbox"
+                    id="editIsVol"
+                    checked={editUserForm.isDisasterVolunteer}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, isDisasterVolunteer: e.target.checked })}
+                    className="rounded border-outline-variant/60 text-primary"
+                  />
+                  <label htmlFor="editIsVol" className="font-semibold text-on-surface">
+                    Disaster Volunteer Responder
+                  </label>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-outline-variant/20 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditUserModalUser(null)}
+                  className="px-4 py-2 rounded-xl border border-outline-variant/40"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary px-5 py-2 font-bold">
+                  Save User Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Avatar Picker Modal */}
+      <AvatarPickerModal
+        isOpen={avatarPickerForAdminUser}
+        currentAvatarUrl={editUserForm.avatarUrl}
+        onClose={() => setAvatarPickerForAdminUser(false)}
+        onSave={(url) => setEditUserForm({ ...editUserForm, avatarUrl: url })}
+      />
     </div>
   );
 }

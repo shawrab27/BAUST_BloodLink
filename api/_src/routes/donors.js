@@ -12,7 +12,7 @@ const router = express.Router();
  * - Cooldown filter: 90 days interval
  *   - Active: lastDonationDate is null OR > 90 days ago
  *   - Cooldown: lastDonationDate within 90 days
- * - Filter by bloodGroup (A+, A-, B+, B-, AB+, AB-, O+, O-, BOMBAY)
+ * - Filter by bloodGroup (A+, A-, B+, B-, AB+, AB-, O+, O-)
  * - Filter by department (CSE, EEE, ME, ICT, ENG, BBA, AIS, IPE, CE)
  * - Filter by userType (Student, Teacher, Staff)
  * - Search by name or 16-character institutional ID
@@ -110,7 +110,7 @@ const DEMO_DONORS = [
     department: 'IPE',
     userType: 'Student',
     studentDetails: { batch: '18', section: 'B', session: '2019-20' },
-    bloodGroup: 'BOMBAY',
+    bloodGroup: 'A-',
     availabilityStatus: 'Available',
     phone: '+8801777889900',
     totalDonations: 2,
@@ -170,8 +170,7 @@ router.get('/', async (req, res, next) => {
       let filtered = [...DEMO_DONORS];
 
       if (bloodGroup && bloodGroup !== 'All') {
-        const bg = bloodGroup === 'Bombay' || bloodGroup === 'Bombay (hh)' ? 'BOMBAY' : bloodGroup;
-        filtered = filtered.filter((d) => d.bloodGroup === bg);
+        filtered = filtered.filter((d) => d.bloodGroup === bloodGroup);
       }
 
       if (department && department !== 'All') {
@@ -265,8 +264,7 @@ router.get('/', async (req, res, next) => {
 
     // 1. Blood group filter
     if (bloodGroup && bloodGroup !== 'All') {
-      const bg = bloodGroup === 'Bombay' || bloodGroup === 'Bombay (hh)' ? 'BOMBAY' : bloodGroup;
-      andClauses.push({ bloodGroup: bg });
+      andClauses.push({ bloodGroup });
     }
 
     // 2. Department filter
@@ -374,4 +372,5 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+router.DEMO_DONORS = DEMO_DONORS;
 module.exports = router;

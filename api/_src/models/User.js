@@ -8,7 +8,7 @@ const bcrypt = require('bcryptjs');
  * - Institutional ID: exactly 16 alphanumeric characters, regex ^[a-zA-Z0-9]{16}$, unique
  * - Gender: enum ['Male','Female'] only
  * - Department: enum ['CSE','EEE','ME','ICT','ENG','BBA','AIS','IPE','CE']
- * - Blood Group: enum ['A+','A-','B+','B-','AB+','AB-','O+','O-','BOMBAY']
+ * - Blood Group: enum ['A+','A-','B+','B-','AB+','AB-','O+','O-']
  * - Role: enum ['Student','Teacher','Staff','Admin']
  * - Role sub-documents for Student / Teacher / Staff
  * - Donor cooldown: ineligible if lastDonationDate within 90 days (null = eligible)
@@ -16,7 +16,7 @@ const bcrypt = require('bcryptjs');
  */
 
 const VALID_DEPARTMENTS = ['CSE', 'EEE', 'ME', 'ICT', 'ENG', 'BBA', 'AIS', 'IPE', 'CE'];
-const VALID_BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'BOMBAY'];
+const VALID_BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const VALID_GENDERS = ['Male', 'Female'];
 const VALID_USER_TYPES = ['Student', 'Teacher', 'Staff', 'Admin'];
 
@@ -218,6 +218,10 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
       index: true,
+    },
+    fcmTokens: {
+      type: [String],
+      default: [],
     },
     fcmToken: {
       type: String,

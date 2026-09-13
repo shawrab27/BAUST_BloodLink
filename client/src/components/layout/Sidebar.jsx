@@ -36,8 +36,6 @@ function Sidebar({ user = null }) {
       icon: 'e911_emergency',
       to: '/emergency',
       iconFill: true,
-      pulse: true,           // Emergency always shows pulsing ping
-      pingLabel: 'LIVE',
     },
     {
       id: 'helpline',
@@ -53,6 +51,8 @@ function Sidebar({ user = null }) {
       iconFill: true,
     },
   ];
+
+  const isGuest = user && (user.accountStatus === 'Guest' || user.isGuest === true);
 
   return (
     <aside className="sidebar" id="main-sidebar" aria-label="Main navigation">
@@ -77,8 +77,6 @@ function Sidebar({ user = null }) {
                     className={`material-symbols-outlined text-[20px] transition-colors ${
                       isActive
                         ? 'text-white'
-                        : item.pulse
-                        ? 'text-primary animate-pulse'
                         : 'text-primary group-hover:text-primary'
                     }`}
                     style={item.iconFill ? { fontVariationSettings: '"FILL" 1' } : {}}
@@ -98,11 +96,6 @@ function Sidebar({ user = null }) {
                 {isActive && (
                   <span className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_#ffffff]" />
                 )}
-
-                {/* Emergency live ping (always visible, not just when active) */}
-                {!isActive && item.pulse && (
-                  <span className="h-2.5 w-2.5 rounded-full bg-primary animate-ping shadow-[0_0_8px_rgba(184,0,53,0.6)]" />
-                )}
               </NavLink>
             );
           })}
@@ -121,15 +114,21 @@ function Sidebar({ user = null }) {
             </div>
             <div className="min-w-0">
               <p className="text-label-lg font-semibold text-on-surface truncate leading-none">
-                {user.name || 'Unknown'}
+                {isGuest ? (user.name || 'Guest Explorer') : (user.name || 'Unknown')}
               </p>
               <p className="text-label-sm text-on-surface-variant truncate mt-0.5">
-                {user.department || ''} · {user.userType || ''}
+                {isGuest ? 'Guest Access' : `${user.department || ''} · ${user.userType || ''}`}
               </p>
             </div>
-            <span className="blood-group-chip ml-auto flex-shrink-0 text-[10px] px-1.5">
-              {user.bloodGroup || '—'}
-            </span>
+            {isGuest ? (
+              <span className="ml-auto flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                Guest
+              </span>
+            ) : (
+              <span className="blood-group-chip ml-auto flex-shrink-0 text-[10px] px-1.5">
+                {user.bloodGroup || '—'}
+              </span>
+            )}
           </div>
         </div>
       )}

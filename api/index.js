@@ -66,6 +66,8 @@ app.use('/api/helpline', require('./_src/routes/helpline'));
 app.use('/api/messages', require('./_src/routes/messages'));
 // Phase 6: Admin
 app.use('/api/admin', require('./_src/routes/admin'));
+// Guest CRUD Operations
+app.use('/api/guests', require('./_src/routes/guests'));
 
 // ─── 404 FALLBACK ────────────────────────────────────────────────────────────
 app.use((req, res) => {

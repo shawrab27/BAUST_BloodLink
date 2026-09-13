@@ -35,6 +35,18 @@ const postSchema = new mongoose.Schema(
         trim: true,
       },
     ],
+    feeling: {
+      type: {
+        type: String,
+        trim: true,
+        default: null,
+      },
+      emoji: {
+        type: String,
+        trim: true,
+        default: null,
+      },
+    },
     loveCount: {
       type: Number,
       default: 0,

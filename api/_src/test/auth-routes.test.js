@@ -134,4 +134,198 @@ describe('BAUST BloodLink Phase 2 — Auth Route Endpoints & Validation', () => 
     const body = await res.json();
     assert.strictEqual(body.error, 'Unauthorized');
   });
+
+  // ─── GOOGLE & FACEBOOK OAUTH GUEST FLOW & UPGRADE TESTS ──────────────────────
+  describe('OAuth Social Sign-in & Guest Lifecycle (Google & Facebook)', () => {
+    test('Google OAuth sign-in creates Guest account, can browse Feed, blocked from Blood Request, then completes profile to Verified', async () => {
+      // 1. First-time login via Google creates a Guest account
+      const googleAuthRes = await fetch(`${baseUrl}/api/auth/oauth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'google',
+          oauthId: 'google_uid_987654321',
+          name: 'Google Test User',
+          email: 'google.test@baust.edu.bd',
+          avatarUrl: 'https://lh3.googleusercontent.com/a/test-avatar',
+        }),
+      });
+
+      assert.strictEqual(googleAuthRes.status, 200);
+      const googleData = await googleAuthRes.json();
+      assert.ok(googleData.token);
+      assert.strictEqual(googleData.user.accountStatus, 'Guest');
+      assert.strictEqual(googleData.user.authProvider, 'google');
+      assert.strictEqual(googleData.user.isGuest, true);
+
+      const guestToken = googleData.token;
+
+      // 2. Guest can browse Feed freely
+      const feedRes = await fetch(`${baseUrl}/api/posts`, {
+        headers: { Authorization: `Bearer ${guestToken}` },
+      });
+      assert.strictEqual(feedRes.status, 200);
+
+      // 3. Guest attempting to create a blood request is blocked server-side
+      const bloodReqRes = await fetch(`${baseUrl}/api/blood-requests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${guestToken}`,
+        },
+        body: JSON.stringify({
+          patientName: 'Sadia Rahman',
+          patientType: 'Student',
+          bloodGroup: 'A+',
+          units: 2,
+          hospital: 'Saidpur CMH Hospital',
+          contactName: 'Google User',
+          contactPhone: '+8801711223344',
+          requiredDate: new Date(Date.now() + 86400000).toISOString(),
+        }),
+      });
+      assert.strictEqual(bloodReqRes.status, 403);
+      const blockedData = await bloodReqRes.json();
+      assert.strictEqual(blockedData.code, 'PROFILE_COMPLETION_REQUIRED');
+
+      // 4. Guest completes profile to become Verified
+      const completeRes = await fetch(`${baseUrl}/api/auth/complete-profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${guestToken}`,
+        },
+        body: JSON.stringify({
+          institutionalId: 'CSE0120210009G99',
+          gender: 'Female',
+          department: 'CSE',
+          bloodGroup: 'A+',
+          userType: 'Student',
+          phone: '+8801711223344',
+        }),
+      });
+      assert.strictEqual(completeRes.status, 200);
+      const completeData = await completeRes.json();
+      assert.strictEqual(completeData.user.accountStatus, 'Verified');
+      assert.strictEqual(completeData.user.isGuest, false);
+      assert.strictEqual(completeData.user.institutionalId, 'CSE0120210009G99');
+
+      // 5. Now as Verified, creating a blood request succeeds
+      const verifiedToken = completeData.token;
+      const verifiedReqRes = await fetch(`${baseUrl}/api/blood-requests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${verifiedToken}`,
+        },
+        body: JSON.stringify({
+          patientName: 'Sadia Rahman',
+          patientType: 'Student',
+          bloodGroup: 'A+',
+          units: 2,
+          hospital: 'Saidpur CMH Hospital',
+          contactName: 'Google User',
+          contactPhone: '+8801711223344',
+          requiredDate: new Date(Date.now() + 86400000).toISOString(),
+        }),
+      });
+      assert.strictEqual(verifiedReqRes.status, 201);
+    });
+
+    test('Facebook OAuth sign-in creates Guest account, can browse Feed, blocked from Blood Request, then completes profile to Verified', async () => {
+      // 1. First-time login via Facebook creates a Guest account with requested email
+      const fbAuthRes = await fetch(`${baseUrl}/api/auth/oauth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'facebook',
+          oauthId: 'fb_uid_123456789',
+          name: 'Facebook Test User',
+          email: 'facebook.test@baust.edu.bd',
+          avatarUrl: 'https://graph.facebook.com/123456789/picture?type=large',
+        }),
+      });
+
+      assert.strictEqual(fbAuthRes.status, 200);
+      const fbData = await fbAuthRes.json();
+      assert.ok(fbData.token);
+      assert.strictEqual(fbData.user.accountStatus, 'Guest');
+      assert.strictEqual(fbData.user.authProvider, 'facebook');
+      assert.strictEqual(fbData.user.isGuest, true);
+      assert.strictEqual(fbData.user.email, 'facebook.test@baust.edu.bd');
+
+      const guestToken = fbData.token;
+
+      // 2. Guest can browse Feed freely
+      const feedRes = await fetch(`${baseUrl}/api/posts`, {
+        headers: { Authorization: `Bearer ${guestToken}` },
+      });
+      assert.strictEqual(feedRes.status, 200);
+
+      // 3. Guest attempting to create a blood request is blocked server-side
+      const bloodReqRes = await fetch(`${baseUrl}/api/blood-requests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${guestToken}`,
+        },
+        body: JSON.stringify({
+          patientName: 'Rafiqul Islam',
+          patientType: 'Teacher',
+          bloodGroup: 'B+',
+          units: 1,
+          hospital: 'Saidpur CMH Hospital',
+          contactName: 'Facebook User',
+          contactPhone: '+8801799887766',
+          requiredDate: new Date(Date.now() + 86400000).toISOString(),
+        }),
+      });
+      assert.strictEqual(bloodReqRes.status, 403);
+      const blockedData = await bloodReqRes.json();
+      assert.strictEqual(blockedData.code, 'PROFILE_COMPLETION_REQUIRED');
+
+      // 4. Guest completes profile to become Verified
+      const completeRes = await fetch(`${baseUrl}/api/auth/complete-profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${guestToken}`,
+        },
+        body: JSON.stringify({
+          institutionalId: 'EEE0120210008F88',
+          gender: 'Male',
+          department: 'EEE',
+          bloodGroup: 'B+',
+          userType: 'Student',
+          phone: '+8801799887766',
+        }),
+      });
+      assert.strictEqual(completeRes.status, 200);
+      const completeData = await completeRes.json();
+      assert.strictEqual(completeData.user.accountStatus, 'Verified');
+      assert.strictEqual(completeData.user.isGuest, false);
+      assert.strictEqual(completeData.user.institutionalId, 'EEE0120210008F88');
+
+      // 5. Now as Verified, creating a blood request succeeds
+      const verifiedToken = completeData.token;
+      const verifiedReqRes = await fetch(`${baseUrl}/api/blood-requests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${verifiedToken}`,
+        },
+        body: JSON.stringify({
+          patientName: 'Rafiqul Islam',
+          patientType: 'Teacher',
+          bloodGroup: 'B+',
+          units: 1,
+          hospital: 'Saidpur CMH Hospital',
+          contactName: 'Facebook User',
+          contactPhone: '+8801799887766',
+          requiredDate: new Date(Date.now() + 86400000).toISOString(),
+        }),
+      });
+      assert.strictEqual(verifiedReqRes.status, 201);
+    });
+  });
 });

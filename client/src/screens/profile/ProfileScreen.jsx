@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import AvatarPickerModal from '../../components/profile/AvatarPickerModal';
 
-const VALID_BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'BOMBAY'];
+const VALID_BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 // Campus Top Donors Leaderboard Data
 const CAMPUS_LEADERBOARD = [
@@ -15,9 +16,42 @@ const CAMPUS_LEADERBOARD = [
   { rank: 7, name: 'Nusrat Jahan Mim', department: 'EEE', userType: 'Student', bloodGroup: 'A+', donations: 2, tier: 'Volunteer' },
 ];
 
+const FEELING_OPTIONS = [
+  { type: 'Grateful', emoji: '😊', label: 'Feeling Grateful' },
+  { type: 'Proud', emoji: '🩸', label: 'Feeling Proud' },
+  { type: 'Energized', emoji: '⚡', label: 'Feeling Energized' },
+  { type: 'Hopeful', emoji: '🌟', label: 'Feeling Hopeful' },
+  { type: 'Ready to Donate', emoji: '💪', label: 'Ready to Donate' },
+];
+
 function ProfileScreen() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+  const { user, isAuthenticated, logout, updateUser } = useAuth();
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+
+  // Tab switcher state ('history' | 'timeline' | 'settings')
+  const [activeTab, setActiveTab] = useState('history');
+
+  // Timeline posts state
+  const [userPosts, setUserPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [newPostContent, setNewPostContent] = useState('');
+  const [newPostMedia, setNewPostMedia] = useState('');
+  const [selectedFeeling, setSelectedFeeling] = useState(null);
+  const [isSubmittingPost, setIsSubmittingPost] = useState(false);
+
+  // Settings & Emergency notification state
+  const [emergencyNotify, setEmergencyNotify] = useState(true);
+  const [isVolunteer, setIsVolunteer] = useState(user?.isDisasterVolunteer || false);
+  const [availability, setAvailability] = useState(user?.availabilityStatus || 'Available');
+  const [lastDonation, setLastDonation] = useState(
+    user?.lastDonationDate ? new Date(user.lastDonationDate).toISOString().split('T')[0] : ''
+  );
+  const [phoneInput, setPhoneInput] = useState(user?.phone || '');
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [settingsSuccess, setSettingsSuccess] = useState('');
+  const [settingsError, setSettingsError] = useState('');
 
   // Blood group verification request state
   const [changeModalOpen, setChangeModalOpen] = useState(false);
@@ -29,6 +63,46 @@ function ProfileScreen() {
   const [changeError, setChangeError] = useState('');
   const [changeSuccess, setChangeSuccess] = useState('');
 
+  // Sync state when user object loads/changes
+  useEffect(() => {
+    if (user) {
+      setIsVolunteer(user.isDisasterVolunteer || false);
+      setAvailability(user.availabilityStatus || 'Available');
+      setPhoneInput(user.phone || '');
+      if (user.lastDonationDate) {
+        setLastDonation(new Date(user.lastDonationDate).toISOString().split('T')[0]);
+      }
+    }
+  }, [user]);
+
+  // Fetch user's timeline posts
+  const fetchUserTimelinePosts = async () => {
+    if (!user) return;
+    setPostsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const userId = user._id || user.id || user.userId;
+      const res = await fetch(`/api/posts?author=${userId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserPosts(data.posts || []);
+      }
+    } catch (err) {
+      console.error('Error fetching user timeline posts:', err);
+    } finally {
+      setPostsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      fetchUserTimelinePosts();
+    }
+  }, [isAuthenticated, user?._id, user?.id]);
+
+  // Fetch pending change requests
   useEffect(() => {
     if (!isAuthenticated) return;
     const fetchChangeRequest = async () => {
@@ -48,6 +122,118 @@ function ProfileScreen() {
     fetchChangeRequest();
   }, [isAuthenticated]);
 
+  // Handle avatar save
+  const handleSaveAvatar = async (avatarUrl) => {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/auth/avatar', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ avatarUrl }),
+    });
+    if (!res.ok) {
+      throw new Error('Failed to update avatar');
+    }
+    const data = await res.json();
+    if (data.user) {
+      updateUser(data.user);
+    }
+  };
+
+  // Handle post creation with media and feeling
+  const handleCreateTimelinePost = async (e) => {
+    e.preventDefault();
+    if (!newPostContent.trim()) return;
+
+    setIsSubmittingPost(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          content: newPostContent.trim(),
+          mediaUrl: newPostMedia.trim() || null,
+          feeling: selectedFeeling,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to create timeline post');
+      const data = await res.json();
+      if (data.post) {
+        setUserPosts([data.post, ...userPosts]);
+        setNewPostContent('');
+        setNewPostMedia('');
+        setSelectedFeeling(null);
+      }
+    } catch (err) {
+      alert(err.message || 'Error publishing post');
+    } finally {
+      setIsSubmittingPost(false);
+    }
+  };
+
+  // Handle post deletion
+  const handleDeletePost = async (postId) => {
+    if (!window.confirm('Delete this timeline post?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/posts/${postId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setUserPosts(userPosts.filter((p) => p._id !== postId && p.id !== postId));
+      }
+    } catch (err) {
+      console.error('Failed to delete post:', err);
+    }
+  };
+
+  // Handle profile settings update
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    setIsSavingSettings(true);
+    setSettingsSuccess('');
+    setSettingsError('');
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/auth/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          phone: phoneInput.trim(),
+          isDisasterVolunteer: isVolunteer,
+          availabilityStatus: availability,
+          lastDonationDate: lastDonation ? new Date(lastDonation).toISOString() : null,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to save settings');
+
+      if (data.user) {
+        updateUser(data.user);
+      }
+      setSettingsSuccess('Emergency notifications and donation profile updated successfully!');
+      setTimeout(() => setSettingsSuccess(''), 3000);
+    } catch (err) {
+      setSettingsError(err.message || 'Error saving settings');
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  // Handle blood group verification request
   const handleSubmitChangeRequest = async (e) => {
     e.preventDefault();
     setChangeError('');
@@ -94,9 +280,7 @@ function ProfileScreen() {
       <div className="page-wrapper max-w-[800px] mx-auto text-center py-16">
         <div className="glass-card p-space-xl">
           <div className="w-20 h-20 rounded-full bg-primary/10 mx-auto mb-space-md flex items-center justify-center">
-            <span className="material-symbols-outlined text-[40px] text-primary">
-              account_circle
-            </span>
+            <span className="material-symbols-outlined text-[40px] text-primary">account_circle</span>
           </div>
           <h2 className="text-headline-md font-bold text-on-surface">Sign In Required</h2>
           <p className="text-body-md text-on-surface-variant mt-2 max-w-md mx-auto">
@@ -118,34 +302,179 @@ function ProfileScreen() {
     );
   }
 
+  const isGuest = user && (user.accountStatus === 'Guest' || user.isGuest === true);
   const isEligible = user.isDonorEligible !== false;
-  const donationCount = user.totalDonations || user.donationCount || 9;
-  const [activeTab, setActiveTab] = useState('history'); // 'history' | 'timeline'
-  const [newPostContent, setNewPostContent] = useState('');
-  const [userPosts, setUserPosts] = useState([
-    {
-      id: 'p-1',
-      author: user.name,
-      time: '2 days ago',
-      content: 'Successfully responded to the emergency B+ requisition at CMH Saidpur. Proud to support our campus community!',
-      likes: 18,
-      comments: 4,
-    },
-    {
-      id: 'p-2',
-      author: user.name,
-      time: '3 weeks ago',
-      content: 'Reminder for CSE Department: Blood donation camp scheduled for next Monday at SAC Room 204. Please register if eligible!',
-      likes: 24,
-      comments: 7,
-    },
-  ]);
+  const donationCount = user.totalDonations || user.donationCount || 0;
+
+  // Calculate days remaining in cooldown if applicable
+  let cooldownDaysLeft = 0;
+  if (user.lastDonationDate) {
+    const lastDate = new Date(user.lastDonationDate);
+    const ninetyDays = 90 * 24 * 60 * 60 * 1000;
+    const diff = ninetyDays - (Date.now() - lastDate.getTime());
+    if (diff > 0) {
+      cooldownDaysLeft = Math.ceil(diff / (24 * 60 * 60 * 1000));
+    }
+  }
+
+  // If user is a Guest, render the dedicated Guest profile without blood group/donation records
+  if (isGuest) {
+    return (
+      <div className="page-wrapper max-w-[1140px] mx-auto pb-16 space-y-6">
+        {/* ── GUEST HERO PROFILE HEADER ── */}
+        <div className="glass-card p-6 rounded-3xl border border-primary/20 bg-gradient-to-r from-primary/5 via-surface-container to-surface-container-low relative overflow-hidden shadow-sm">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+            <div className="flex items-center gap-5">
+              <button
+                type="button"
+                onClick={() => setAvatarModalOpen(true)}
+                className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-sm flex-shrink-0 group relative overflow-hidden cursor-pointer"
+                title="Click to choose avatar"
+              >
+                {user.avatarUrl ? (
+                  <img src={user.avatarUrl} alt="Guest Avatar" className="w-full h-full object-cover rounded-2xl" />
+                ) : (
+                  <span className="material-symbols-outlined text-[44px]">person</span>
+                )}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                  <span className="material-symbols-outlined text-[20px]">photo_camera</span>
+                </div>
+              </button>
+
+              <div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-2xl font-black text-on-surface">{user.name || 'Guest Explorer'}</h1>
+                  <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-primary/15 text-primary border border-primary/30">
+                    Guest Mode
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-on-surface-variant mt-1.5 flex-wrap">
+                  <span>Public Access Session</span>
+                  {user.email && (
+                    <>
+                      <span>•</span>
+                      <span className="text-on-surface">{user.email}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={logout}
+                className="btn-outline py-2 px-5 text-xs font-bold flex items-center gap-1.5"
+                id="guest-signout-btn"
+              >
+                <span className="material-symbols-outlined text-[16px]">logout</span>
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── GUEST NOTICE & UPGRADE CARDS ── */}
+        <div className="p-5 rounded-2xl bg-surface-container-lowest border border-primary/20 shadow-sm space-y-2">
+          <div className="flex items-center gap-2 text-primary font-bold text-sm">
+            <span className="material-symbols-outlined text-[20px]">info</span>
+            <span>Guest Profile Overview</span>
+          </div>
+          <p className="text-xs text-on-surface-variant leading-relaxed">
+            You are browsing BloodLink in Guest Mode. Guests can explore the community feed, public donor registry, and emergency helpline. Institutional donor data (blood group, donation records, eligibility pass) are reserved for verified BAUST students, faculty, and staff.
+          </p>
+        </div>
+
+        {/* ── UPGRADE ACTIONS GRID ── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="glass-card p-6 rounded-2xl border border-primary/30 flex flex-col justify-between space-y-4 hover:border-primary transition-all shadow-sm">
+            <div>
+              <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3">
+                <span className="material-symbols-outlined text-[24px]">person_add</span>
+              </div>
+              <h3 className="font-bold text-sm text-on-surface">Create BAUST Account</h3>
+              <p className="text-xs text-on-surface-variant mt-1.5 leading-relaxed">
+                Register with your institutional student/faculty ID to declare your blood group, become a campus donor, and request blood.
+              </p>
+            </div>
+            <button
+              type="button"
+              id="guest-create-account-btn"
+              onClick={async () => {
+                await logout();
+                navigate('/register');
+              }}
+              className="btn-primary w-full py-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow-md"
+            >
+              <span>Create Account</span>
+              <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+            </button>
+          </div>
+
+          <div className="glass-card p-6 rounded-2xl border border-outline-variant/40 flex flex-col justify-between space-y-4 hover:border-primary transition-all shadow-sm">
+            <div>
+              <div className="w-12 h-12 rounded-xl bg-surface-container-high text-on-surface flex items-center justify-center mb-3">
+                <span className="material-symbols-outlined text-[24px]">login</span>
+              </div>
+              <h3 className="font-bold text-sm text-on-surface">Sign In with BAUST ID</h3>
+              <p className="text-xs text-on-surface-variant mt-1.5 leading-relaxed">
+                Already registered with your institutional credentials? Log in directly to view your blood records and manage donations.
+              </p>
+            </div>
+            <button
+              type="button"
+              id="guest-login-btn"
+              onClick={async () => {
+                await logout();
+                navigate('/login');
+              }}
+              className="btn-outline w-full py-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:border-primary hover:text-primary"
+            >
+              <span>Log In</span>
+              <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+            </button>
+          </div>
+
+          <div className="glass-card p-6 rounded-2xl border border-primary/40 bg-gradient-to-br from-primary/5 via-white to-secondary/5 flex flex-col justify-between space-y-4 hover:border-primary transition-all shadow-md">
+            <div>
+              <div className="w-12 h-12 rounded-xl bg-primary text-white flex items-center justify-center mb-3 shadow-md">
+                <span className="material-symbols-outlined text-[24px]">badge</span>
+              </div>
+              <h3 className="font-bold text-sm text-on-surface flex items-center gap-1.5">
+                <span>Complete Campus Profile</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-primary/10 text-primary uppercase">Recommended</span>
+              </h3>
+              <p className="text-xs text-on-surface-variant mt-1.5 leading-relaxed">
+                Link your department, batch, and blood group to this session to complete your institutional verification.
+              </p>
+            </div>
+            <button
+              type="button"
+              id="guest-complete-profile-btn"
+              onClick={() => navigate('/complete-profile')}
+              className="btn-primary w-full py-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg"
+            >
+              <span>Complete Profile</span>
+              <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Avatar Picker Modal */}
+        <AvatarPickerModal
+          isOpen={avatarModalOpen}
+          currentAvatarUrl={user.avatarUrl}
+          onClose={() => setAvatarModalOpen(false)}
+          onSave={handleSaveAvatar}
+        />
+      </div>
+    );
+  }
 
   // Verified donation timeline for demonstrated user profile
   const donationHistory = [
     {
       id: 'dh-1',
-      date: '2026-06-15',
+      date: user.lastDonationDate || '2026-06-15',
       reqId: 'REQ-2026-0841',
       facility: 'CMH Saidpur Cantonment',
       recipientType: 'Emergency Surgery Requisition',
@@ -172,21 +501,6 @@ function ProfileScreen() {
     },
   ];
 
-  const handleCreateTimelinePost = (e) => {
-    e.preventDefault();
-    if (!newPostContent.trim()) return;
-    const newP = {
-      id: 'p-' + Date.now(),
-      author: user.name,
-      time: 'Just now',
-      content: newPostContent.trim(),
-      likes: 0,
-      comments: 0,
-    };
-    setUserPosts([newP, ...userPosts]);
-    setNewPostContent('');
-  };
-
   return (
     <div className="page-wrapper max-w-[1140px] mx-auto pb-16 space-y-6">
       {/* ── HERO PROFILE HEADER ── */}
@@ -194,16 +508,26 @@ function ProfileScreen() {
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
           {/* Avatar & User Info */}
           <div className="flex items-center gap-5">
-            <div className="relative">
-              <div className="w-24 h-24 rounded-2xl bg-primary-container flex items-center justify-center ring-4 ring-primary/30 shadow-md">
-                <span
-                  className="material-symbols-outlined text-[52px] text-on-primary-container"
-                  style={{ fontVariationSettings: '"FILL" 1' }}
-                >
-                  account_circle
-                </span>
+            <div className="relative group cursor-pointer" onClick={() => setAvatarModalOpen(true)}>
+              <div className="w-24 h-24 rounded-2xl bg-primary-container flex items-center justify-center ring-4 ring-primary/40 shadow-md overflow-hidden relative">
+                {user.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span
+                    className="material-symbols-outlined text-[52px] text-on-primary-container"
+                    style={{ fontVariationSettings: '"FILL" 1' }}
+                  >
+                    account_circle
+                  </span>
+                )}
+                {/* Hover Camera Overlay */}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center text-white gap-0.5">
+                  <span className="material-symbols-outlined text-[24px]">photo_camera</span>
+                  <span className="text-[10px] font-bold">Edit Avatar</span>
+                </div>
               </div>
-              <span className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center ring-2 ring-surface shadow-sm">
+
+              <span className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center ring-2 ring-surface shadow-sm" title="Verified Campus Donor">
                 <span className="material-symbols-outlined text-[16px]">verified</span>
               </span>
             </div>
@@ -250,8 +574,8 @@ function ProfileScreen() {
             </div>
             <div className="px-4 py-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 text-center min-w-[100px] shadow-sm">
               <span className="text-xs font-bold text-on-surface-variant block">Status</span>
-              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1 block">
-                {isEligible ? 'Eligible Now' : 'In Cooldown'}
+              <span className={`text-xs font-bold mt-1 block ${isEligible ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                {isEligible ? 'Eligible Now' : `Cooldown (${cooldownDaysLeft}d)`}
               </span>
             </div>
           </div>
@@ -260,13 +584,13 @@ function ProfileScreen() {
 
       {/* ── MAIN CONTENT GRID ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ── LEFT 2 COLS: 2-TAB CONTENT (Donations History + Timeline Posts) ── */}
+        {/* ── LEFT 2 COLS: 3-TAB CONTENT (History + Timeline Posts + Notification & Donor Settings) ── */}
         <div className="lg:col-span-2 space-y-5">
           {/* Tab Switcher */}
-          <div className="flex items-center gap-2 border-b border-outline-variant/30 pb-2">
+          <div className="flex items-center gap-2 border-b border-outline-variant/30 pb-2 overflow-x-auto">
             <button
               onClick={() => setActiveTab('history')}
-              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'history'
                   ? 'bg-primary text-white shadow-sm'
                   : 'bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
@@ -277,14 +601,25 @@ function ProfileScreen() {
             </button>
             <button
               onClick={() => setActiveTab('timeline')}
-              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'timeline'
                   ? 'bg-primary text-white shadow-sm'
                   : 'bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">dynamic_feed</span>
-              <span>Timeline &amp; Posts ({userPosts.length})</span>
+              <span>Timeline Posts ({userPosts.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === 'settings'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">notifications_active</span>
+              <span>Emergency Alerts &amp; Dates</span>
             </button>
           </div>
 
@@ -342,65 +677,414 @@ function ProfileScreen() {
             </div>
           )}
 
-          {/* TAB 2: Timeline & Posts */}
+          {/* TAB 2: Timeline & Posts with Images/Text/Feelings */}
           {activeTab === 'timeline' && (
             <div className="space-y-4">
-              {/* Quick Post Composer */}
-              <div className="glass-card p-4 rounded-2xl border border-outline-variant/30 shadow-sm">
+              {/* Timeline Composer */}
+              <div className="glass-card p-5 rounded-2xl border border-primary/20 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-primary text-[18px]">post_add</span>
+                    Share an Update on Your Profile Timeline
+                  </span>
+                  {selectedFeeling && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-primary/10 text-primary flex items-center gap-1">
+                      <span>{selectedFeeling.emoji}</span>
+                      <span>{selectedFeeling.label}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFeeling(null)}
+                        className="ml-1 text-xs hover:opacity-75"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                </div>
+
                 <form onSubmit={handleCreateTimelinePost} className="space-y-3">
                   <textarea
                     rows={2}
-                    placeholder="Share a blood donation experience or community update..."
+                    placeholder={`What's on your mind, ${user.name.split(' ')[0]}? Share a blood donation experience, emergency call-out, or campus note...`}
                     value={newPostContent}
                     onChange={(e) => setNewPostContent(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/40 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   />
-                  <div className="flex items-center justify-end">
+
+                  {/* Media URL / Image Link Input */}
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <span className="material-symbols-outlined absolute left-3 top-2.5 text-[16px] text-on-surface-variant">
+                        image
+                      </span>
+                      <input
+                        type="url"
+                        placeholder="Attach image URL (optional, e.g. https://...)"
+                        value={newPostMedia}
+                        onChange={(e) => setNewPostMedia(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/40 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Media Preview if provided */}
+                  {newPostMedia && (
+                    <div className="relative w-full max-h-48 rounded-xl overflow-hidden bg-black/5 border border-outline-variant/30">
+                      <img
+                        src={newPostMedia}
+                        alt="Media Preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => (e.target.style.display = 'none')}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setNewPostMedia('')}
+                        className="absolute top-2 right-2 p-1 rounded-full bg-black/60 text-white hover:bg-black/80"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">close</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Feelings Bar & Submit */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap pt-1 border-t border-outline-variant/20">
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px]">
+                      <span className="text-on-surface-variant font-medium mr-1">Feeling:</span>
+                      {FEELING_OPTIONS.map((f) => (
+                        <button
+                          key={f.type}
+                          type="button"
+                          onClick={() => setSelectedFeeling(selectedFeeling?.type === f.type ? null : f)}
+                          className={`px-2 py-1 rounded-lg border transition-all flex items-center gap-1 ${
+                            selectedFeeling?.type === f.type
+                              ? 'border-primary bg-primary/10 text-primary font-bold'
+                              : 'border-outline-variant/30 bg-surface-container-low text-on-surface-variant hover:text-on-surface'
+                          }`}
+                        >
+                          <span>{f.emoji}</span>
+                          <span>{f.type}</span>
+                        </button>
+                      ))}
+                    </div>
+
                     <button
                       type="submit"
-                      disabled={!newPostContent.trim()}
-                      className="btn-primary py-1.5 px-4 text-xs font-bold flex items-center gap-1.5 disabled:opacity-50"
+                      disabled={!newPostContent.trim() || isSubmittingPost}
+                      className="btn-primary py-1.5 px-5 text-xs font-bold flex items-center gap-1.5 disabled:opacity-50"
                     >
-                      <span className="material-symbols-outlined text-[15px]">send</span>
-                      <span>Post Update</span>
+                      {isSubmittingPost ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Posting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined text-[15px]">send</span>
+                          <span>Publish Post</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>
               </div>
 
-              {/* User Posts List */}
-              <div className="space-y-3">
-                {userPosts.map((p) => (
-                  <div
-                    key={p.id}
-                    className="glass-card p-4 rounded-2xl border border-outline-variant/30 space-y-2 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-on-surface">{p.author}</span>
-                        <span className="text-[11px] text-on-surface-variant">• {p.time}</span>
+              {/* User Posts Feed */}
+              {postsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2].map((i) => (
+                    <div key={i} className="h-32 rounded-2xl bg-surface-container animate-pulse" />
+                  ))}
+                </div>
+              ) : userPosts.length === 0 ? (
+                <div className="p-8 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 text-center space-y-2">
+                  <span className="material-symbols-outlined text-[40px] text-on-surface-variant/60">
+                    rate_review
+                  </span>
+                  <h4 className="font-bold text-xs text-on-surface">No timeline posts yet</h4>
+                  <p className="text-[11px] text-on-surface-variant">
+                    Share your first blood donation experience or emergency campus call-out above.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {userPosts.map((p) => (
+                    <div
+                      key={p._id || p.id}
+                      className="glass-card p-5 rounded-2xl border border-outline-variant/30 space-y-3 shadow-sm hover:border-primary/30 transition-all"
+                    >
+                      {/* Post Header */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 overflow-hidden flex items-center justify-center flex-shrink-0">
+                            {user.avatarUrl ? (
+                              <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="material-symbols-outlined text-[24px] text-primary">person</span>
+                            )}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-xs text-on-surface">{user.name}</span>
+                              <span className="blood-group-chip text-[9px] px-1">{user.bloodGroup}</span>
+                              {p.feeling && (
+                                <span className="text-[11px] text-on-surface-variant flex items-center gap-0.5">
+                                  <span>is</span>
+                                  <span>{p.feeling.emoji}</span>
+                                  <span className="font-medium">{p.feeling.type || p.feeling.label}</span>
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-on-surface-variant">
+                              {new Date(p.createdAt || Date.now()).toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePost(p._id || p.id)}
+                          className="p-1 rounded-lg text-on-surface-variant/60 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                          title="Delete Post"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                        </button>
+                      </div>
+
+                      {/* Post Text Content */}
+                      <p className="text-xs text-on-surface leading-relaxed whitespace-pre-wrap">{p.content}</p>
+
+                      {/* Post Attached Media */}
+                      {p.mediaUrl && (
+                        <div className="w-full max-h-72 rounded-xl overflow-hidden bg-black/5 border border-outline-variant/20">
+                          <img
+                            src={p.mediaUrl}
+                            alt="Post Media"
+                            className="w-full h-full object-cover"
+                            onError={(e) => (e.target.style.display = 'none')}
+                          />
+                        </div>
+                      )}
+
+                      {/* Post Engagement Bar */}
+                      <div className="flex items-center gap-4 pt-2 border-t border-outline-variant/20 text-xs text-on-surface-variant">
+                        <span className="flex items-center gap-1 text-primary font-bold">
+                          <span className="material-symbols-outlined text-[16px]">favorite</span>
+                          <span>{p.loveCount || p.likes || 0} Loves</span>
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[16px]">chat_bubble</span>
+                          <span>{p.commentCount || p.comments || 0} Comments</span>
+                        </span>
                       </div>
                     </div>
-                    <p className="text-xs text-on-surface leading-relaxed">{p.content}</p>
-                    <div className="flex items-center gap-4 pt-2 border-t border-outline-variant/20 text-xs text-on-surface-variant">
-                      <span className="flex items-center gap-1 hover:text-primary cursor-pointer">
-                        <span className="material-symbols-outlined text-[16px] text-primary">favorite</span>
-                        <span>{p.likes} Loves</span>
-                      </span>
-                      <span className="flex items-center gap-1 hover:text-primary cursor-pointer">
-                        <span className="material-symbols-outlined text-[16px]">chat_bubble</span>
-                        <span>{p.comments} Comments</span>
-                      </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: Emergency Notification Updates & Last Donation Date Settings */}
+          {activeTab === 'settings' && (
+            <div className="glass-panel p-6 rounded-2xl border border-primary/20 shadow-sm space-y-5">
+              <div>
+                <h3 className="font-bold text-sm text-on-surface flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary text-[20px]">tune</span>
+                  Emergency Notification &amp; Donor Readiness Settings
+                </h3>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Update your contact readiness, donation cooldown date, and emergency response channels.
+                </p>
+              </div>
+
+              {settingsSuccess && (
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 text-xs flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                  <span>{settingsSuccess}</span>
+                </div>
+              )}
+
+              {settingsError && (
+                <div className="p-3 rounded-xl bg-error-container text-on-error-container text-xs flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px]">error</span>
+                  <span>{settingsError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveSettings} className="space-y-4 text-xs">
+                {/* 1. Last Donation Date Picker */}
+                <div className="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/30 space-y-2">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <label className="font-bold text-on-surface flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-primary text-[16px]">calendar_month</span>
+                      Last Donation Date
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setLastDonation(new Date().toISOString().split('T')[0])}
+                        className="text-[10px] font-bold text-primary hover:underline"
+                      >
+                        Set to Today
+                      </button>
+                      <span>•</span>
+                      <button
+                        type="button"
+                        onClick={() => setLastDonation('')}
+                        className="text-[10px] font-bold text-on-surface-variant hover:underline"
+                      >
+                        Clear / Never Donated
+                      </button>
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  <input
+                    type="date"
+                    value={lastDonation}
+                    onChange={(e) => setLastDonation(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="w-full px-3.5 py-2 rounded-xl bg-surface-container-low border border-outline-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <span className="text-[10px] text-on-surface-variant block">
+                    {lastDonation
+                      ? `Calculated Safe Cooldown: 90 days required between voluntary blood donations.`
+                      : 'No donation on record. Status is currently Eligible for all blood matching.'}
+                  </span>
+                </div>
+
+                {/* 2. Emergency Phone Contact */}
+                <div className="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/30 space-y-2">
+                  <label className="font-bold text-on-surface flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-primary text-[16px]">phone_in_talk</span>
+                    Emergency Phone Contact
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="+880 1711-XXXXXX"
+                    value={phoneInput}
+                    onChange={(e) => setPhoneInput(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-surface-container-low border border-outline-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <span className="text-[10px] text-on-surface-variant block">
+                    Used strictly by Medical Duty Officers when urgent matching calls are initiated.
+                  </span>
+                </div>
+
+                {/* 3. Emergency SOS Broadcast Notification Toggle */}
+                <div className="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-between gap-4">
+                  <div>
+                    <span className="font-bold text-on-surface block">Emergency Requisition Push Notifications</span>
+                    <span className="text-[11px] text-on-surface-variant block mt-0.5">
+                      Receive instant broadcast alerts when your blood group is needed at CMH Saidpur.
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={emergencyNotify}
+                    onChange={(e) => setEmergencyNotify(e.target.checked)}
+                    className="w-5 h-5 accent-primary cursor-pointer rounded"
+                  />
+                </div>
+
+                {/* 4. Disaster Volunteer Responder Toggle */}
+                <div className="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-between gap-4">
+                  <div>
+                    <span className="font-bold text-on-surface block">Disaster &amp; Crisis Volunteer Responder</span>
+                    <span className="text-[11px] text-on-surface-variant block mt-0.5">
+                      Enlist as an on-call emergency mobilizer during campus health emergencies.
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={isVolunteer}
+                    onChange={(e) => setIsVolunteer(e.target.checked)}
+                    className="w-5 h-5 accent-primary cursor-pointer rounded"
+                  />
+                </div>
+
+                {/* 5. General Availability Status */}
+                <div className="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/30 space-y-2">
+                  <label className="font-bold text-on-surface block">Donor Availability Status</label>
+                  <select
+                    value={availability}
+                    onChange={(e) => setAvailability(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-surface-container-low border border-outline-variant/50 text-xs font-bold text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="Available">Available (Ready to respond)</option>
+                    <option value="Unavailable">Unavailable (Temporarily busy/traveling)</option>
+                    <option value="Cooldown">Cooldown (Clinical recovery period)</option>
+                  </select>
+                </div>
+
+                <div className="pt-2 flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={isSavingSettings}
+                    className="btn-primary py-2 px-6 text-xs font-bold flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isSavingSettings ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Saving Settings...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-[16px]">save</span>
+                        <span>Save Emergency Settings</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           )}
         </div>
 
         {/* ── RIGHT 1 COL: Profile Settings, Leaderboard Widget, & Clearance Pass ── */}
         <div className="space-y-5">
+          {/* Avatar Quick Edit Card */}
+          <div className="glass-card p-5 rounded-2xl border border-primary/20 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-primary text-[18px]">face</span>
+                Profile Avatar &amp; Sticker
+              </span>
+              <button
+                type="button"
+                onClick={() => setAvatarModalOpen(true)}
+                className="text-[11px] font-bold text-primary hover:underline"
+              >
+                Change
+              </button>
+            </div>
+
+            <div
+              onClick={() => setAvatarModalOpen(true)}
+              className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex items-center gap-3 cursor-pointer hover:border-primary/40 transition-all group"
+            >
+              <div className="w-12 h-12 rounded-xl bg-primary/10 overflow-hidden flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                {user.avatarUrl ? (
+                  <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="material-symbols-outlined text-[28px] text-primary">person</span>
+                )}
+              </div>
+              <div className="flex-1">
+                <span className="text-xs font-bold text-on-surface block">BAUST Custom Avatar</span>
+                <span className="text-[10px] text-on-surface-variant block">
+                  Purple uniform, hijab, teacher, or custom photo.
+                </span>
+              </div>
+              <span className="material-symbols-outlined text-[18px] text-on-surface-variant group-hover:text-primary">
+                chevron_right
+              </span>
+            </div>
+          </div>
+
           {/* Locked Blood Group & Change Request */}
           <div className="glass-card p-5 rounded-2xl border border-outline-variant/30 shadow-sm space-y-3">
             <div className="flex items-center justify-between">
@@ -496,12 +1180,14 @@ function ProfileScreen() {
                 <span className="material-symbols-outlined text-[16px] text-emerald-500">health_and_safety</span>
                 Medical Clearance Pass
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                ACTIVE
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${isEligible ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'}`}>
+                {isEligible ? 'ACTIVE' : 'COOLDOWN'}
               </span>
             </div>
             <p className="text-xs text-on-surface-variant leading-relaxed">
-              Safe donation interval is monitored automatically. Last clinical check-up passed at BAUST Medical Center.
+              {isEligible
+                ? 'Safe donation interval is verified. Last clinical check-up passed at BAUST Medical Center.'
+                : `Donor cooldown active. Next eligible donation in ${cooldownDaysLeft} days.`}
             </p>
             <div className="pt-2 border-t border-outline-variant/20">
               <button
@@ -516,6 +1202,14 @@ function ProfileScreen() {
           </div>
         </div>
       </div>
+
+      {/* ── AVATAR & PROFILE PICTURE PICKER MODAL ── */}
+      <AvatarPickerModal
+        isOpen={avatarModalOpen}
+        currentAvatarUrl={user.avatarUrl}
+        onClose={() => setAvatarModalOpen(false)}
+        onSave={handleSaveAvatar}
+      />
 
       {/* ── CAMPUS LEADERBOARD MODAL ── */}
       {leaderboardOpen && (
@@ -538,55 +1232,52 @@ function ProfileScreen() {
             </div>
 
             <div className="max-h-[380px] overflow-y-auto space-y-2 pr-1">
-              {CAMPUS_LEADERBOARD.map((donor) => {
-                const isTop3 = donor.rank <= 3;
-                return (
-                  <div
-                    key={donor.rank}
-                    className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
-                      donor.rank === 1
-                        ? 'bg-amber-500/10 border-amber-500/30'
-                        : donor.rank === 2
-                        ? 'bg-slate-300/10 border-slate-300/30'
-                        : donor.rank === 3
-                        ? 'bg-amber-700/10 border-amber-700/30'
-                        : 'bg-surface-container-lowest border-outline-variant/20'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs ${
-                          donor.rank === 1
-                            ? 'bg-amber-500 text-white shadow-sm'
-                            : donor.rank === 2
-                            ? 'bg-slate-400 text-white'
-                            : donor.rank === 3
-                            ? 'bg-amber-700 text-white'
-                            : 'bg-surface-container text-on-surface-variant'
-                        }`}
-                      >
-                        {donor.rank}
-                      </span>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-on-surface">{donor.name}</span>
-                          <span className="blood-group-chip text-[9px] px-1">{donor.bloodGroup}</span>
-                        </div>
-                        <span className="text-[11px] text-on-surface-variant">
-                          {donor.department} · {donor.userType}
-                        </span>
+              {CAMPUS_LEADERBOARD.map((donor) => (
+                <div
+                  key={donor.rank}
+                  className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                    donor.rank === 1
+                      ? 'bg-amber-500/10 border-amber-500/30'
+                      : donor.rank === 2
+                      ? 'bg-slate-300/10 border-slate-300/30'
+                      : donor.rank === 3
+                      ? 'bg-amber-700/10 border-amber-700/30'
+                      : 'bg-surface-container-lowest border-outline-variant/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs ${
+                        donor.rank === 1
+                          ? 'bg-amber-500 text-white shadow-sm'
+                          : donor.rank === 2
+                          ? 'bg-slate-400 text-white'
+                          : donor.rank === 3
+                          ? 'bg-amber-700 text-white'
+                          : 'bg-surface-container text-on-surface-variant'
+                      }`}
+                    >
+                      {donor.rank}
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-on-surface">{donor.name}</span>
+                        <span className="blood-group-chip text-[9px] px-1">{donor.bloodGroup}</span>
                       </div>
-                    </div>
-
-                    <div className="text-right">
-                      <span className="font-black text-primary text-sm block leading-none">
-                        {donor.donations}
+                      <span className="text-[11px] text-on-surface-variant">
+                        {donor.department} · {donor.userType}
                       </span>
-                      <span className="text-[10px] font-semibold text-on-surface-variant">Donations</span>
                     </div>
                   </div>
-                );
-              })}
+
+                  <div className="text-right">
+                    <span className="font-black text-primary text-sm block leading-none">
+                      {donor.donations}
+                    </span>
+                    <span className="text-[10px] font-semibold text-on-surface-variant">Donations</span>
+                  </div>
+                </div>
+              ))}
             </div>
 
             <div className="pt-2 border-t border-outline-variant/20 text-center">

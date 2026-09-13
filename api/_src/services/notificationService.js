@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { sendMulticastNotification } = require('../config/firebase');
@@ -70,7 +71,7 @@ async function dispatchNotification({
     savedCount = notificationDocs.length;
   }
 
-  // 2. Multicast FCM Push delivery
+  // 2. Multicast FCM Push delivery across all user devices
   let pushedCount = 0;
   let failedPushCount = 0;
 
@@ -79,10 +80,22 @@ async function dispatchNotification({
     if (isConnected) {
       const usersWithTokens = await User.find({
         _id: { $in: uniqueRecipients },
-        fcmToken: { $exists: true, $ne: null, $ne: '' },
-      }).select('fcmToken');
-      tokens = usersWithTokens.map((u) => u.fcmToken).filter(Boolean);
+        $or: [
+          { fcmTokens: { $exists: true, $ne: [] } },
+          { fcmToken: { $exists: true, $ne: null, $ne: '' } },
+        ],
+      }).select('fcmTokens fcmToken');
+
+      tokens = usersWithTokens.flatMap((u) => {
+        const list = [];
+        if (Array.isArray(u.fcmTokens)) list.push(...u.fcmTokens);
+        if (u.fcmToken) list.push(u.fcmToken);
+        return list;
+      }).filter(Boolean);
     }
+
+    // Deduplicate tokens
+    tokens = [...new Set(tokens.filter((t) => typeof t === 'string' && t.trim().length > 0))];
 
     if (tokens.length > 0) {
       const pushResult = await sendMulticastNotification({

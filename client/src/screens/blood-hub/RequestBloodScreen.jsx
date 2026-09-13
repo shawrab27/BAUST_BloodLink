@@ -12,7 +12,6 @@ const BLOOD_GROUPS = [
   { id: 'AB-', label: 'AB-', sub: 'Neg' },
   { id: 'O+', label: 'O+', sub: 'Universal' },
   { id: 'O-', label: 'O-', sub: 'Neg' },
-  { id: 'BOMBAY', label: 'Bombay', sub: 'hh Rare' },
 ];
 
 const PATIENT_TYPES = ['Student', 'Teacher', 'Staff', 'Civilian'];
@@ -657,11 +656,7 @@ function RequestBloodScreen() {
               type="submit"
               disabled={isSubmitting}
               id="submit-requisition-btn"
-              className="w-full sm:w-auto px-8 py-3 rounded-xl text-white font-extrabold text-base shadow-lg flex items-center justify-center gap-2.5 transition-all active:scale-95 disabled:opacity-50"
-              style={{
-                background: 'linear-gradient(135deg, rgb(225, 29, 72) 0%, rgb(184, 0, 53) 100%)',
-                boxShadow: '0 8px 24px rgba(184, 0, 53, 0.35)',
-              }}
+              className="w-full sm:w-auto px-8 py-3 rounded-full text-white font-extrabold text-base bg-primary hover:bg-primary-dark shadow-md shadow-primary/30 hover:shadow-primary/45 flex items-center justify-center gap-2.5 transition-all active:scale-95 disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>

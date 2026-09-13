@@ -7,9 +7,24 @@ import ErrorBoundary from '../../components/common/ErrorBoundary';
 
 const CATEGORY_PILLS = [
   { id: 'all', label: 'All Activity', icon: 'dynamic_feed', tag: null },
-  { id: 'urgent', label: 'Urgent Blood Appeals', icon: 'warning', tag: 'Emergency', pulse: true },
+  { id: 'urgent', label: 'Urgent Blood Appeals', icon: 'warning', tag: 'Emergency' },
   { id: 'milestones', label: 'Donation Milestones', icon: 'stars', tag: 'DonationStory' },
   { id: 'drives', label: 'Campus Blood Drives', icon: 'diversity_1', tag: 'CampusDrive' },
+];
+
+const FEELINGS_LIST = [
+  { label: 'Happy', emoji: '😊' },
+  { label: 'Grateful', emoji: '🙏' },
+  { label: 'Proud', emoji: '🏆' },
+  { label: 'Loved', emoji: '💖' },
+  { label: 'Excited', emoji: '🎉' },
+  { label: 'Hopeful', emoji: '🌟' },
+  { label: 'Sad', emoji: '😔' },
+  { label: 'Angry', emoji: '😠' },
+  { label: 'Motivated', emoji: '💪' },
+  { label: 'Helping', emoji: '🩺' },
+  { label: 'Donating', emoji: '🩸' },
+  { label: 'Anxious', emoji: '😟' },
 ];
 
 function FeedScreenContent() {
@@ -29,6 +44,8 @@ function FeedScreenContent() {
   const [newPostText, setNewPostText] = useState('');
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [postAttachmentType, setPostAttachmentType] = useState('text');
+  const [selectedFeeling, setSelectedFeeling] = useState(null);
+  const [isFeelingPickerOpen, setIsFeelingPickerOpen] = useState(false);
   const [isSubmittingPost, setIsSubmittingPost] = useState(false);
   const [postError, setPostError] = useState('');
 
@@ -244,6 +261,7 @@ function FeedScreenContent() {
         body: JSON.stringify({
           content: newPostText.trim(),
           mediaUrl: mediaPreview || null,
+          feeling: selectedFeeling ? { type: selectedFeeling.label, emoji: selectedFeeling.emoji } : null,
         }),
       });
 
@@ -256,6 +274,8 @@ function FeedScreenContent() {
       setPosts((prev) => [data.post, ...prev]);
       setNewPostText('');
       setMediaPreview(null);
+      setSelectedFeeling(null);
+      setIsFeelingPickerOpen(false);
       setIsComposerOpen(false);
       setState('ready');
       fetchSidebarStats(); // Refresh counters
@@ -534,6 +554,58 @@ function FeedScreenContent() {
                   <p className="text-xs text-primary font-medium">{postError}</p>
                 )}
 
+                {/* Selected Feeling Indicator */}
+                {selectedFeeling && (
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/25 text-xs font-semibold text-primary w-fit animate-fade-in">
+                    <span>is feeling {selectedFeeling.emoji} {selectedFeeling.label}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFeeling(null)}
+                      className="text-primary hover:text-primary-dark ml-1 text-xs font-bold cursor-pointer"
+                      title="Remove feeling"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                {/* Interactive Feelings Picker Popover */}
+                {isFeelingPickerOpen && (
+                  <div className="p-3 bg-surface-container-low rounded-2xl border border-outline-variant/40 shadow-md space-y-2 animate-fade-in">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-on-surface">How are you feeling?</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsFeelingPickerOpen(false)}
+                        className="text-on-surface-variant hover:text-on-surface text-xs font-bold cursor-pointer px-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 max-h-[160px] overflow-y-auto">
+                      {FEELINGS_LIST.map((f) => (
+                        <button
+                          key={f.label}
+                          type="button"
+                          onClick={() => {
+                            setSelectedFeeling(f);
+                            setIsFeelingPickerOpen(false);
+                            setIsComposerOpen(true);
+                          }}
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                            selectedFeeling?.label === f.label
+                              ? 'bg-primary text-white shadow-sm'
+                              : 'bg-white hover:bg-surface-container-high border border-outline-variant/30 text-on-surface'
+                          }`}
+                        >
+                          <span className="text-base">{f.emoji}</span>
+                          <span>{f.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button
@@ -550,9 +622,9 @@ function FeedScreenContent() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPostAttachmentType('text')}
+                      onClick={() => { setPostAttachmentType('text'); setIsFeelingPickerOpen(false); }}
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
-                        postAttachmentType === 'text'
+                        postAttachmentType === 'text' && !isFeelingPickerOpen
                           ? 'bg-primary/10 border-primary text-primary'
                           : 'bg-surface-container-low/80 hover:bg-surface-container border-outline-variant/40 text-on-surface'
                       }`}
@@ -562,19 +634,19 @@ function FeedScreenContent() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPostAttachmentType('feelings')}
+                      onClick={() => setIsFeelingPickerOpen((o) => !o)}
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
-                        postAttachmentType === 'feelings'
+                        isFeelingPickerOpen || selectedFeeling
                           ? 'bg-primary/10 border-primary text-primary'
                           : 'bg-surface-container-low/80 hover:bg-surface-container border-outline-variant/40 text-on-surface'
                       }`}
                     >
                       <span className="material-symbols-outlined text-[17px] text-secondary">mood</span>
-                      <span>Feelings</span>
+                      <span>{selectedFeeling ? `${selectedFeeling.emoji} ${selectedFeeling.label}` : 'Feelings'}</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPostAttachmentType('activity')}
+                      onClick={() => { setPostAttachmentType('activity'); setIsFeelingPickerOpen(false); }}
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
                         postAttachmentType === 'activity'
                           ? 'bg-primary/10 border-primary text-primary'
@@ -593,12 +665,7 @@ function FeedScreenContent() {
                     <button
                       type="submit"
                       disabled={isSubmittingPost || (!newPostText.trim() && !mediaPreview)}
-                      className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-white text-xs font-semibold shadow-md shadow-primary/25 hover:shadow-primary/40 active:scale-95 transition-all disabled:opacity-50"
-                      style={{
-                        background: 'linear-gradient(135deg, rgb(225, 29, 72) 0%, rgb(190, 18, 60) 100%)',
-                        boxShadow: 'rgba(225, 29, 72, 0.35) 0px 4px 14px, rgba(255, 255, 255, 0.25) 0px 1px 0px inset',
-                        border: '1px solid rgba(255, 255, 255, 0.25)',
-                      }}
+                      className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-white text-xs font-semibold bg-primary hover:bg-primary-dark shadow-md shadow-primary/25 hover:shadow-primary/40 active:scale-95 transition-all disabled:opacity-50"
                     >
                       <span className="material-symbols-outlined text-[16px] text-white">send</span>
                       <span>{isSubmittingPost ? 'Posting...' : 'Post'}</span>
@@ -635,12 +702,16 @@ function FeedScreenContent() {
                     <span>Text</span>
                   </button>
                   <button
-                    onClick={() => { setIsComposerOpen(true); setPostAttachmentType('feelings'); }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-low/80 hover:bg-surface-container border border-outline-variant/40 text-on-surface text-xs font-semibold transition-all shadow-xs"
+                    onClick={() => { setIsComposerOpen(true); setIsFeelingPickerOpen(true); }}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all shadow-xs ${
+                      selectedFeeling
+                        ? 'bg-primary/10 border-primary text-primary'
+                        : 'bg-surface-container-low/80 hover:bg-surface-container border-outline-variant/40 text-on-surface'
+                    }`}
                     type="button"
                   >
                     <span className="material-symbols-outlined text-[17px] text-secondary">mood</span>
-                    <span>Feelings</span>
+                    <span>{selectedFeeling ? `${selectedFeeling.emoji} ${selectedFeeling.label}` : 'Feelings'}</span>
                   </button>
                   <button
                     onClick={() => { setIsComposerOpen(true); setPostAttachmentType('activity'); }}
@@ -654,12 +725,7 @@ function FeedScreenContent() {
 
                 <button
                   onClick={() => setIsComposerOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-white text-xs font-semibold shadow-md shadow-primary/25 hover:shadow-primary/40 transition-all"
-                  style={{
-                    background: 'linear-gradient(135deg, rgb(225, 29, 72) 0%, rgb(190, 18, 60) 100%)',
-                    boxShadow: 'rgba(225, 29, 72, 0.35) 0px 4px 14px, rgba(255, 255, 255, 0.25) 0px 1px 0px inset',
-                    border: '1px solid rgba(255, 255, 255, 0.25)',
-                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-white text-xs font-semibold bg-primary hover:bg-primary-dark shadow-md shadow-primary/25 hover:shadow-primary/40 transition-all"
                   type="button"
                 >
                   <span className="material-symbols-outlined text-[16px] text-white">send</span>
@@ -680,29 +746,14 @@ function FeedScreenContent() {
                   type="button"
                   className={`px-4 py-2 rounded-full font-semibold text-xs shrink-0 flex items-center gap-1.5 transition-all shadow-sm ${
                     isActive
-                      ? 'text-white'
-                      : 'bg-surface-container-lowest/90 hover:bg-surface-container-high text-on-surface-variant hover:text-primary'
+                      ? 'bg-primary text-white shadow-md shadow-primary/25'
+                      : 'bg-white hover:bg-surface-container border border-outline-variant text-neutral-dark hover:text-primary'
                   }`}
-                  style={
-                    isActive
-                      ? {
-                          background: 'linear-gradient(135deg, rgb(225, 29, 72) 0%, rgb(190, 18, 60) 100%)',
-                          boxShadow: 'rgba(225, 29, 72, 0.35) 0px 4px 16px',
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
-                        }
-                      : {
-                          border: '1px solid rgba(136, 8, 37, 0.2)',
-                          boxShadow: 'rgba(136, 8, 37, 0.08) 0px 2px 8px',
-                        }
-                  }
                 >
                   <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-white' : 'text-primary'}`}>
                     {pill.icon}
                   </span>
                   <span>{pill.label}</span>
-                  {pill.pulse && (
-                    <span className="w-2 h-2 rounded-full bg-primary animate-ping ml-0.5" />
-                  )}
                 </button>
               );
             })}
@@ -755,28 +806,10 @@ function FeedScreenContent() {
                     {/* Urgent Medical Case Left Accent Bar & Header Ribbon */}
                     {urgent && (
                       <>
-                        <div
-                          className="absolute left-0 top-0 bottom-0 w-1.5 animate-pulse"
-                          style={{
-                            background: 'linear-gradient(135deg, rgb(225, 29, 72) 0%, rgb(190, 18, 60) 100%)',
-                            boxShadow: 'rgba(225, 29, 72, 0.5) 0px 0px 12px',
-                          }}
-                        />
-                        <div
-                          className="-mx-5 -mt-5 px-5 py-2.5 mb-3 flex items-center justify-between"
-                          style={{
-                            background: 'linear-gradient(90deg, rgba(225, 29, 72, 0.14) 0%, rgba(225, 29, 72, 0.03) 100%)',
-                            borderBottom: '1px solid rgba(225, 29, 72, 0.2)',
-                          }}
-                        >
+                        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary shadow-[0_0_10px_rgba(195,1,33,0.4)]" />
+                        <div className="-mx-5 -mt-5 px-5 py-2.5 mb-3 flex items-center justify-between bg-primary-50 border-b border-primary/20">
                           <div className="flex items-center gap-2">
-                            <span
-                              className="h-2.5 w-2.5 rounded-full animate-ping"
-                              style={{
-                                background: 'rgb(225, 29, 72)',
-                                boxShadow: 'rgba(225, 29, 72, 0.6) 0px 0px 10px',
-                              }}
-                            />
+                            <span className="h-2 w-2 rounded-full bg-primary" />
                             <span className="text-xs text-primary font-bold uppercase tracking-wider">
                               CRITICAL MEDICAL EMERGENCY
                             </span>
@@ -815,10 +848,16 @@ function FeedScreenContent() {
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-on-surface-variant">
-                            {author.department || 'BAUST'} • {author.userType || 'Member'} •{' '}
+                          <div className="flex items-center flex-wrap gap-1.5 text-xs text-on-surface-variant mt-0.5">
+                            <span>{author.department || 'BAUST'} • {author.userType || 'Member'}</span>
+                            {post.feeling?.type && (
+                              <span className="inline-flex items-center gap-1 font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full text-[11px]">
+                                <span>is feeling {post.feeling.emoji || '✨'} {post.feeling.type}</span>
+                              </span>
+                            )}
+                            <span>•</span>
                             <span className="font-medium text-primary">{formatRelativeTime(post.createdAt)}</span>
-                          </p>
+                          </div>
                         </div>
                       </div>
 
@@ -838,13 +877,7 @@ function FeedScreenContent() {
                           <span className="text-sm font-bold text-primary tracking-tight">
                             URGENT REQUISITION
                           </span>
-                          <span
-                            className="inline-flex items-center px-3 py-0.5 rounded-full text-white text-xs font-bold shadow-sm"
-                            style={{
-                              background: 'linear-gradient(135deg, rgb(225, 29, 72) 0%, rgb(190, 18, 60) 100%)',
-                              boxShadow: 'rgba(225, 29, 72, 0.35) 0px 2px 10px',
-                            }}
-                          >
+                          <span className="inline-flex items-center px-3 py-0.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25">
                             Emergency Patient
                           </span>
                         </div>
@@ -892,23 +925,11 @@ function FeedScreenContent() {
                       <div className="flex flex-wrap items-center gap-3 pt-1 mb-3">
                         <Link
                           to="/blood-hub"
-                          className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-white text-xs font-bold shadow-md shadow-primary/30 hover:shadow-primary/50 transition-all"
-                          style={{
-                            background: 'linear-gradient(135deg, rgb(225, 29, 72) 0%, rgb(190, 18, 60) 100%)',
-                            boxShadow: 'rgba(225, 29, 72, 0.4) 0px 4px 20px, rgba(255, 255, 255, 0.25) 0px 1px 0px inset',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                          }}
+                          className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2 rounded-full text-white text-xs font-bold bg-primary hover:bg-primary-dark shadow-md shadow-primary/30 transition-all"
                         >
                           <span className="material-symbols-outlined text-[18px]">volunteer_activism</span>
                           <span>I Can Donate</span>
                         </Link>
-                        <a
-                          href="tel:+8801769660000"
-                          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold shadow-xs transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-[17px] text-primary">phone_forwarded</span>
-                          <span>Call Medical Desk</span>
-                        </a>
                       </div>
                     )}
 
@@ -1062,55 +1083,16 @@ function FeedScreenContent() {
         ══════════════════════════════════════════════════════════════════════ */}
         <aside aria-label="Campus Blood Stats & Shortcuts" className="w-full lg:w-[340px] shrink-0 flex flex-col gap-5">
           
-          {/* WIDGET 1: Direct One-Tap Emergency SOS Shortcut */}
-          <section
-            className="bg-surface-container-lowest/95 backdrop-blur-2xl rounded-2xl p-5 shadow-xl shadow-primary/15 relative overflow-hidden"
-            style={{
-              border: '1px solid rgba(225, 29, 72, 0.25)',
-              boxShadow: 'rgba(225, 29, 72, 0.12) 0px 8px 32px',
-            }}
-          >
-            <div className="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-primary/10 blur-xl pointer-events-none" />
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[11px] uppercase tracking-widest text-primary font-bold">
-                24/7 Red Alert System
-              </span>
-            </div>
-            <h3 className="text-base font-bold text-on-surface mb-1">Emergency Blood Needed?</h3>
-            <p className="text-xs text-on-surface-variant leading-relaxed mb-4">
-              Broadcast an immediate SOS alert to {sidebarStats.verifiedDonors}+ matching verified campus donors and clinical volunteers within 5km radius.
-            </p>
-            <button
-              onClick={() => navigate('/emergency')}
-              className="w-full py-3 px-4 rounded-xl text-white text-xs font-bold shadow-lg flex items-center justify-center gap-2 transition-all transform active:scale-[0.98]"
-              type="button"
-              style={{
-                background: 'linear-gradient(135deg, rgb(225, 29, 72) 0%, rgb(190, 18, 60) 100%)',
-                boxShadow: 'rgba(225, 29, 72, 0.45) 0px 6px 24px, rgba(255, 255, 255, 0.25) 0px 1px 0px inset',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-              }}
-            >
-              <span className="material-symbols-outlined text-[20px] animate-pulse">crisis_alert</span>
-              <span>Trigger Emergency SOS</span>
-            </button>
-          </section>
-
-          {/* WIDGET 2: Campus Blood Bank Live Inventory & Network Stats */}
+          {/* WIDGET 1: Campus Blood Bank Live Inventory & Network Stats */}
           <section className="bg-surface-container-lowest/80 backdrop-blur-xl rounded-2xl p-5 shadow-md shadow-primary/5 border border-outline-variant/30">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-primary text-[20px]">monitor_heart</span>
                 <h3 className="text-sm font-bold text-on-surface">Campus Registry</h3>
               </div>
-              <div className="flex items-center gap-1 text-[11px] font-bold text-primary px-2 py-0.5 rounded-full bg-primary/10">
-                <span
-                  className="w-1.5 h-1.5 rounded-full bg-primary animate-ping"
-                  style={{
-                    background: 'rgb(136, 8, 37)',
-                    boxShadow: 'rgba(136, 8, 37, 0.45) 0px 0px 8px',
-                  }}
-                />
-                <span>LIVE</span>
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-primary px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                <span>Live Data</span>
               </div>
             </div>
 
@@ -1160,13 +1142,7 @@ function FeedScreenContent() {
               <div className="p-2 rounded-xl bg-primary/15 col-span-2 flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold text-primary">O- (Negative)</span>
-                  <span
-                    className="px-1.5 py-0.2 rounded bg-primary text-[10px] text-white font-bold"
-                    style={{
-                      background: 'rgb(136, 8, 37)',
-                      boxShadow: 'rgba(136, 8, 37, 0.45) 0px 0px 8px',
-                    }}
-                  >
+                  <span className="px-1.5 py-0.2 rounded-full bg-primary text-[10px] text-white font-bold">
                     CRITICAL
                   </span>
                 </div>
@@ -1194,14 +1170,9 @@ function FeedScreenContent() {
                     <div
                       className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shadow-sm ${
                         honor.rank === 1
-                          ? 'text-white'
+                          ? 'bg-primary text-white'
                           : 'bg-surface-container-high text-on-surface'
                       }`}
-                      style={
-                        honor.rank === 1
-                          ? { background: 'linear-gradient(135deg, rgb(225, 29, 72) 0%, rgb(190, 18, 60) 100%)' }
-                          : {}
-                      }
                     >
                       {honor.rank}
                     </div>

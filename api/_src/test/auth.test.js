@@ -51,10 +51,10 @@ describe('BAUST BloodLink Phase 2 — Auth & User Model Tests', () => {
       assert.strictEqual(VALID_DEPARTMENTS.includes('LAW'), false);
     });
 
-    test('Blood Group: enum including BOMBAY', () => {
-      const expected = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'BOMBAY'];
+    test('Blood Group: enum of 8 standard groups', () => {
+      const expected = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
       assert.deepStrictEqual(VALID_BLOOD_GROUPS, expected);
-      assert.strictEqual(VALID_BLOOD_GROUPS.includes('BOMBAY'), true);
+      assert.strictEqual(VALID_BLOOD_GROUPS.includes('O-'), true);
       assert.strictEqual(VALID_BLOOD_GROUPS.includes('C+'), false);
     });
 

@@ -147,6 +147,10 @@ function toSafeDatasetUser(u) {
     phone: u.phone,
     isDisasterVolunteer: !!u.isDisasterVolunteer,
     availabilityStatus: u.availabilityStatus || 'Available',
+    accountStatus: u.accountStatus || 'Verified',
+    isGuest: u.accountStatus === 'Guest',
+    authProvider: u.authProvider || 'local',
+    avatarUrl: u.avatarUrl || null,
     lastDonationDate: u.lastDonationDate || null,
     totalDonations: u.totalDonations || 0,
     createdAt: u.createdAt || new Date().toISOString(),
@@ -200,6 +204,14 @@ router.post(
     body('bloodGroup')
       .isIn(VALID_BLOOD_GROUPS)
       .withMessage(`Blood group must be one of: ${VALID_BLOOD_GROUPS.join(', ')}`),
+    body('confirmBloodGroup')
+      .optional()
+      .custom((value, { req }) => {
+        if (value && value !== req.body.bloodGroup) {
+          throw new Error('Blood group and confirmation blood group must match');
+        }
+        return true;
+      }),
     body('userType')
       .optional()
       .isIn(VALID_USER_TYPES)
@@ -215,6 +227,14 @@ router.post(
       .optional()
       .isIn(['Available', 'Unavailable', 'Cooldown'])
       .withMessage('availabilityStatus must be Available, Unavailable, or Cooldown'),
+    body('neverDonated')
+      .optional()
+      .isBoolean(),
+    body('totalDonations')
+      .optional()
+      .isNumeric(),
+    body('lastDonationDate')
+      .optional(),
     validateRequest,
   ],
   async (req, res, next) => {
@@ -227,6 +247,7 @@ router.post(
         gender,
         department,
         bloodGroup,
+        confirmBloodGroup,
         userType = 'Student',
         studentDetails,
         teacherDetails,
@@ -234,8 +255,25 @@ router.post(
         phone,
         isDisasterVolunteer = false,
         availabilityStatus = 'Available',
+        neverDonated = false,
+        totalDonations: rawTotalDonations,
+        lastDonationDate: rawLastDonationDate,
         fcmToken,
       } = req.body;
+
+      if (confirmBloodGroup && confirmBloodGroup !== bloodGroup) {
+        return res.status(400).json({
+          error: 'Validation Error',
+          message: 'Blood group and confirmation blood group must match',
+          field: 'confirmBloodGroup',
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const totalDonations = neverDonated ? 0 : (Math.max(0, parseInt(rawTotalDonations, 10) || 0));
+      const lastDonationDate = neverDonated
+        ? new Date().toISOString()
+        : (rawLastDonationDate ? new Date(rawLastDonationDate).toISOString() : null);
 
       let isDbConnected = false;
       if (process.env.MONGODB_URI) {
@@ -286,6 +324,8 @@ router.post(
           phone,
           isDisasterVolunteer,
           availabilityStatus,
+          totalDonations,
+          lastDonationDate,
           fcmToken: fcmToken || null,
         });
 
@@ -331,8 +371,8 @@ router.post(
         phone: phone || '',
         isDisasterVolunteer: !!isDisasterVolunteer,
         availabilityStatus,
-        totalDonations: 0,
-        lastDonationDate: null,
+        totalDonations,
+        lastDonationDate,
         createdAt: new Date().toISOString(),
       };
 
@@ -390,8 +430,8 @@ router.post(
     try {
       const { provider, oauthId, name, email: rawEmail, avatarUrl } = req.body;
 
-      // GitHub fallback: generate placeholder if email missing
-      const email = rawEmail || `github_${oauthId}@placeholder.bloodlink.local`;
+      // OAuth fallback: generate placeholder if email missing
+      const email = rawEmail || `${provider}_${oauthId}@placeholder.bloodlink.local`;
 
       let isDbConnected = false;
       if (process.env.MONGODB_URI) {
@@ -503,12 +543,21 @@ router.post(
     body('userType').optional().isIn(VALID_USER_TYPES).withMessage(`User type must be one of: ${VALID_USER_TYPES.join(', ')}`),
     body('phone').optional().trim(),
     body('isDisasterVolunteer').optional().isBoolean(),
+    body('hasNeverDonated').optional().isBoolean(),
+    body('lastDonationDate').optional().custom((val) => {
+      if (val === null || val === '' || val === undefined) return true;
+      if (isNaN(new Date(val).getTime())) throw new Error('Invalid date format for lastDonationDate');
+      return true;
+    }),
+    body('totalDonations').optional().isInt({ min: 0 }),
+    body('avatarUrl').optional().isString(),
     validateRequest,
   ],
   async (req, res, next) => {
     try {
       const {
         institutionalId,
+        name,
         gender,
         department,
         bloodGroup,
@@ -518,7 +567,30 @@ router.post(
         staffDetails,
         phone,
         isDisasterVolunteer,
+        hasNeverDonated,
+        lastDonationDate,
+        totalDonations,
+        avatarUrl,
       } = req.body;
+
+      // Compute donation status & cooldown eligibility
+      let computedAvailability = 'Available';
+      let resolvedLastDonation = null;
+      let resolvedTotalDonations = 0;
+
+      if (hasNeverDonated === true || !lastDonationDate) {
+        resolvedLastDonation = null;
+        resolvedTotalDonations = 0;
+        computedAvailability = 'Available';
+      } else {
+        const donationTs = new Date(lastDonationDate).getTime();
+        if (!isNaN(donationTs)) {
+          resolvedLastDonation = new Date(lastDonationDate).toISOString();
+          const daysSince = (Date.now() - donationTs) / (1000 * 60 * 60 * 24);
+          computedAvailability = daysSince < 90 ? 'Cooldown' : 'Available';
+          resolvedTotalDonations = Number(totalDonations) > 0 ? Number(totalDonations) : 1;
+        }
+      }
 
       let isDbConnected = false;
       if (process.env.MONGODB_URI) {
@@ -545,7 +617,11 @@ router.post(
           bloodGroup,
           userType: resolved,
           accountStatus: 'Verified',
-          availabilityStatus: 'Available',
+          availabilityStatus: computedAvailability,
+          lastDonationDate: resolvedLastDonation,
+          totalDonations: resolvedTotalDonations,
+          ...(name && { name }),
+          ...(avatarUrl && { avatarUrl }),
           ...(phone !== undefined && { phone }),
           ...(isDisasterVolunteer !== undefined && { isDisasterVolunteer }),
           ...(resolved === 'Student' && studentDetails && { studentDetails }),
@@ -588,9 +664,16 @@ router.post(
         bloodGroup,
         userType: resolved,
         accountStatus: 'Verified',
-        availabilityStatus: 'Available',
+        availabilityStatus: computedAvailability,
+        lastDonationDate: resolvedLastDonation,
+        totalDonations: resolvedTotalDonations,
+        ...(name && { name }),
+        ...(avatarUrl && { avatarUrl: avatarUrl || inMemoryUsers[memIdx].avatarUrl }),
         ...(phone !== undefined && { phone }),
         ...(isDisasterVolunteer !== undefined && { isDisasterVolunteer }),
+        ...(resolved === 'Student' && studentDetails && { studentDetails }),
+        ...(resolved === 'Teacher' && teacherDetails && { teacherDetails }),
+        ...(resolved === 'Staff' && staffDetails && { staffDetails }),
       };
 
       const safeUser = toSafeDatasetUser(inMemoryUsers[memIdx]);
@@ -649,8 +732,13 @@ router.post(
         if (user) {
           const isMatch = await user.comparePassword(password);
           if (isMatch) {
-            if (fcmToken && user.fcmToken !== fcmToken) {
-              user.fcmToken = fcmToken;
+            if (fcmToken) {
+              const cleanToken = fcmToken.trim();
+              if (!Array.isArray(user.fcmTokens)) user.fcmTokens = [];
+              if (!user.fcmTokens.includes(cleanToken)) {
+                user.fcmTokens.push(cleanToken);
+              }
+              user.fcmToken = cleanToken;
               await user.save();
             }
             const token = generateToken(user);
@@ -760,9 +848,13 @@ router.patch(
     try {
       await connectDB();
 
+      const cleanToken = req.body.fcmToken.trim();
       const user = await User.findByIdAndUpdate(
         req.user.id,
-        { fcmToken: req.body.fcmToken },
+        {
+          $addToSet: { fcmTokens: cleanToken },
+          fcmToken: cleanToken,
+        },
         { new: true }
       );
 
@@ -833,6 +925,123 @@ router.patch(
         message: 'Availability updated successfully',
         user: user.toSafeObject(),
         timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ─── PATCH /api/auth/avatar ─────────────────────────────────────────────────
+router.patch(
+  '/avatar',
+  verifyToken,
+  [
+    body('avatarUrl').isString().withMessage('avatarUrl must be a string'),
+    validateRequest,
+  ],
+  async (req, res, next) => {
+    try {
+      await connectDB();
+      const userId = req.user.id || req.user.userId;
+      const dbActive = mongoose.connection.readyState === 1;
+
+      if (dbActive) {
+        const user = await User.findByIdAndUpdate(
+          userId,
+          { avatarUrl: req.body.avatarUrl },
+          { new: true, runValidators: true }
+        );
+
+        if (!user) {
+          return res.status(404).json({ error: 'Not Found', message: 'User not found.' });
+        }
+
+        return res.status(200).json({
+          message: 'Avatar updated successfully',
+          user: user.toSafeObject(),
+        });
+      }
+
+      // Mock fallback
+      const found = SEED_DATASET_USERS.find((u) => u._id === userId || u.institutionalId === req.user.institutionalId);
+      if (found) {
+        found.avatarUrl = req.body.avatarUrl;
+      }
+      return res.status(200).json({
+        message: 'Avatar updated successfully',
+        user: { ...req.user, avatarUrl: req.body.avatarUrl },
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ─── PATCH /api/auth/profile ────────────────────────────────────────────────
+router.patch(
+  '/profile',
+  verifyToken,
+  async (req, res, next) => {
+    try {
+      await connectDB();
+      const userId = req.user.id || req.user.userId;
+      const {
+        avatarUrl,
+        phone,
+        lastDonationDate,
+        isDisasterVolunteer,
+        availabilityStatus,
+        donationCount,
+        totalDonations,
+        studentDetails,
+        teacherDetails,
+        staffDetails,
+      } = req.body;
+
+      const updates = {};
+      if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
+      if (phone !== undefined) updates.phone = phone;
+      if (lastDonationDate !== undefined) {
+        updates.lastDonationDate = lastDonationDate ? new Date(lastDonationDate) : null;
+      }
+      if (isDisasterVolunteer !== undefined) updates.isDisasterVolunteer = Boolean(isDisasterVolunteer);
+      if (availabilityStatus && ['Available', 'Unavailable', 'Cooldown'].includes(availabilityStatus)) {
+        updates.availabilityStatus = availabilityStatus;
+      }
+      if (donationCount !== undefined || totalDonations !== undefined) {
+        const count = donationCount !== undefined ? donationCount : totalDonations;
+        updates.donationCount = Number(count) || 0;
+      }
+      if (studentDetails && typeof studentDetails === 'object') updates.studentDetails = studentDetails;
+      if (teacherDetails && typeof teacherDetails === 'object') updates.teacherDetails = teacherDetails;
+      if (staffDetails && typeof staffDetails === 'object') updates.staffDetails = staffDetails;
+
+      const dbActive = mongoose.connection.readyState === 1;
+      if (dbActive) {
+        const user = await User.findByIdAndUpdate(userId, updates, {
+          new: true,
+          runValidators: true,
+        });
+
+        if (!user) {
+          return res.status(404).json({ error: 'Not Found', message: 'User not found.' });
+        }
+
+        return res.status(200).json({
+          message: 'Profile updated successfully',
+          user: user.toSafeObject(),
+        });
+      }
+
+      // Mock fallback
+      const found = SEED_DATASET_USERS.find((u) => u._id === userId || u.institutionalId === req.user.institutionalId);
+      if (found) {
+        Object.assign(found, updates);
+      }
+      return res.status(200).json({
+        message: 'Profile updated successfully',
+        user: { ...req.user, ...updates },
       });
     } catch (err) {
       next(err);

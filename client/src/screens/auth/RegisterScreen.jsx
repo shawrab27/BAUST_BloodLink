@@ -3,24 +3,35 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 /**
- * RegisterScreen — Exact Replica of Stitch Screen:
- * "BAUST BloodLink - Registration Form" (projects/4526335937223431863)
+ * RegisterScreen — BAUST BloodLink Official Registration
  *
  * Implements:
  * - Ambient dynamic circulation WebGL canvas background
  * - 72px persistent glass header bar with logo, language pill, notification bell
- * - Segment 1: Basic Profile (Full Name, 16-char ID with live counter, Age stepper,
- *   segmented Male/Female toggle, Email, Password & Confirm with visibility toggle,
- *   Blood Group dropdown with Bombay Phenotype, Confirm Blood Group)
- * - Segment 2: Institutional Role & Academic Info (Segmented tabs for Student,
- *   Teacher, Staff with respective Level/Term/Batch/Dept or Designation/Sector)
- * - Segment 3: Donor History & Availability (Last donation date, Total bags stepper,
- *   emergency protocol consent notice)
+ * - Segment 1: Basic Profile (Full Name, 16-char ID with live counter, Age stepper with free typing,
+ *   crisp high-contrast segmented Male/Female toggle, Email, Password & Confirm with visibility toggle,
+ *   beautiful popup modal Blood Group & Confirm Blood Group selector with strict match validation)
+ * - Segment 2: Institutional Role & Academic Info (Segmented tabs for Student with numeric Batch,
+ *   Teacher with Designation dropdown, Staff with Sector selector)
+ * - Segment 3: Donor History & Availability ("Never Donated" baseline toggle, Last donation date,
+ *   Total bags stepper, emergency protocol consent notice)
  * - Complete Registration CTA with 256-Bit SSL indicator
- * - Wired to backend POST /api/auth/register
+ * - 8 Universal Blood Groups only (no Bombay Phenotype)
  */
 
-const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'BOMBAY'];
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
+const BLOOD_GROUP_METADATA = [
+  { id: 'A+', label: 'A+', type: 'A Positive', rh: 'Rh Positive (+)', sub: 'Can donate to A+, AB+', color: 'rose' },
+  { id: 'A-', label: 'A-', type: 'A Negative', rh: 'Rh Negative (-)', sub: 'Can donate to A±, AB±', color: 'blue' },
+  { id: 'B+', label: 'B+', type: 'B Positive', rh: 'Rh Positive (+)', sub: 'Can donate to B+, AB+', color: 'rose' },
+  { id: 'B-', label: 'B-', type: 'B Negative', rh: 'Rh Negative (-)', sub: 'Can donate to B±, AB±', color: 'blue' },
+  { id: 'AB+', label: 'AB+', type: 'AB Positive', rh: 'Rh Positive (+)', sub: 'Universal Plasma Donor', color: 'rose' },
+  { id: 'AB-', label: 'AB-', type: 'AB Negative', rh: 'Rh Negative (-)', sub: 'Rare Rh- Negative Group', color: 'blue' },
+  { id: 'O+', label: 'O+', type: 'O Positive', rh: 'Rh Positive (+)', sub: 'Most Common Red Cells', color: 'rose' },
+  { id: 'O-', label: 'O-', type: 'O Negative', rh: 'Rh Negative (-)', sub: 'Universal Red Cell Donor', color: 'blue' },
+];
+
 const DEPARTMENTS = ['CSE', 'EEE', 'ME', 'ICT', 'ENG', 'BBA', 'AIS', 'IPE', 'CE'];
 
 function RegisterScreen() {
@@ -32,7 +43,7 @@ function RegisterScreen() {
   const [form, setForm] = useState({
     name: '',
     institutionalId: '',
-    age: 21,
+    age: '21',
     gender: 'Male',
     email: '',
     password: '',
@@ -43,7 +54,7 @@ function RegisterScreen() {
     // Student
     studentLevel: 'Level 4',
     studentTerm: 'Term I',
-    studentBatch: '12th Batch',
+    studentBatch: '19',
     studentDept: 'CSE',
     // Teacher
     teacherDesignation: 'Lecturer',
@@ -51,6 +62,7 @@ function RegisterScreen() {
     // Staff
     staffSector: 'Admission Office',
     // Donor history
+    neverDonated: false,
     lastDonationDate: '',
     totalBagsDonated: 0,
     isDisasterVolunteer: true,
@@ -59,6 +71,7 @@ function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [teacherDropdownOpen, setTeacherDropdownOpen] = useState(false);
+  const [activeBloodPicker, setActiveBloodPicker] = useState(null); // 'bloodGroup' | 'confirmBloodGroup' | null
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
 
@@ -202,7 +215,32 @@ function RegisterScreen() {
   const update = (key, value) => {
     setErrors((prev) => ({ ...prev, [key]: '' }));
     setServerError('');
-    setForm((f) => ({ ...f, [key]: value }));
+    setForm((f) => {
+      const next = { ...f, [key]: value };
+      // Real-time blood group matching check
+      if (key === 'bloodGroup' || key === 'confirmBloodGroup') {
+        const bg = key === 'bloodGroup' ? value : f.bloodGroup;
+        const cbg = key === 'confirmBloodGroup' ? value : f.confirmBloodGroup;
+        if (bg && cbg && bg !== cbg) {
+          setErrors((prev) => ({ ...prev, confirmBloodGroup: 'Blood group and confirm blood group must match identically.' }));
+        } else if (bg && cbg && bg === cbg) {
+          setErrors((prev) => ({ ...prev, confirmBloodGroup: '' }));
+        }
+      }
+      return next;
+    });
+  };
+
+  const handleNeverDonatedToggle = () => {
+    const nextState = !form.neverDonated;
+    const today = new Date().toISOString().split('T')[0];
+    setForm((f) => ({
+      ...f,
+      neverDonated: nextState,
+      lastDonationDate: nextState ? today : '',
+      totalBagsDonated: nextState ? 0 : f.totalBagsDonated,
+    }));
+    setErrors((prev) => ({ ...prev, lastDonationDate: '', totalBagsDonated: '' }));
   };
 
   const validate = () => {
@@ -219,6 +257,11 @@ function RegisterScreen() {
       errs.institutionalId = 'Institutional ID must be exactly 16 alphanumeric characters.';
     }
 
+    const ageNum = parseInt(form.age, 10);
+    if (!form.age || isNaN(ageNum) || ageNum < 16 || ageNum > 75) {
+      errs.age = 'Age is required and must be between 16 and 75 years.';
+    }
+
     if (!form.email.trim() || !/^\S+@\S+\.\S+$/.test(form.email)) {
       errs.email = 'A valid institutional email is required.';
     }
@@ -232,11 +275,17 @@ function RegisterScreen() {
     }
 
     if (!form.bloodGroup) {
-      errs.bloodGroup = 'Please select a blood group.';
+      errs.bloodGroup = 'Please select your blood group.';
     }
 
-    if (form.bloodGroup && form.confirmBloodGroup && form.bloodGroup !== form.confirmBloodGroup) {
-      errs.confirmBloodGroup = 'Blood group confirmation does not match.';
+    if (!form.confirmBloodGroup) {
+      errs.confirmBloodGroup = 'Please confirm your blood group.';
+    } else if (form.bloodGroup !== form.confirmBloodGroup) {
+      errs.confirmBloodGroup = 'Blood group and confirm blood group must match identically.';
+    }
+
+    if (form.userType === 'Student' && !form.studentBatch) {
+      errs.studentBatch = 'Batch number is required.';
     }
 
     setErrors(errs);
@@ -249,16 +298,9 @@ function RegisterScreen() {
 
     setServerError('');
 
-    // Determine active department based on role
     let activeDept = 'CSE';
     if (form.userType === 'Student') activeDept = form.studentDept;
     else if (form.userType === 'Teacher') activeDept = form.teacherDept;
-
-    // Normalizing Bombay blood group representation for server enum
-    let normalizedBloodGroup = form.bloodGroup;
-    if (normalizedBloodGroup.includes('Bombay')) {
-      normalizedBloodGroup = 'BOMBAY';
-    }
 
     const payload = {
       name: form.name.trim(),
@@ -267,16 +309,21 @@ function RegisterScreen() {
       password: form.password,
       gender: form.gender,
       department: activeDept,
-      bloodGroup: normalizedBloodGroup,
+      bloodGroup: form.bloodGroup,
+      confirmBloodGroup: form.confirmBloodGroup,
       userType: form.userType,
       isDisasterVolunteer: form.isDisasterVolunteer,
-      lastDonationDate: form.lastDonationDate || null,
-      donationCount: Number(form.totalBagsDonated) || 0,
+      neverDonated: form.neverDonated,
+      lastDonationDate: form.neverDonated
+        ? new Date().toISOString().split('T')[0]
+        : (form.lastDonationDate || null),
+      totalDonations: form.neverDonated ? 0 : (Number(form.totalBagsDonated) || 0),
     };
 
     if (form.userType === 'Student') {
+      const batchStr = form.studentBatch ? `${form.studentBatch}th Batch` : '19th Batch';
       payload.studentDetails = {
-        batch: form.studentBatch,
+        batch: batchStr,
         section: form.studentTerm,
         session: form.studentLevel,
       };
@@ -319,8 +366,8 @@ function RegisterScreen() {
       <div className="fixed top-1/2 -right-24 w-[32rem] h-[32rem] rounded-full bg-red-100/50 blur-3xl pointer-events-none z-0" />
       <div className="fixed bottom-0 left-10 w-80 h-80 rounded-full bg-rose-100/40 blur-3xl pointer-events-none z-0" />
 
-      {/* Persistent Top Navigation Bar (72px fixed height matching Stitch) */}
-      <header className="w-full h-[72px] bg-white/88 backdrop-blur-md border-b border-rose-100/60 sticky top-0 z-50 flex items-center justify-between px-8 shadow-xs">
+      {/* Persistent Top Navigation Bar (72px fixed height) */}
+      <header className="w-full h-[72px] bg-white/88 backdrop-blur-md border-b border-rose-100/60 sticky top-0 z-40 flex items-center justify-between px-8 shadow-xs">
         <div className="flex items-center gap-4">
           <Link to="/" className="flex items-center gap-3">
             <img
@@ -389,7 +436,7 @@ function RegisterScreen() {
         </div>
       </header>
 
-      {/* Main Container (1440px max desktop container matching Stitch) */}
+      {/* Main Container */}
       <main className="w-full max-w-[1440px] px-6 py-8 relative z-10 flex flex-col items-center">
         {/* Header Intro Banner */}
         <div className="w-full max-w-4xl text-center mb-7">
@@ -418,7 +465,7 @@ function RegisterScreen() {
         {/* Central Multi-Segment Glassmorphic Form Card */}
         <form
           onSubmit={handleSubmit}
-          className="w-full max-w-4xl bg-white/85 backdrop-blur-xl border border-rose-200/40 rounded-3xl p-7 sm:p-10 shadow-glass-lg flex flex-col gap-9"
+          className="w-full max-w-4xl bg-white/90 backdrop-blur-xl border border-rose-200/50 rounded-3xl p-7 sm:p-10 shadow-xl flex flex-col gap-9"
         >
           {/* Server Error Alert */}
           {serverError && (
@@ -514,7 +561,7 @@ function RegisterScreen() {
                 )}
               </div>
 
-              {/* Age (Numerical Stepper) */}
+              {/* Age (Numerical Stepper with empty-clearing support) */}
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="ageInput" className="text-xs font-semibold text-slate-700 flex items-center gap-1">
                   Age (Years) <span className="text-rose-600 font-bold">*</span>
@@ -529,30 +576,34 @@ function RegisterScreen() {
                     min="16"
                     max="75"
                     value={form.age}
-                    onChange={(e) => update('age', Math.max(16, Math.min(75, Number(e.target.value) || 16)))}
+                    onChange={(e) => update('age', e.target.value)}
                     required
-                    className="glass-input w-full pl-11 pr-24 py-3 rounded-xl text-sm font-semibold text-slate-900"
+                    placeholder="Enter age (16-75)"
+                    className={`glass-input w-full pl-11 pr-24 py-3 rounded-xl text-sm font-semibold text-slate-900 ${
+                      errors.age ? 'border-rose-500 ring-1 ring-rose-500' : ''
+                    }`}
                   />
                   <div className="absolute right-2 flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => update('age', Math.max(16, form.age - 1))}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all text-xs"
+                      onClick={() => update('age', Math.max(16, (parseInt(form.age, 10) || 21) - 1))}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all text-xs cursor-pointer"
                     >
                       -
                     </button>
                     <button
                       type="button"
-                      onClick={() => update('age', Math.min(75, form.age + 1))}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all text-xs"
+                      onClick={() => update('age', Math.min(75, (parseInt(form.age, 10) || 21) + 1))}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all text-xs cursor-pointer"
                     >
                       +
                     </button>
                   </div>
                 </div>
+                {errors.age && <p className="text-[11px] text-rose-600 font-medium mt-0.5">{errors.age}</p>}
               </div>
 
-              {/* Gender Segmented Toggle: [Male] and [Female] */}
+              {/* Gender Segmented Toggle: High-Contrast Solid Buttons */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
                   <span className="flex items-center gap-1">
@@ -568,7 +619,7 @@ function RegisterScreen() {
                     onClick={() => update('gender', 'Male')}
                     className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 cursor-pointer ${
                       form.gender === 'Male'
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-400/40 transform scale-[1.02]'
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 ring-2 ring-blue-400/50 transform scale-[1.02]'
                         : 'bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950 border border-slate-200/80 shadow-xs'
                     }`}
                   >
@@ -580,7 +631,7 @@ function RegisterScreen() {
                     onClick={() => update('gender', 'Female')}
                     className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 cursor-pointer ${
                       form.gender === 'Female'
-                        ? 'bg-gradient-to-r from-rose-600 to-pink-700 text-white shadow-md shadow-rose-500/25 ring-2 ring-rose-400/40 transform scale-[1.02]'
+                        ? 'bg-rose-600 text-white shadow-md shadow-rose-500/30 ring-2 ring-rose-400/50 transform scale-[1.02]'
                         : 'bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950 border border-slate-200/80 shadow-xs'
                     }`}
                   >
@@ -682,80 +733,99 @@ function RegisterScreen() {
                 )}
               </div>
 
-              {/* Blood Group Dropdown */}
+              {/* ======================================================== */}
+              {/* BEAUTIFULLY DECORATED POP-UP BLOOD GROUP TRIGGER */}
+              {/* ======================================================== */}
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="bloodGroup" className="text-xs font-semibold text-slate-700 flex items-center gap-1">
-                  Blood Group <span className="text-rose-600 font-bold">*</span>
+                <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    Blood Group <span className="text-rose-600 font-bold">*</span>
+                  </span>
+                  {form.bloodGroup && (
+                    <span className="text-[11px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-100">
+                      Selected: {form.bloodGroup}
+                    </span>
+                  )}
                 </label>
-                <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute left-3.5 text-rose-500 text-[19px] pointer-events-none">
-                    bloodtype
-                  </span>
-                  <select
-                    id="bloodGroup"
-                    required
-                    value={form.bloodGroup}
-                    onChange={(e) => update('bloodGroup', e.target.value)}
-                    className={`glass-input w-full pl-11 pr-10 py-3 rounded-xl text-sm font-semibold text-slate-900 appearance-none bg-white cursor-pointer ${
-                      errors.bloodGroup ? 'border-rose-500 ring-1 ring-rose-500' : ''
-                    }`}
-                  >
-                    <option value="" disabled>
-                      Select Blood Group
-                    </option>
-                    <option value="A+">A+ (A Positive)</option>
-                    <option value="A-">A- (A Negative)</option>
-                    <option value="B+">B+ (B Positive)</option>
-                    <option value="B-">B- (B Negative)</option>
-                    <option value="AB+">AB+ (AB Positive)</option>
-                    <option value="AB-">AB- (AB Negative)</option>
-                    <option value="O+">O+ (O Positive)</option>
-                    <option value="O-">O- (O Negative)</option>
-                    <option value="BOMBAY" className="font-bold text-rose-700">
-                      Bombay Phenotype (Rare hh Antigen)
-                    </option>
-                  </select>
-                  <span className="material-symbols-outlined absolute right-3.5 text-slate-400 pointer-events-none text-[20px]">
-                    expand_more
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveBloodPicker('bloodGroup')}
+                  className={`w-full px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-between transition-all cursor-pointer shadow-xs border ${
+                    errors.bloodGroup
+                      ? 'border-rose-500 ring-1 ring-rose-500 bg-rose-50/50'
+                      : form.bloodGroup
+                      ? 'bg-gradient-to-r from-rose-50/80 to-white border-rose-200 text-slate-900 hover:border-rose-300'
+                      : 'bg-white border-slate-200 text-slate-400 hover:border-rose-200 hover:text-slate-600'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                      form.bloodGroup ? 'bg-rose-600 text-white shadow-xs' : 'bg-slate-100 text-slate-400'
+                    }`}>
+                      <span className="material-symbols-outlined text-[18px]">bloodtype</span>
+                    </div>
+                    <span className={form.bloodGroup ? 'text-slate-900 font-bold' : 'text-slate-400 font-medium'}>
+                      {form.bloodGroup ? `${form.bloodGroup} (${BLOOD_GROUP_METADATA.find(b => b.id === form.bloodGroup)?.type || form.bloodGroup})` : 'Select Blood Group'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-slate-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-rose-600 bg-rose-50 px-2 py-0.5 rounded">
+                      Choose
+                    </span>
+                    <span className="material-symbols-outlined text-[20px]">expand_more</span>
+                  </div>
+                </button>
                 {errors.bloodGroup && (
                   <p className="text-[11px] text-rose-600 font-medium mt-0.5">{errors.bloodGroup}</p>
                 )}
               </div>
 
-              {/* Confirm Blood Group Dropdown */}
+              {/* ======================================================== */}
+              {/* BEAUTIFULLY DECORATED POP-UP CONFIRM BLOOD GROUP TRIGGER */}
+              {/* ======================================================== */}
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="confirmBloodGroup" className="text-xs font-semibold text-slate-700 flex items-center gap-1">
-                  Confirm Blood Group <span className="text-rose-600 font-bold">*</span>
+                <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    Confirm Blood Group <span className="text-rose-600 font-bold">*</span>
+                  </span>
+                  {form.bloodGroup && form.confirmBloodGroup && form.bloodGroup === form.confirmBloodGroup && (
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs font-black">check</span> Match Confirmed
+                    </span>
+                  )}
                 </label>
-                <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute left-3.5 text-rose-500 text-[19px] pointer-events-none">
-                    verified
-                  </span>
-                  <select
-                    id="confirmBloodGroup"
-                    value={form.confirmBloodGroup}
-                    onChange={(e) => update('confirmBloodGroup', e.target.value)}
-                    className={`glass-input w-full pl-11 pr-10 py-3 rounded-xl text-sm font-semibold text-slate-900 appearance-none bg-white cursor-pointer ${
-                      errors.confirmBloodGroup ? 'border-rose-500 ring-1 ring-rose-500' : ''
-                    }`}
-                  >
-                    <option value="">Re-verify Blood Group</option>
-                    <option value="A+">A+</option>
-                    <option value="A-">A-</option>
-                    <option value="B+">B+</option>
-                    <option value="B-">B-</option>
-                    <option value="AB+">AB+</option>
-                    <option value="AB-">AB-</option>
-                    <option value="O+">O+</option>
-                    <option value="O-">O-</option>
-                    <option value="BOMBAY">Bombay Phenotype</option>
-                  </select>
-                  <span className="material-symbols-outlined absolute right-3.5 text-slate-400 pointer-events-none text-[20px]">
-                    expand_more
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveBloodPicker('confirmBloodGroup')}
+                  className={`w-full px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-between transition-all cursor-pointer shadow-xs border ${
+                    errors.confirmBloodGroup
+                      ? 'border-rose-500 ring-1 ring-rose-500 bg-rose-50/50'
+                      : form.confirmBloodGroup
+                      ? form.bloodGroup === form.confirmBloodGroup
+                        ? 'bg-gradient-to-r from-emerald-50/60 to-white border-emerald-300 text-slate-900 hover:border-emerald-400'
+                        : 'bg-rose-50/60 border-rose-300 text-slate-900'
+                      : 'bg-white border-slate-200 text-slate-400 hover:border-rose-200 hover:text-slate-600'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                      form.confirmBloodGroup
+                        ? form.bloodGroup === form.confirmBloodGroup ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                        : 'bg-slate-100 text-slate-400'
+                    }`}>
+                      <span className="material-symbols-outlined text-[18px]">verified</span>
+                    </div>
+                    <span className={form.confirmBloodGroup ? 'text-slate-900 font-bold' : 'text-slate-400 font-medium'}>
+                      {form.confirmBloodGroup ? `${form.confirmBloodGroup} (${BLOOD_GROUP_METADATA.find(b => b.id === form.confirmBloodGroup)?.type || form.confirmBloodGroup})` : 'Re-verify Blood Group'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-slate-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-rose-600 bg-rose-50 px-2 py-0.5 rounded">
+                      Verify
+                    </span>
+                    <span className="material-symbols-outlined text-[20px]">expand_more</span>
+                  </div>
+                </button>
                 {errors.confirmBloodGroup && (
                   <p className="text-[11px] text-rose-600 font-medium mt-0.5">{errors.confirmBloodGroup}</p>
                 )}
@@ -782,12 +852,12 @@ function RegisterScreen() {
               </span>
             </div>
 
-            {/* Segmented Glass Switcher Tabs: Student, Teacher, Staff */}
+            {/* Segmented Switcher Tabs: Student, Teacher, Staff */}
             <div className="grid grid-cols-3 gap-2 p-1.5 rounded-2xl bg-slate-100/90 border border-slate-200/80 shadow-inner">
               <button
                 type="button"
                 onClick={() => update('userType', 'Student')}
-                className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-xs sm:text-sm tracking-wide transition-all ${
+                className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-xs sm:text-sm tracking-wide transition-all cursor-pointer ${
                   form.userType === 'Student'
                     ? 'bg-white text-rose-600 shadow-sm border border-rose-100 font-bold'
                     : 'text-slate-600 hover:text-slate-900'
@@ -799,7 +869,7 @@ function RegisterScreen() {
               <button
                 type="button"
                 onClick={() => update('userType', 'Teacher')}
-                className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-xs sm:text-sm tracking-wide transition-all ${
+                className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-xs sm:text-sm tracking-wide transition-all cursor-pointer ${
                   form.userType === 'Teacher'
                     ? 'bg-white text-rose-600 shadow-sm border border-rose-100 font-bold'
                     : 'text-slate-600 hover:text-slate-900'
@@ -811,7 +881,7 @@ function RegisterScreen() {
               <button
                 type="button"
                 onClick={() => update('userType', 'Staff')}
-                className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-xs sm:text-sm tracking-wide transition-all ${
+                className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-xs sm:text-sm tracking-wide transition-all cursor-pointer ${
                   form.userType === 'Staff'
                     ? 'bg-white text-rose-600 shadow-sm border border-rose-100 font-bold'
                     : 'text-slate-600 hover:text-slate-900'
@@ -867,21 +937,32 @@ function RegisterScreen() {
                   </div>
                 </div>
 
+                {/* Batch Field: Numeric Number */}
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="studentBatch" className="text-xs font-semibold text-slate-700">
-                    Batch
+                    Batch (Numeric) <span className="text-rose-600 font-bold">*</span>
                   </label>
-                  <input
-                    type="text"
-                    id="studentBatch"
-                    value={form.studentBatch}
-                    onChange={(e) => update('studentBatch', e.target.value)}
-                    className="glass-input w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium text-slate-900"
-                    placeholder="e.g. 12th Batch"
-                  />
+                  <div className="relative flex items-center">
+                    <input
+                      type="number"
+                      id="studentBatch"
+                      min="1"
+                      max="99"
+                      value={form.studentBatch}
+                      onChange={(e) => update('studentBatch', e.target.value)}
+                      className={`glass-input w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-900 ${
+                        errors.studentBatch ? 'border-rose-500 ring-1 ring-rose-500' : ''
+                      }`}
+                      placeholder="e.g. 19"
+                    />
+                    <span className="absolute right-3 text-slate-400 text-xs font-semibold pointer-events-none">
+                      Batch
+                    </span>
+                  </div>
+                  {errors.studentBatch && <p className="text-[11px] text-rose-600 font-medium">{errors.studentBatch}</p>}
                 </div>
 
-                {/* Department strictly limited to the 9 BAUST departments */}
+                {/* Department */}
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="studentDept" className="text-xs font-semibold text-slate-700">
                     Department
@@ -950,7 +1031,7 @@ function RegisterScreen() {
                             update('teacherDesignation', item.title);
                             setTeacherDropdownOpen(false);
                           }}
-                          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm transition-all cursor-pointer ${
                             form.teacherDesignation === item.title
                               ? 'bg-rose-50 text-rose-700 font-semibold'
                               : 'font-medium text-slate-700 hover:bg-rose-50/60 hover:text-slate-900'
@@ -1048,6 +1129,40 @@ function RegisterScreen() {
               </div>
             </div>
 
+            {/* NEVER DONATED TOGGLE BUTTON / CARD (ABOVE TOTAL BAGS) */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-50 via-white to-amber-50 border-2 border-rose-200/70 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 shrink-0 shadow-xs">
+                  <span className="material-symbols-outlined text-2xl">volunteer_activism</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-slate-900">First-Time Donor?</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 uppercase tracking-wide">
+                      Never Donated Option
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Click to automatically set today as your registration date and total donation bags to zero.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleNeverDonatedToggle}
+                className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm tracking-wide transition-all duration-200 shrink-0 flex items-center justify-center gap-2 cursor-pointer shadow-xs ${
+                  form.neverDonated
+                    ? 'bg-rose-600 text-white ring-2 ring-rose-400/50 shadow-md shadow-rose-500/20'
+                    : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 hover:border-rose-200'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[19px]">
+                  {form.neverDonated ? 'check_box' : 'check_box_outline_blank'}
+                </span>
+                <span>{form.neverDonated ? 'Never Donated (Active)' : 'I Have Never Donated'}</span>
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Last Donation Date picker */}
               <div className="flex flex-col gap-1.5">
@@ -1055,7 +1170,9 @@ function RegisterScreen() {
                   <label htmlFor="lastDonationDate" className="text-xs font-semibold text-slate-700 flex items-center gap-1">
                     Last Donation Date
                   </label>
-                  <span className="text-[11px] text-slate-400">Leave empty if first-time donor</span>
+                  <span className="text-[11px] text-slate-400">
+                    {form.neverDonated ? "Auto-filled with today's date" : 'Leave empty if first-time donor'}
+                  </span>
                 </div>
                 <div className="relative flex items-center">
                   <span className="material-symbols-outlined absolute left-3.5 text-slate-400 text-[19px] pointer-events-none">
@@ -1064,11 +1181,20 @@ function RegisterScreen() {
                   <input
                     type="date"
                     id="lastDonationDate"
+                    disabled={form.neverDonated}
                     value={form.lastDonationDate}
                     onChange={(e) => update('lastDonationDate', e.target.value)}
-                    className="glass-input w-full pl-11 pr-4 py-3 rounded-xl text-sm font-medium text-slate-900"
+                    className={`glass-input w-full pl-11 pr-4 py-3 rounded-xl text-sm font-medium text-slate-900 ${
+                      form.neverDonated ? 'bg-slate-100/80 text-slate-500 cursor-not-allowed opacity-80' : ''
+                    }`}
                   />
                 </div>
+                {form.neverDonated && (
+                  <p className="text-[11px] text-rose-600 font-semibold flex items-center gap-1 mt-0.5">
+                    <span className="material-symbols-outlined text-xs">info</span>
+                    Locked to registration date for first-time donor baseline.
+                  </p>
+                )}
               </div>
 
               {/* Total Bags Donated counter */}
@@ -1077,13 +1203,20 @@ function RegisterScreen() {
                   <label htmlFor="totalBagsDonated" className="text-xs font-semibold text-slate-700 flex items-center gap-1">
                     Total Bags Donated
                   </label>
-                  <span className="text-[11px] text-rose-600 font-semibold">Verified on badge profile</span>
+                  <span className="text-[11px] text-rose-600 font-semibold">
+                    {form.neverDonated ? 'Set to 0 (First-Time)' : 'Verified on badge profile'}
+                  </span>
                 </div>
                 <div className="relative flex items-center gap-2">
                   <button
                     type="button"
+                    disabled={form.neverDonated}
                     onClick={() => update('totalBagsDonated', Math.max(0, form.totalBagsDonated - 1))}
-                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all text-sm shrink-0"
+                    className={`w-10 h-10 flex items-center justify-center rounded-xl font-bold transition-all text-sm shrink-0 ${
+                      form.neverDonated
+                        ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer'
+                    }`}
                   >
                     -
                   </button>
@@ -1096,15 +1229,23 @@ function RegisterScreen() {
                       id="totalBagsDonated"
                       min="0"
                       max="100"
+                      disabled={form.neverDonated}
                       value={form.totalBagsDonated}
                       onChange={(e) => update('totalBagsDonated', Math.max(0, Number(e.target.value) || 0))}
-                      className="glass-input w-full py-3 text-center rounded-xl text-sm font-bold text-slate-900"
+                      className={`glass-input w-full py-3 text-center rounded-xl text-sm font-bold text-slate-900 ${
+                        form.neverDonated ? 'bg-slate-100/80 text-slate-500 cursor-not-allowed opacity-80' : ''
+                      }`}
                     />
                   </div>
                   <button
                     type="button"
+                    disabled={form.neverDonated}
                     onClick={() => update('totalBagsDonated', form.totalBagsDonated + 1)}
-                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all text-sm shrink-0"
+                    className={`w-10 h-10 flex items-center justify-center rounded-xl font-bold transition-all text-sm shrink-0 ${
+                      form.neverDonated
+                        ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer'
+                    }`}
                   >
                     +
                   </button>
@@ -1113,7 +1254,7 @@ function RegisterScreen() {
             </div>
 
             {/* Volunteer Checkbox */}
-            <label className="flex items-start gap-3 p-3.5 rounded-xl bg-white/70 border border-slate-200/80 cursor-pointer">
+            <label className="flex items-start gap-3 p-3.5 rounded-xl bg-white/70 border border-slate-200/80 cursor-pointer hover:bg-rose-50/30 transition-all">
               <input
                 type="checkbox"
                 checked={form.isDisasterVolunteer}
@@ -1186,6 +1327,120 @@ function RegisterScreen() {
           </Link>
         </footer>
       </main>
+
+      {/* ========================================================================= */}
+      {/* BEAUTIFULLY DECORATED POP-UP MODAL / SELECTOR FOR BLOOD GROUP SELECTION */}
+      {/* ========================================================================= */}
+      {activeBloodPicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
+          onClick={() => setActiveBloodPicker(null)}
+        >
+          <div
+            className="w-full max-w-xl bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border-2 border-rose-200 flex flex-col gap-6 transform transition-all animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-rose-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-600/25">
+                  <span className="material-symbols-outlined text-2xl">bloodtype</span>
+                </div>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                    {activeBloodPicker === 'bloodGroup' ? 'Select Blood Group' : 'Confirm & Re-verify Blood Group'}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Choose from the 8 universal clinical ABO &amp; Rh blood types
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveBloodPicker(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            {/* Modal Blood Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {BLOOD_GROUP_METADATA.map((bg) => {
+                const isCurrentFieldSelected =
+                  activeBloodPicker === 'bloodGroup'
+                    ? form.bloodGroup === bg.id
+                    : form.confirmBloodGroup === bg.id;
+
+                return (
+                  <button
+                    key={bg.id}
+                    type="button"
+                    onClick={() => {
+                      update(activeBloodPicker, bg.id);
+                      setActiveBloodPicker(null);
+                    }}
+                    className={`relative p-3.5 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center justify-between text-center gap-2 cursor-pointer group ${
+                      isCurrentFieldSelected
+                        ? 'border-rose-600 bg-rose-50/80 shadow-md shadow-rose-500/20 scale-[1.03] ring-2 ring-rose-400/40'
+                        : 'border-slate-200 bg-white hover:border-rose-300 hover:bg-rose-50/40 hover:scale-[1.02] shadow-xs'
+                    }`}
+                  >
+                    {/* Active Checkmark Badge */}
+                    {isCurrentFieldSelected && (
+                      <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center shadow-xs">
+                        <span className="material-symbols-outlined text-xs font-black">check</span>
+                      </span>
+                    )}
+
+                    {/* Droplet & Rh Tag */}
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-rose-100 to-rose-200/60 flex items-center justify-center text-rose-600 group-hover:from-rose-500 group-hover:to-rose-700 group-hover:text-white transition-all shadow-xs">
+                      <span className="material-symbols-outlined text-2xl font-bold">water_drop</span>
+                    </div>
+
+                    {/* Blood Group Large Badge */}
+                    <div>
+                      <div className="text-xl font-black text-slate-900 group-hover:text-rose-600 transition-colors">
+                        {bg.label}
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-500 mt-0.5">
+                        {bg.type}
+                      </div>
+                    </div>
+
+                    {/* Rh Subtag */}
+                    <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                      bg.color === 'rose' ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {bg.rh}
+                    </div>
+
+                    {/* Sub description */}
+                    <p className="text-[10px] text-slate-400 leading-tight">
+                      {bg.sub}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Modal Footer Note */}
+            <div className="flex items-center justify-between text-xs text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+              <span className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-rose-600 text-base">verified_user</span>
+                Verified Clinical Compatibility Protocol
+              </span>
+              <button
+                type="button"
+                onClick={() => setActiveBloodPicker(null)}
+                className="font-bold text-rose-600 hover:underline cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

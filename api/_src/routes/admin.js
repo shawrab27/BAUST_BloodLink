@@ -1314,6 +1314,83 @@ router.patch(
   }
 );
 
+router.patch('/users/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {
+      name,
+      avatarUrl,
+      phone,
+      bloodGroup,
+      department,
+      userType,
+      donationCount,
+      totalDonations,
+      lastDonationDate,
+      isDisasterVolunteer,
+      availabilityStatus,
+      isActive,
+      isSuspended,
+      isBloodGroupVerified,
+    } = req.body;
+
+    const updateFields = {};
+    if (name !== undefined) updateFields.name = name;
+    if (avatarUrl !== undefined) updateFields.avatarUrl = avatarUrl;
+    if (phone !== undefined) updateFields.phone = phone;
+    if (bloodGroup !== undefined) updateFields.bloodGroup = bloodGroup;
+    if (department !== undefined) updateFields.department = department;
+    if (userType !== undefined) updateFields.userType = userType;
+    if (donationCount !== undefined || totalDonations !== undefined) {
+      updateFields.donationCount = Number(donationCount !== undefined ? donationCount : totalDonations) || 0;
+    }
+    if (lastDonationDate !== undefined) {
+      updateFields.lastDonationDate = lastDonationDate ? new Date(lastDonationDate) : null;
+    }
+    if (isDisasterVolunteer !== undefined) updateFields.isDisasterVolunteer = Boolean(isDisasterVolunteer);
+    if (availabilityStatus !== undefined) updateFields.availabilityStatus = availabilityStatus;
+    if (isActive !== undefined) updateFields.isActive = Boolean(isActive);
+    if (isSuspended !== undefined) updateFields.isSuspended = Boolean(isSuspended);
+    if (isBloodGroupVerified !== undefined) updateFields.isBloodGroupVerified = Boolean(isBloodGroupVerified);
+
+    const dbActive = await isConnected();
+    let updatedUser;
+    if (dbActive) {
+      updatedUser = await User.findByIdAndUpdate(
+        id,
+        { $set: updateFields },
+        { new: true, runValidators: true }
+      ).select('-password');
+
+      if (!updatedUser) return res.status(404).json({ error: 'Not Found', message: 'User not found.' });
+    } else {
+      const u = mockAdminUsers.find((user) => user._id.toString() === id.toString());
+      if (u) {
+        Object.assign(u, updateFields);
+        updatedUser = u;
+      } else {
+        updatedUser = { _id: id, ...updateFields };
+        mockAdminUsers.push(updatedUser);
+      }
+    }
+
+    await logAuditEvent({
+      action: 'UPDATE_USER_PROFILE_ADMIN',
+      req,
+      targetModel: 'User',
+      targetId: id,
+      details: updateFields,
+    });
+
+    return res.status(200).json({
+      message: 'User profile updated successfully by Administrator.',
+      user: updatedUser,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── 7. AUDIT LOG VIEWER (IMMUTABLE RECORD WITH METADATA) ─────────────────────
 router.get('/audit-logs', async (req, res, next) => {
   try {

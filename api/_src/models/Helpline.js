@@ -26,10 +26,30 @@ const helplineSchema = new mongoose.Schema(
       required: [true, 'Role / Designation is required'],
       trim: true,
     },
+    subtitle: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    rankBadge: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    avatarUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     phone: {
       type: String,
       required: [true, 'Phone number is required'],
       trim: true,
+    },
+    secondaryPhone: {
+      type: String,
+      trim: true,
+      default: '',
     },
     email: {
       type: String,
@@ -37,6 +57,16 @@ const helplineSchema = new mongoose.Schema(
       default: '',
     },
     whatsappNumber: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    whatsappLink: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    qrCodeUrl: {
       type: String,
       trim: true,
       default: '',
@@ -50,6 +80,16 @@ const helplineSchema = new mongoose.Schema(
       default: false,
     },
     location: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    timing: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    notes: {
       type: String,
       trim: true,
       default: '',

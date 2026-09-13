@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -6,14 +6,13 @@ const DEPARTMENTS = [
   'CSE', 'EEE', 'ME', 'CE', 'IPE', 'TE', 'BME', 'BBA', 'AIS', 'English', 'Physics', 'Chemistry', 'Mathematics', 'Other',
 ];
 
-const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Bombay (hh)'];
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 const USER_TYPES = ['Student', 'Teacher', 'Staff'];
 
 /**
- * CompleteProfileScreen — upgrade a Guest OAuth account to a Verified campus account.
- * Shows only the campus-specific fields that weren't collected during social sign-in.
- * On success, re-issues a JWT with accountStatus: 'Verified' and redirects.
+ * CompleteProfileScreen — upgrade a Guest OAuth account (Google, GitHub, Facebook)
+ * to a Verified campus account using Google data, donation history & never-donated logic.
  */
 function CompleteProfileScreen() {
   const navigate = useNavigate();
@@ -21,25 +20,66 @@ function CompleteProfileScreen() {
 
   const [form, setForm] = useState({
     institutionalId: '',
+    name: user?.name || '',
     gender: 'Male',
     department: '',
     bloodGroup: '',
     userType: 'Student',
-    phone: '',
+    phone: user?.phone || '',
     batch: '',
     section: '',
     session: '',
     designation: '',
     isDisasterVolunteer: false,
+    hasNeverDonated: true,
+    lastDonationDate: '',
+    totalDonations: 0,
   });
+
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Sync Google / OAuth profile data on load
+  useEffect(() => {
+    if (user) {
+      setForm((prev) => ({
+        ...prev,
+        name: prev.name || user.name || '',
+        phone: prev.phone || user.phone || '',
+      }));
+    }
+  }, [user]);
 
   const set = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => { const e = { ...prev }; delete e[field]; return e; });
   };
+
+  // Cooldown calculation helper
+  const getCooldownInfo = () => {
+    if (form.hasNeverDonated || !form.lastDonationDate) {
+      return { isCooldown: false, daysLeft: 0, eligible: true };
+    }
+    const lastDate = new Date(form.lastDonationDate);
+    if (isNaN(lastDate.getTime())) {
+      return { isCooldown: false, daysLeft: 0, eligible: true };
+    }
+    const diffMs = Date.now() - lastDate.getTime();
+    const daysSince = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (daysSince < 90) {
+      const eligibleDate = new Date(lastDate.getTime() + 90 * 24 * 60 * 60 * 1000);
+      return {
+        isCooldown: true,
+        daysLeft: 90 - daysSince,
+        eligibleDate: eligibleDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        eligible: false,
+      };
+    }
+    return { isCooldown: false, daysLeft: 0, eligible: true };
+  };
+
+  const cooldown = getCooldownInfo();
 
   const validate = () => {
     const e = {};
@@ -50,12 +90,19 @@ function CompleteProfileScreen() {
     if (!form.department) e.department = 'Department is required';
     if (!form.bloodGroup) e.bloodGroup = 'Blood group is required';
     if (form.userType === 'Student') {
-      if (!form.batch.trim()) e.batch = 'Batch is required';
+      if (!form.batch.toString().trim()) e.batch = 'Batch is required';
       if (!form.section.trim()) e.section = 'Section is required';
       if (!form.session.trim()) e.session = 'Session is required';
     }
     if (form.userType === 'Teacher' && !form.designation.trim()) {
       e.designation = 'Designation is required';
+    }
+    if (!form.hasNeverDonated) {
+      if (!form.lastDonationDate) {
+        e.lastDonationDate = 'Please select your last donation date';
+      } else if (new Date(form.lastDonationDate).getTime() > Date.now()) {
+        e.lastDonationDate = 'Last donation date cannot be in the future';
+      }
     }
     return e;
   };
@@ -72,14 +119,19 @@ function CompleteProfileScreen() {
     setSubmitting(true);
     const payload = {
       institutionalId: form.institutionalId.trim().toUpperCase(),
+      name: form.name.trim() || user?.name || undefined,
       gender: form.gender,
       department: form.department,
       bloodGroup: form.bloodGroup,
       userType: form.userType,
+      avatarUrl: user?.avatarUrl || undefined,
       ...(form.phone && { phone: form.phone.trim() }),
       isDisasterVolunteer: form.isDisasterVolunteer,
+      hasNeverDonated: form.hasNeverDonated,
+      lastDonationDate: form.hasNeverDonated ? null : (form.lastDonationDate ? new Date(form.lastDonationDate).toISOString() : null),
+      totalDonations: form.hasNeverDonated ? 0 : (Number(form.totalDonations) || 1),
       ...(form.userType === 'Student' && {
-        studentDetails: { batch: form.batch, section: form.section, session: form.session },
+        studentDetails: { batch: String(form.batch), section: form.section, session: form.session },
       }),
       ...(form.userType === 'Teacher' && {
         teacherDetails: { designation: form.designation },
@@ -90,7 +142,7 @@ function CompleteProfileScreen() {
     setSubmitting(false);
 
     if (res.success) {
-      navigate(res.redirectTo || '/feed', { replace: true });
+      navigate(res.redirectTo || '/profile', { replace: true });
     } else {
       setServerError(res.error || 'Something went wrong. Please try again.');
       if (res.errors) {
@@ -112,42 +164,161 @@ function CompleteProfileScreen() {
 
   const busy = isLoading || submitting;
 
+  // Max date for date picker = today
+  const todayStr = new Date().toISOString().split('T')[0];
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center py-10 px-4">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-rose-50/30 to-blue-50/40 flex items-center justify-center py-10 px-4">
       <div className="w-full max-w-xl">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary mb-4 shadow-lg">
-            <span className="material-symbols-outlined text-white text-3xl">school</span>
-          </div>
-          <h1 className="text-2xl font-bold text-slate-800">Complete Your Campus Profile</h1>
-          <p className="text-slate-500 text-sm mt-2">
-            Hi <span className="font-semibold text-slate-700">{user?.name || 'there'}</span> — you're signed in
-            as a Guest. Fill in your campus details to unlock all features.
-          </p>
+        {/* Navigation Back */}
+        <div className="mb-4">
+          <Link
+            to="/profile"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-primary transition-colors py-1.5 px-3 rounded-lg bg-white/80 hover:bg-white border border-slate-200 shadow-2xs"
+          >
+            <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+            <span>Return to Profile</span>
+          </Link>
         </div>
 
-        {/* Guest capability callout */}
-        <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 flex gap-3">
-          <span className="material-symbols-outlined text-amber-500 text-[20px] mt-0.5 flex-shrink-0">info</span>
-          <div className="text-sm text-amber-800">
-            <p className="font-semibold mb-1">What unlocks after you complete this:</p>
-            <ul className="list-disc list-inside space-y-0.5 text-amber-700">
-              <li>Request blood (emergency & planned)</li>
-              <li>Appear as a donor in search results</li>
-              <li>Send and receive messages</li>
-              <li>Join WhatsApp crisis channel</li>
-              <li>Dispatch emergency SOS</li>
-            </ul>
+        {/* User Identity Banner (Google / Social Account Info) */}
+        <div className="mb-6 p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-4">
+          <div className="relative shrink-0">
+            {user?.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt={user.name || 'User Profile'}
+                className="w-14 h-14 rounded-full object-cover ring-2 ring-primary/30 shadow-sm"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg ring-2 ring-primary/20">
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'G'}
+              </div>
+            )}
+            <span className="absolute -bottom-1 -right-1 p-0.5 rounded-full bg-emerald-500 text-white shadow-xs">
+              <span className="material-symbols-outlined text-[12px] block">check</span>
+            </span>
           </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base font-bold text-slate-900 truncate">
+                {user?.name || 'Google Guest'}
+              </h2>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-primary/10 text-primary uppercase">
+                {user?.authProvider ? `${user.authProvider} account` : 'Guest Mode'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 truncate mt-0.5">
+              {user?.email || 'Authenticated via Google Identity'}
+            </p>
+          </div>
+        </div>
+
+        {/* Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight">Complete Campus Verification</h1>
+          <p className="text-slate-500 text-xs mt-1">
+            Link your institutional details and donation status to unlock blood requests, crisis dispatch, and donor matches.
+          </p>
         </div>
 
         {/* Form Card */}
         <form
           onSubmit={handleSubmit}
-          className="bg-white rounded-2xl shadow-lg border border-slate-100 p-7 space-y-5"
+          className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 sm:p-8 space-y-5"
           noValidate
         >
+          {/* 1-Click Quick Preset Fill */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[14px] text-primary">auto_fix_high</span>
+              Quick Demo Presets (1-Click Autofill):
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setForm({
+                    institutionalId: `CSE${Date.now().toString().slice(-4)}20210001`,
+                    name: user?.name || 'Nasim Shawrab',
+                    gender: 'Male',
+                    department: 'CSE',
+                    bloodGroup: 'B+',
+                    userType: 'Student',
+                    phone: '+8801712345678',
+                    batch: '19',
+                    section: 'A',
+                    session: '2020-21',
+                    designation: '',
+                    isDisasterVolunteer: true,
+                    hasNeverDonated: true,
+                    lastDonationDate: '',
+                    totalDonations: 0,
+                  });
+                  setErrors({});
+                }}
+                className="py-1.5 px-2 rounded-xl bg-white border border-slate-200 hover:border-primary/40 hover:bg-primary/5 text-[11px] font-bold text-slate-700 hover:text-primary transition-all text-center shadow-xs cursor-pointer"
+              >
+                CSE Student (B+, Never Donated)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const cooldownDate = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                  setForm({
+                    institutionalId: `EEE${Date.now().toString().slice(-4)}20210002`,
+                    name: user?.name || 'Nasim Shawrab',
+                    gender: 'Male',
+                    department: 'EEE',
+                    bloodGroup: 'A+',
+                    userType: 'Student',
+                    phone: '+8801722334455',
+                    batch: '20',
+                    section: 'B',
+                    session: '2021-22',
+                    designation: '',
+                    isDisasterVolunteer: false,
+                    hasNeverDonated: false,
+                    lastDonationDate: cooldownDate,
+                    totalDonations: 2,
+                  });
+                  setErrors({});
+                }}
+                className="py-1.5 px-2 rounded-xl bg-white border border-slate-200 hover:border-primary/40 hover:bg-primary/5 text-[11px] font-bold text-slate-700 hover:text-primary transition-all text-center shadow-xs cursor-pointer"
+              >
+                EEE Student (A+, 40d Cooldown)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const pastDate = new Date(Date.now() - 110 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                  setForm({
+                    institutionalId: `TEA${Date.now().toString().slice(-4)}20210003`,
+                    name: user?.name || 'Nasim Shawrab',
+                    gender: 'Male',
+                    department: 'CSE',
+                    bloodGroup: 'O+',
+                    userType: 'Teacher',
+                    phone: '+8801733445566',
+                    batch: '',
+                    section: '',
+                    session: '',
+                    designation: 'Associate Professor',
+                    isDisasterVolunteer: true,
+                    hasNeverDonated: false,
+                    lastDonationDate: pastDate,
+                    totalDonations: 5,
+                  });
+                  setErrors({});
+                }}
+                className="py-1.5 px-2 rounded-xl bg-white border border-slate-200 hover:border-primary/40 hover:bg-primary/5 text-[11px] font-bold text-slate-700 hover:text-primary transition-all text-center shadow-xs cursor-pointer"
+              >
+                Teacher (O+, 5 Donations)
+              </button>
+            </div>
+          </div>
+
           {serverError && (
             <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5">
               <span className="material-symbols-outlined text-red-500 text-[18px] flex-shrink-0">error</span>
@@ -203,7 +374,7 @@ function CompleteProfileScreen() {
                   onClick={() => set('gender', 'Male')}
                   className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-bold text-xs tracking-wide transition-all cursor-pointer ${
                     form.gender === 'Male'
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-sm ring-2 ring-blue-400/40 transform scale-[1.02]'
+                      ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-400/50 transform scale-[1.02]'
                       : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/80 shadow-xs'
                   }`}
                 >
@@ -216,7 +387,7 @@ function CompleteProfileScreen() {
                   onClick={() => set('gender', 'Female')}
                   className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-bold text-xs tracking-wide transition-all cursor-pointer ${
                     form.gender === 'Female'
-                      ? 'bg-gradient-to-r from-rose-600 to-pink-700 text-white shadow-sm ring-2 ring-rose-400/40 transform scale-[1.02]'
+                      ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-400/50 transform scale-[1.02]'
                       : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/80 shadow-xs'
                   }`}
                 >
@@ -274,9 +445,11 @@ function CompleteProfileScreen() {
                 </label>
                 <input
                   id="cp-batch"
-                  type="text"
+                  type="number"
+                  min="1"
+                  max="99"
                   className={inputCls('batch')}
-                  placeholder="e.g. 22"
+                  placeholder="e.g. 19"
                   value={form.batch}
                   onChange={(e) => set('batch', e.target.value)}
                 />
@@ -331,10 +504,112 @@ function CompleteProfileScreen() {
             </div>
           )}
 
+          {/* ── DONATION HISTORY & NEVER DONATED SECTION ── */}
+          <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/90 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[17px] text-primary">history_toggle_off</span>
+                Donation History & Eligibility
+              </label>
+              {form.hasNeverDonated ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                  ✨ First-Time Donor
+                </span>
+              ) : cooldown.isCooldown ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                  ⏱️ In Cooldown ({cooldown.daysLeft}d left)
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                  ✅ Eligible Donor
+                </span>
+              )}
+            </div>
+
+            {/* Never Donated Toggle */}
+            <label className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-slate-200/80 cursor-pointer select-none hover:border-primary/40 transition-colors">
+              <input
+                type="checkbox"
+                id="cp-never-donated"
+                checked={form.hasNeverDonated}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setForm((prev) => ({
+                    ...prev,
+                    hasNeverDonated: checked,
+                    lastDonationDate: checked ? '' : prev.lastDonationDate,
+                    totalDonations: checked ? 0 : (prev.totalDonations || 1),
+                  }));
+                  if (errors.lastDonationDate) {
+                    setErrors((prev) => { const cp = { ...prev }; delete cp.lastDonationDate; return cp; });
+                  }
+                }}
+                className="w-4 h-4 rounded text-primary accent-primary cursor-pointer"
+              />
+              <div className="flex-1">
+                <p className="text-xs font-bold text-slate-800">I have never donated blood before</p>
+                <p className="text-[11px] text-slate-500">First-time donors will be immediately listed as available to donate.</p>
+              </div>
+            </label>
+
+            {/* Previous Donation Inputs (Shown only if not never donated) */}
+            {!form.hasNeverDonated && (
+              <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-in">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1" htmlFor="cp-last-donation-date">
+                    Last Donation Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="cp-last-donation-date"
+                    type="date"
+                    max={todayStr}
+                    value={form.lastDonationDate}
+                    onChange={(e) => set('lastDonationDate', e.target.value)}
+                    className={inputCls('lastDonationDate')}
+                  />
+                  {errors.lastDonationDate && (
+                    <p className="text-xs text-red-600 mt-1">{errors.lastDonationDate}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1" htmlFor="cp-total-donations">
+                    Total Previous Donations
+                  </label>
+                  <input
+                    id="cp-total-donations"
+                    type="number"
+                    min="1"
+                    max="99"
+                    value={form.totalDonations || 1}
+                    onChange={(e) => set('totalDonations', Math.max(1, parseInt(e.target.value) || 1))}
+                    className={inputCls('totalDonations')}
+                  />
+                </div>
+
+                {/* Cooldown feedback banner */}
+                {form.lastDonationDate && (
+                  <div className={`sm:col-span-2 p-2.5 rounded-xl text-xs flex items-center gap-2 ${
+                    cooldown.isCooldown ? 'bg-amber-50 border border-amber-200 text-amber-800' : 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                  }`}>
+                    <span className="material-symbols-outlined text-[16px]">
+                      {cooldown.isCooldown ? 'schedule' : 'check_circle'}
+                    </span>
+                    <span>
+                      {cooldown.isCooldown
+                        ? `90-day cooldown active (${cooldown.daysLeft} days remaining). You will become eligible on ${cooldown.eligibleDate}.`
+                        : 'Over 90 days have passed. You are immediately eligible to donate!'}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Phone (optional) */}
           <div>
             <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">
-              Phone <span className="text-slate-400 font-normal">(optional)</span>
+              Phone Number <span className="text-slate-400 font-normal">(optional)</span>
             </label>
             <input
               id="cp-phone"
@@ -347,40 +622,40 @@ function CompleteProfileScreen() {
           </div>
 
           {/* Disaster volunteer checkbox */}
-          <label className="flex items-start gap-3 cursor-pointer select-none group">
+          <label className="flex items-start gap-3 cursor-pointer select-none group p-3 rounded-xl bg-slate-50 border border-slate-200/70 hover:border-primary/40 transition-colors">
             <input
               id="cp-disaster-volunteer"
               type="checkbox"
               checked={form.isDisasterVolunteer}
               onChange={(e) => set('isDisasterVolunteer', e.target.checked)}
-              className="mt-0.5 accent-primary w-4 h-4 rounded"
+              className="mt-0.5 accent-primary w-4 h-4 rounded cursor-pointer"
             />
             <div>
-              <p className="text-sm font-semibold text-slate-700 group-hover:text-primary transition-colors">
+              <p className="text-xs font-bold text-slate-800 group-hover:text-primary transition-colors">
                 Disaster Reserve Volunteer
               </p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Make yourself available for emergency campus crisis mobilization
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Join the emergency campus rapid response pool for crisis mobilization.
               </p>
             </div>
           </label>
 
-          {/* Submit */}
+          {/* Submit CTA */}
           <button
             id="cp-submit"
             type="submit"
             disabled={busy}
-            className="w-full py-3 rounded-xl bg-primary text-white font-bold text-sm tracking-wide hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2 shadow-md"
+            className="w-full py-3.5 rounded-2xl bg-primary hover:bg-primary-dark text-white font-bold text-sm tracking-wide active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2 shadow-lg shadow-primary/20 cursor-pointer"
           >
             {busy ? (
               <>
                 <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-                Completing Profile…
+                <span>Completing Profile…</span>
               </>
             ) : (
               <>
                 <span className="material-symbols-outlined text-[18px]">verified_user</span>
-                Complete Campus Profile
+                <span>Complete Campus Profile</span>
               </>
             )}
           </button>

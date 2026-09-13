@@ -2,12 +2,13 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const CrisisRequisition = require('../models/CrisisRequisition');
+const { BloodRequest } = require('../models/BloodRequest');
 const { User } = require('../models/User');
 const { dispatchNotification } = require('../services/notificationService');
 const { connectDB } = require('../config/db');
 const { verifyToken, requireVerifiedAccount } = require('../middleware/auth');
 
-const VALID_BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'BOMBAY'];
+const VALID_BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const VALID_PATIENT_COHORTS = ['student', 'faculty', 'cantonment', 'civilian'];
 
 // Compatibility lookup helper: who can donate to whom
@@ -20,7 +21,6 @@ const DONOR_COMPATIBILITY = {
   'AB-': ['AB-', 'A-', 'B-', 'O-'],
   'O+': ['O+', 'O-'],
   'O-': ['O-'],
-  'BOMBAY': ['BOMBAY'],
 };
 
 // Official 24/7 Verified Emergency Hotlines & Command Escalation
@@ -95,7 +95,7 @@ const SEED_REQUISITIONS = [
     clinicalCase: 'Severe Hemorrhage / ICU Ward',
     patientDetails: 'Patient: University Lab Staff',
     patientCohort: 'faculty',
-    bloodGroup: 'BOMBAY',
+    bloodGroup: 'AB-',
     units: 1,
     destinationHospital: 'Rangpur Medical College',
     urgencyLevel: 'STAT',
@@ -156,7 +156,9 @@ let inMemoryRequisitions = [...SEED_REQUISITIONS];
 router.get(['/telemetry', '/readiness', '/stats'], async (req, res) => {
   try {
     let isDbConnected = false;
-    if (process.env.MONGODB_URI) {
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      isDbConnected = true;
+    } else if (process.env.MONGODB_URI) {
       try {
         await connectDB();
         isDbConnected = true;
@@ -168,12 +170,16 @@ router.get(['/telemetry', '/readiness', '/stats'], async (req, res) => {
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
     const availableFilter = {
       isActive: true,
-      availabilityStatus: 'Available',
-      $or: [{ lastDonationDate: null }, { lastDonationDate: { $lt: ninetyDaysAgo } }]
+      $or: [{ availabilityStatus: 'Available' }, { availabilityStatus: true }],
+      $and: [
+        {
+          $or: [{ lastDonationDate: null }, { lastDonationDate: { $lt: ninetyDaysAgo } }]
+        }
+      ]
     };
 
     let totalAvailableDonors = 0;
-    const bloodMap = { 'O+': 0, 'A+': 0, 'B+': 0, 'AB+': 0, 'O-': 0, 'A-': 0, 'B-': 0, 'AB-': 0, 'BOMBAY': 0 };
+    const bloodMap = { 'O+': 0, 'A+': 0, 'B+': 0, 'AB+': 0, 'O-': 0, 'A-': 0, 'B-': 0, 'AB-': 0 };
     let disasterReserveCount = 0;
     let totalUsersCount = 0;
     let activeUnresolvedSOSCount = 0;
@@ -181,14 +187,15 @@ router.get(['/telemetry', '/readiness', '/stats'], async (req, res) => {
     const gapGroups = [];
 
     if (isDbConnected) {
-      const [bloodCountsAgg, disasterCount, totalUsers, unresolvedSOS] = await Promise.all([
+      const [bloodCountsAgg, disasterCount, totalUsers, unresolvedCrisis, unresolvedEmergency] = await Promise.all([
         User.aggregate([
           { $match: availableFilter },
           { $group: { _id: '$bloodGroup', count: { $sum: 1 } } }
         ]),
         User.countDocuments({ isDisasterVolunteer: true, isActive: true }),
         User.countDocuments({ isActive: true }),
-        CrisisRequisition.countDocuments({ status: { $ne: 'Fulfilled' } })
+        CrisisRequisition.countDocuments({ status: { $nin: ['Fulfilled', 'Cancelled'] } }),
+        BloodRequest.countDocuments({ condition: 'Emergency', status: { $nin: ['Fulfilled', 'Cancelled'] } })
       ]);
 
       bloodCountsAgg.forEach((item) => {
@@ -199,32 +206,43 @@ router.get(['/telemetry', '/readiness', '/stats'], async (req, res) => {
       });
       disasterReserveCount = disasterCount;
       totalUsersCount = totalUsers;
-      activeUnresolvedSOSCount = unresolvedSOS;
+      activeUnresolvedSOSCount = unresolvedCrisis + unresolvedEmergency;
     } else {
-      totalAvailableDonors = 142;
-      disasterReserveCount = 28;
-      totalUsersCount = 1000;
-      activeUnresolvedSOSCount = 3;
-      bloodMap['O+'] = 18;
-      bloodMap['A+'] = 24;
-      bloodMap['B+'] = 14;
-      bloodMap['AB+'] = 9;
-      bloodMap['BOMBAY'] = 0;
-      bloodMap['O-'] = 1;
+      // In-memory calculation from live in-memory datasets
+      let mockDonorsList = [];
+      try {
+        const donorsModule = require('./donors');
+        mockDonorsList = donorsModule.DEMO_DONORS || [];
+      } catch {
+        mockDonorsList = [];
+      }
+
+      totalUsersCount = Math.max(mockDonorsList.length, 1);
+      activeUnresolvedSOSCount = inMemoryRequisitions.filter(r => !['Fulfilled', 'Cancelled'].includes(r.status)).length;
+      
+      mockDonorsList.forEach((d) => {
+        const isEligible = (d.availabilityStatus === 'Available' || d.availabilityStatus === true) &&
+          (d.lastDonationDate === null || new Date(d.lastDonationDate) < ninetyDaysAgo);
+        if (isEligible && d.bloodGroup && bloodMap[d.bloodGroup] !== undefined) {
+          bloodMap[d.bloodGroup]++;
+          totalAvailableDonors++;
+        }
+        if (d.isDisasterVolunteer) {
+          disasterReserveCount++;
+        }
+      });
     }
 
-    const disasterPercentage = totalUsersCount > 0 ? Math.round((disasterReserveCount / totalUsersCount) * 100) : 0;
+    const disasterPercentage = totalUsersCount > 0 ? Math.min(100, Math.round((disasterReserveCount / totalUsersCount) * 100)) : 0;
 
-    const bombayCount = bloodMap['BOMBAY'];
-    const oNegativeCount = bloodMap['O-'];
-    if (bombayCount === 0) {
-      rareGroupGapCount++;
-      gapGroups.push('Bombay Phenotype (0)');
-    }
-    if (oNegativeCount === 0) {
-      rareGroupGapCount++;
-      gapGroups.push('O- (0)');
-    }
+    // Rare groups evaluation (Bombay, O-, AB-, A-, B-)
+    const rareGroupsToCheck = ['O-', 'AB-', 'A-', 'B-'];
+    rareGroupsToCheck.forEach((grp) => {
+      if ((bloodMap[grp] || 0) === 0) {
+        rareGroupGapCount++;
+        gapGroups.push(`${grp} (0 Units)`);
+      }
+    });
 
     let gapWarning = null;
     if (rareGroupGapCount > 0) {
@@ -235,16 +253,16 @@ router.get(['/telemetry', '/readiness', '/stats'], async (req, res) => {
       };
     }
 
-    let readinessScore = (totalAvailableDonors * 2) + (disasterReserveCount * 3) - (rareGroupGapCount * 10) - (activeUnresolvedSOSCount * 5) + 50;
-    readinessScore = Math.max(0, Math.min(100, readinessScore));
+    const rawScore = (totalAvailableDonors * 2) + (disasterReserveCount * 3) - (rareGroupGapCount * 10) - (activeUnresolvedSOSCount * 5) + 50;
+    const readinessScore = Math.max(0, Math.min(100, Math.round(rawScore)));
 
-    const formulaFormula = `Score = (${totalAvailableDonors} × 2) + (${disasterReserveCount} × 3) - (${rareGroupGapCount} × 10) - (${activeUnresolvedSOSCount} × 5) + 50 = ${readinessScore}`;
+    const formulaFormula = `Score = clamp(0, 100, (${totalAvailableDonors} × 2) + (${disasterReserveCount} × 3) - (${rareGroupGapCount} × 10) - (${activeUnresolvedSOSCount} × 5) + 50) = ${readinessScore}`;
 
     const topBloodGroupsReady = {
-      'O+': bloodMap['O+'],
-      'A+': bloodMap['A+'],
-      'B+': bloodMap['B+'],
-      'AB+': bloodMap['AB+']
+      'O+': bloodMap['O+'] || 0,
+      'A+': bloodMap['A+'] || 0,
+      'B+': bloodMap['B+'] || 0,
+      'AB+': bloodMap['AB+'] || 0
     };
 
     const telemetryData = {
@@ -359,7 +377,11 @@ router.post(['/sos', '/dispatch', '/trigger'], verifyToken, requireVerifiedAccou
       contactPhone = '+8801769662215',
     } = req.body;
 
-    const normalizedGroup = bloodGroup.toUpperCase();
+    if (!hospital || !hospital.trim()) {
+      return res.status(400).json({ error: 'Hospital is required.' });
+    }
+
+    const normalizedGroup = (bloodGroup || '').toUpperCase();
     if (!VALID_BLOOD_GROUPS.includes(normalizedGroup)) {
       return res.status(400).json({
         error: `Invalid blood group. Allowed: ${VALID_BLOOD_GROUPS.join(', ')}`,

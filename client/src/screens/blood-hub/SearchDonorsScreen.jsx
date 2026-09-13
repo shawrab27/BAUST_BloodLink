@@ -13,7 +13,6 @@ const BLOOD_GROUPS = [
   'AB-',
   'O+',
   'O-',
-  'Bombay (hh)',
 ];
 
 const DEPARTMENTS = [
@@ -137,10 +136,7 @@ function SearchDonorsScreen() {
 
         <button
           onClick={() => navigate('/blood-hub/request')}
-          className="px-5 py-2.5 rounded-xl text-white font-bold text-sm shadow-md hover:shadow-lg flex items-center gap-2 transition-all active:scale-95 self-start md:self-auto"
-          style={{
-            background: 'linear-gradient(135deg, rgb(225, 29, 72) 0%, rgb(184, 0, 53) 100%)',
-          }}
+          className="px-5 py-2.5 rounded-full text-white font-bold text-sm bg-primary hover:bg-primary-dark shadow-md shadow-primary/25 hover:shadow-primary/40 flex items-center gap-2 transition-all active:scale-95 self-start md:self-auto"
         >
           <span className="material-symbols-outlined text-[18px]">add_box</span>
           <span>Request Blood</span>
@@ -372,15 +368,9 @@ function SearchDonorsScreen() {
 
                       {/* Blood Group Badge */}
                       <div
-                        className="flex flex-col items-center justify-center min-w-[44px] h-[44px] rounded-xl text-white shadow-sm font-black text-[18px]"
-                        style={{
-                          background:
-                            donor.bloodGroup === 'BOMBAY'
-                              ? '#ac2926'
-                              : 'linear-gradient(135deg, rgb(225, 29, 72) 0%, rgb(184, 0, 53) 100%)',
-                        }}
+                        className="flex flex-col items-center justify-center min-w-[44px] h-[44px] rounded-xl text-white shadow-sm font-black text-[18px] bg-gradient-to-br from-rose-600 to-rose-800"
                       >
-                        <span>{donor.bloodGroup === 'BOMBAY' ? 'hh' : donor.bloodGroup}</span>
+                        <span>{donor.bloodGroup}</span>
                       </div>
                     </div>
 
@@ -436,11 +426,7 @@ function SearchDonorsScreen() {
                           `/blood-hub/request?bloodGroup=${encodeURIComponent(donor.bloodGroup)}&donorId=${donor._id}&donorName=${encodeURIComponent(donor.name)}`
                         )
                       }
-                      className="w-full py-2.5 px-4 rounded-xl text-white text-xs font-bold shadow-sm hover:brightness-105 active:scale-95 transition-all flex items-center justify-center gap-1.5"
-                      style={{
-                        background:
-                          'linear-gradient(135deg, rgb(225, 29, 72) 0%, rgb(184, 0, 53) 100%)',
-                      }}
+                      className="w-full py-2.5 px-4 rounded-full text-white text-xs font-bold bg-primary hover:bg-primary-dark shadow-sm shadow-primary/25 hover:shadow-primary/40 active:scale-95 transition-all flex items-center justify-center gap-1.5"
                     >
                       <span className="material-symbols-outlined text-[16px]">
                         send_time_extension

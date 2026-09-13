@@ -21,55 +21,42 @@ function EmergencySosScreen() {
   // ─── TELEMETRY & STATS STATE ───────────────────────────────────────────────
   const [telemetry, setTelemetry] = useState({
     operationalLevel: 'ELEVATED STANDBY',
-    latency: '38ms',
     bridgeStatus: 'Saidpur CMH Bridge Active',
     syncStatus: 'Live Telemetry Synced',
     alertBanner: {
       level: 'Level 2 Alert',
       title: 'Moderate Seismic Tremor (Mag 4.2)',
       sector: 'Northern Regional Sector',
-      updatedText: 'Updated 3 mins ago',
+      updatedText: 'Updated Just Now',
       defenseStatus: 'Saidpur Civil Defense Synced',
     },
     readinessDashboard: {
       topBloodGroupsReady: {
-        'O+': 18,
-        'A+': 24,
-        'B+': 14,
-        'AB+': 9,
+        'O+': 0,
+        'A+': 0,
+        'B+': 0,
+        'AB+': 0,
       },
       disasterReserveStandby: {
-        volunteersCount: 28,
-        percentage: 82,
+        volunteersCount: 0,
+        percentage: 0,
       },
-      gapWarning: {
-        title: 'Rare-Group Gap Warning',
-        description: 'Critical Gap: Bombay Phenotype (0) & O- (1 Unit)',
-        badgeText: 'IMMEDIATE TRIAGE NOTICE',
-      },
-      transitWindow: {
-        timeRange: '14–20',
-        unit: 'Minutes',
-        route: 'Saidpur CMH & BAUST Clinic via Highway',
-      },
+      gapWarning: null,
     },
     clinicalSummary:
-      'Intra-campus donor availability remains robust for common positive groups, but the regional tremor alert necessitates pre-positioning rare group reserves. With O- at single-unit inventory and zero active Bombay Phenotype donors checked in on campus, emergency coordinators should maintain direct priority liaison with Saidpur CMH blood bank.',
-    seismicLogs: [
-      '[02:14 UTC] Seismic Shock recorded Mag 4.2 Saidpur Fault. CMH Cantonment initiated standby.',
-      '[02:16 UTC] BAUST BloodLink AI ran campus scan: 142 active check-ins detected.',
-      '[02:18 UTC] Rare group deficit triggered alert level: ELEVATED STANDBY.',
-    ],
+      'Intra-campus donor availability is monitored in real-time. Emergency coordinators maintain direct priority liaison with Saidpur CMH blood bank.',
+    seismicLogs: [],
     readinessScore: {
-      score: 78,
+      score: 50,
       maxScore: 100,
       assessmentTitle: 'Institutional Assessment',
-      assessmentSubtitle: 'Elevated Capability • Tier 1 Preparedness',
+      assessmentSubtitle: 'Live Campus Readiness Calculation',
+      formulaFormula: 'Score = clamp(0, 100, (Available Donors × 2) + (Disaster Standby × 3) - (Gaps × 10) - (Unresolved SOS × 5) + 50)',
       metrics: {
-        availableDonors: { label: 'Available Donors', value: '142 Ready' },
-        disasterReserve: { label: 'Disaster Reserve', value: '28 Pre-cleared' },
-        rareGroupGaps: { label: 'Rare Group Gaps', value: '2 Deficit Groups', isAlert: true },
-        activeUnresolvedSos: { label: 'Active Unresolved SOS', value: '3 Cases' },
+        availableDonors: { label: 'Available Donors', value: '0 Ready' },
+        disasterReserve: { label: 'Disaster Reserve', value: '0 Pre-cleared' },
+        rareGroupGaps: { label: 'Rare Group Gaps', value: '0 Deficit Groups', isAlert: false },
+        activeUnresolvedSos: { label: 'Active Unresolved SOS', value: '0 Cases' },
       },
     },
   });
@@ -158,7 +145,7 @@ function EmergencySosScreen() {
       clinicalCase: 'Severe Hemorrhage / ICU Ward',
       patientDetails: 'Patient: University Lab Staff',
       patientCohort: 'faculty',
-      bloodGroup: 'BOMBAY',
+      bloodGroup: 'AB-',
       units: 1,
       destinationHospital: 'Rangpur Medical College',
       urgencyLevel: 'STAT',
@@ -379,7 +366,7 @@ function EmergencySosScreen() {
                 Top Blood Groups Ready
               </span>
               <div className="grid grid-cols-4 gap-2 pt-1 text-center">
-                {Object.entries(telemetry.readinessDashboard?.topBloodGroupsReady || { 'O+': 18, 'A+': 24, 'B+': 14, 'AB+': 9 }).map(([grp, cnt]) => (
+                {Object.entries(telemetry.readinessDashboard?.topBloodGroupsReady || { 'O+': 0, 'A+': 0, 'B+': 0, 'AB+': 0 }).map(([grp, cnt]) => (
                   <div key={grp} className="bg-white p-2 rounded-lg shadow-xs border border-slate-100">
                     <span className="block text-xl font-black text-primary font-mono">{cnt}</span>
                     <span className="text-[11px] font-bold text-slate-500">{grp}</span>
@@ -395,34 +382,42 @@ function EmergencySosScreen() {
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-black text-on-surface font-mono">
-                  {telemetry.readinessDashboard?.disasterReserveStandby?.volunteersCount || 28}
+                  {telemetry.readinessDashboard?.disasterReserveStandby?.volunteersCount ?? 0}
                 </span>
                 <span className="text-xs font-semibold text-slate-500">Volunteers Pre-cleared</span>
               </div>
               <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
                 <div
                   className="bg-primary h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${telemetry.readinessDashboard?.disasterReserveStandby?.percentage || 82}%` }}
+                  style={{ width: `${telemetry.readinessDashboard?.disasterReserveStandby?.percentage ?? 0}%` }}
                 />
               </div>
             </div>
 
             {/* Tile 3: Gap Warning */}
-            <div className="p-4 rounded-xl bg-rose-50/80 backdrop-blur-sm space-y-2 border border-rose-200/60 flex flex-col justify-between">
+            <div className={`p-4 rounded-xl backdrop-blur-sm space-y-2 border flex flex-col justify-between ${
+              telemetry.readinessDashboard?.gapWarning
+                ? 'bg-rose-50/80 border-rose-200/60'
+                : 'bg-slate-50/80 border-slate-200/50'
+            }`}>
               <div>
-                <div className="flex items-center gap-1.5 text-primary">
+                <div className={`flex items-center gap-1.5 ${telemetry.readinessDashboard?.gapWarning ? 'text-primary' : 'text-slate-600'}`}>
                   <span className="material-symbols-outlined text-base">emergency_home</span>
                   <span className="text-[11px] font-bold uppercase tracking-wider">
-                    {telemetry.readinessDashboard?.gapWarning?.title || 'Rare-Group Gap Warning'}
+                    {telemetry.readinessDashboard?.gapWarning?.title || 'Rare-Group Inventory'}
                   </span>
                 </div>
-                <p className="text-xs text-primary font-bold leading-snug mt-1">
-                  {telemetry.readinessDashboard?.gapWarning?.description || 'Critical Gap: Bombay Phenotype (0) & O- (1 Unit)'}
+                <p className={`text-xs font-bold leading-snug mt-1 ${telemetry.readinessDashboard?.gapWarning ? 'text-primary' : 'text-slate-600'}`}>
+                  {telemetry.readinessDashboard?.gapWarning?.description || 'All rare blood groups have active donor coverage.'}
                 </p>
               </div>
               <div>
-                <span className="inline-block px-2.5 py-0.5 rounded-full bg-primary text-white text-[10px] font-extrabold tracking-wide">
-                  {telemetry.readinessDashboard?.gapWarning?.badgeText || 'IMMEDIATE TRIAGE NOTICE'}
+                <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wide ${
+                  telemetry.readinessDashboard?.gapWarning
+                    ? 'bg-primary text-white'
+                    : 'bg-emerald-600 text-white'
+                }`}>
+                  {telemetry.readinessDashboard?.gapWarning?.badgeText || 'NORMAL STANDBY'}
                 </span>
               </div>
             </div>
@@ -491,14 +486,14 @@ function EmergencySosScreen() {
                     r="50"
                     stroke="currentColor"
                     strokeDasharray="314.159"
-                    strokeDashoffset={314.159 * (1 - (telemetry.readinessScore?.score || 78) / 100)}
+                    strokeDashoffset={314.159 * (1 - (telemetry.readinessScore?.score ?? 50) / 100)}
                     strokeLinecap="round"
                     strokeWidth="10"
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                   <span className="text-4xl font-black text-on-surface leading-none font-mono">
-                    {telemetry.readinessScore?.score || 78}
+                    {telemetry.readinessScore?.score ?? 50}
                   </span>
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
                     / 100
@@ -539,19 +534,33 @@ function EmergencySosScreen() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/50">
                   <span className="text-xs font-medium text-slate-600">Available Donors</span>
-                  <span className="text-sm font-black text-on-surface font-mono">142 Ready</span>
+                  <span className="text-sm font-black text-on-surface font-mono" id="telemetry-available-donors">
+                    {telemetry.readinessScore?.metrics?.availableDonors?.value || `${telemetry.readinessScore?.formulaDetails?.availableDonorCount ?? 0} Ready`}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/50">
                   <span className="text-xs font-medium text-slate-600">Disaster Reserve</span>
-                  <span className="text-sm font-black text-on-surface font-mono">28 Pre-cleared</span>
+                  <span className="text-sm font-black text-on-surface font-mono" id="telemetry-disaster-reserve">
+                    {telemetry.readinessScore?.metrics?.disasterReserve?.value || `${telemetry.readinessScore?.formulaDetails?.disasterReserveCount ?? 0} Pre-cleared`}
+                  </span>
                 </div>
-                <div className="flex items-center justify-between p-3 rounded-xl bg-rose-50/80 border border-rose-200/60">
-                  <span className="text-xs font-bold text-primary">Rare Group Gaps</span>
-                  <span className="text-sm font-black text-primary font-mono">2 Deficit Groups</span>
+                <div className={`flex items-center justify-between p-3 rounded-xl ${
+                  telemetry.readinessScore?.metrics?.rareGroupGaps?.isAlert
+                    ? 'bg-rose-50/80 border border-rose-200/60'
+                    : 'bg-slate-50 border border-slate-200/50'
+                }`}>
+                  <span className={`text-xs font-bold ${telemetry.readinessScore?.metrics?.rareGroupGaps?.isAlert ? 'text-primary' : 'text-slate-600'}`}>
+                    Rare Group Gaps
+                  </span>
+                  <span className={`text-sm font-black font-mono ${telemetry.readinessScore?.metrics?.rareGroupGaps?.isAlert ? 'text-primary' : 'text-on-surface'}`} id="telemetry-rare-gaps">
+                    {telemetry.readinessScore?.metrics?.rareGroupGaps?.value || `${telemetry.readinessScore?.formulaDetails?.rareGroupGapCount ?? 0} Deficit Groups`}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/50">
                   <span className="text-xs font-medium text-slate-600">Active Unresolved SOS</span>
-                  <span className="text-sm font-black text-on-surface font-mono">3 Cases</span>
+                  <span className="text-sm font-black text-on-surface font-mono" id="telemetry-unresolved-sos">
+                    {telemetry.readinessScore?.metrics?.activeUnresolvedSos?.value || `${telemetry.readinessScore?.formulaDetails?.activeUnresolvedSOSCount ?? 0} Cases`}
+                  </span>
                 </div>
               </div>
             </div>
@@ -658,7 +667,6 @@ function EmergencySosScreen() {
                   onChange={(e) => setSosForm({ ...sosForm, bloodGroup: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-white font-semibold text-xs text-on-surface appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 border border-slate-200/80 shadow-xs"
                 >
-                  <option value="BOMBAY">Bombay Phenotype (Oh) — CRITICAL</option>
                   <option value="O-">O- Negative (Universal Critical)</option>
                   <option value="O+">O+ Positive</option>
                   <option value="A+">A+ Positive</option>
@@ -756,7 +764,7 @@ function EmergencySosScreen() {
               className={`py-3.5 px-8 rounded-full text-white text-sm font-black shadow-xl shadow-primary/25 hover:shadow-primary/40 flex items-center justify-center gap-3 transition-all transform active:scale-95 cursor-pointer disabled:opacity-80 shrink-0 ${
                 dispatchFeedback?.status === 'success'
                   ? 'bg-emerald-600'
-                  : 'bg-gradient-to-r from-[#e11d48] to-[#be123c]'
+                  : 'bg-primary hover:bg-primary-dark'
               }`}
               id="trigger-sos-action"
             >
@@ -854,7 +862,7 @@ function EmergencySosScreen() {
                     <td className="py-3.5 px-4 text-center">
                       <span
                         className={`inline-block px-2.5 py-1 rounded-full font-black text-xs font-mono ${
-                          req.bloodGroup === 'BOMBAY' || req.bloodGroup === 'O-'
+                          req.bloodGroup === 'O-' || req.bloodGroup === 'AB-'
                             ? 'bg-rose-100 text-rose-800 border border-rose-200'
                             : 'bg-slate-100 text-slate-800 border border-slate-200'
                         }`}

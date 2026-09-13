@@ -153,8 +153,37 @@ function LoginScreen() {
             </div>
           )}
 
+          {/* Demo Account Quick Selector */}
+          <div className="mt-5 p-3 rounded-2xl bg-slate-50/80 border border-slate-200/80">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[14px] text-primary">key</span>
+              Quick Demo Logins (Click to Autofill):
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              {[
+                { label: 'Admin', id: 'ADM0120210001Z99', pass: 'Password123!' },
+                { label: 'Student', id: 'CSE0120210001A12', pass: 'Password123!' },
+                { label: 'Teacher', id: 'TEA0120210003C34', pass: 'Password123!' },
+                { label: 'Staff', id: 'STF0120210005E56', pass: 'Password123!' },
+              ].map((acc) => (
+                <button
+                  key={acc.label}
+                  type="button"
+                  onClick={() => {
+                    setForm({ institutionalId: acc.id, password: acc.pass });
+                    setClientError('');
+                    setServerError('');
+                  }}
+                  className="px-2 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-primary/50 hover:bg-primary/5 active:scale-95 text-[11px] font-bold text-slate-700 hover:text-primary transition-all text-center shadow-xs"
+                >
+                  {acc.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Authentication Form */}
-          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
             {/* Institutional ID Input Field */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-on-surface flex items-center gap-1" htmlFor="instIdInput">
@@ -252,11 +281,7 @@ function LoginScreen() {
 
             {/* Primary Action CTA Button */}
             <button
-              className="group mt-2 w-full py-3.5 px-6 rounded-xl text-white text-sm font-bold tracking-wide shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              style={{
-                background: 'linear-gradient(135deg, rgb(225, 29, 72) 0%, rgb(190, 18, 60) 100%)',
-                boxShadow: 'rgba(225, 29, 72, 0.4) 0px 4px 18px',
-              }}
+              className="group mt-2 w-full py-3.5 px-6 rounded-full text-white text-sm font-bold tracking-wide bg-primary hover:bg-primary-dark shadow-md shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               type="submit"
               disabled={isLoading}
             >

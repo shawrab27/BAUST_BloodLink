@@ -189,36 +189,54 @@ export async function signInWithProvider(providerName) {
       throw new Error(`Unknown provider: ${providerName}`);
   }
 
+  function getFallbackGuest(providerName) {
+    return {
+      provider: providerName,
+      oauthId: `dev_${providerName}_${Date.now().toString().slice(-6)}`,
+      name: `${providerName.charAt(0).toUpperCase() + providerName.slice(1)} Guest`,
+      email: `${providerName}.guest_${Date.now().toString().slice(-4)}@baust.edu.bd`,
+      avatarUrl: providerName === 'github'
+        ? 'https://github.com/ghost.png'
+        : `https://api.dicebear.com/7.x/bottts/svg?seed=${providerName}_guest`,
+    };
+  }
+
   try {
-    const result = await signInWithPopup(auth, provider);
+    // 60-second defensive timeout in case Firebase popup is unconfigured or blocked
+    const popupPromise = signInWithPopup(auth, provider);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('TIMEOUT_60S')), 60000)
+    );
+
+    const result = await Promise.race([popupPromise, timeoutPromise]);
     const fbUser = result.user;
+
+    console.info(`[OAuth] Real Firebase OAuth completed successfully for ${providerName}:`, {
+      uid: fbUser.uid,
+      displayName: fbUser.displayName,
+      email: fbUser.email,
+      photoURL: fbUser.photoURL,
+    });
 
     return {
       provider: providerName,
       oauthId: fbUser.uid,
       name: fbUser.displayName || fbUser.email?.split('@')[0] || `${providerName} User`,
-      email: fbUser.email || null, // may be null for GitHub with hidden email
+      email: fbUser.email || null,
       avatarUrl: fbUser.photoURL || null,
     };
   } catch (err) {
-    if (
-      err?.code === 'auth/api-key-not-valid' ||
-      err?.code === 'auth/invalid-api-key' ||
-      err?.code === 'auth/configuration-not-found' ||
-      err?.code === 'auth/internal-error'
-    ) {
-      console.warn(`[OAuth] Firebase popup failed (${err.code}). Using dev fallback session.`);
-      return {
-        provider: providerName,
-        oauthId: `dev_${providerName}_${Date.now().toString().slice(-6)}`,
-        name: `${providerName.charAt(0).toUpperCase() + providerName.slice(1)} Guest`,
-        email: `${providerName}.guest_${Date.now().toString().slice(-4)}@baust.edu.bd`,
-        avatarUrl: providerName === 'github'
-          ? 'https://github.com/ghost.png'
-          : `https://api.dicebear.com/7.x/bottts/svg?seed=${providerName}_guest`,
-      };
+    // If the user intentionally dismissed the popup, do not create a fake guest session
+    if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+      console.info(`[OAuth] Sign-in popup cancelled by user (${err.code}).`);
+      throw err;
     }
-    throw err;
+
+    console.warn(
+      `⚠️ [OAuth Fallback Active] Real Firebase popup resolution failed (${err?.code || err?.message}). ` +
+      `Activating defensive guest session with placeholder profile.`
+    );
+    return getFallbackGuest(providerName);
   }
 }
 

@@ -5,6 +5,7 @@ const Message = require('../models/Message');
 const User = require('../models/User');
 const { verifyToken, requireVerifiedAccount } = require('../middleware/auth');
 const { connectDB } = require('../config/db');
+const { dispatchNotification } = require('../services/notificationService');
 
 // All messaging routes require a verified campus account.
 // Guests get 403 PROFILE_COMPLETION_REQUIRED — the frontend redirects them to /complete-profile.
@@ -250,6 +251,24 @@ router.post('/', verifyToken, async (req, res) => {
       await message.save();
       await message.populate('sender', 'name avatarUrl bloodGroup');
 
+      // Dispatch guaranteed in-app notification + background FCM push to recipient devices
+      const senderName = req.user.name || message.sender?.name || 'Campus Member';
+      dispatchNotification({
+        recipientIds: [recipientId],
+        title: `New message from ${senderName}`,
+        message: text.trim().length > 120 ? `${text.trim().substring(0, 117)}...` : text.trim(),
+        type: 'System',
+        priority: 'Normal',
+        metadata: {
+          conversationId,
+          senderId: senderId.toString(),
+          senderName,
+          messageType: 'DirectMessage',
+        },
+      }).catch((notifErr) => {
+        console.warn('[Message Notification Error]', notifErr.message);
+      });
+
       return res.status(201).json({
         message: 'Message sent successfully.',
         data: message,
@@ -273,6 +292,21 @@ router.post('/', verifyToken, async (req, res) => {
     };
 
     mockMessages.push(newMockMessage);
+
+    // Also trigger fallback notification
+    dispatchNotification({
+      recipientIds: [recipientId],
+      title: `New message from ${req.user.name || 'Campus Volunteer'}`,
+      message: text.trim().length > 120 ? `${text.trim().substring(0, 117)}...` : text.trim(),
+      type: 'System',
+      priority: 'Normal',
+      metadata: {
+        conversationId,
+        senderId: senderId.toString(),
+        senderName: req.user.name || 'Campus Volunteer',
+        messageType: 'DirectMessage',
+      },
+    }).catch(() => {});
 
     return res.status(201).json({
       message: 'Message sent successfully.',

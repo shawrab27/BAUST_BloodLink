@@ -45,10 +45,10 @@ describe('BAUST BloodLink Phase 3 — Blood Hub Core Tests', () => {
   });
 
   describe('1. BloodRequest Schema Validation Rules', () => {
-    test('Blood groups enum includes all 8 standard types + BOMBAY', () => {
-      const expected = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'BOMBAY'];
+    test('Blood groups enum includes all 8 standard types', () => {
+      const expected = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
       assert.deepStrictEqual(VALID_BLOOD_GROUPS, expected);
-      assert.strictEqual(VALID_BLOOD_GROUPS.includes('BOMBAY'), true);
+      assert.strictEqual(VALID_BLOOD_GROUPS.includes('O-'), true);
       assert.strictEqual(VALID_BLOOD_GROUPS.includes('X-'), false);
     });
 

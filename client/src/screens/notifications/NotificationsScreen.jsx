@@ -34,6 +34,43 @@ function NotificationsScreen() {
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [testPushStatus, setTestPushStatus] = useState(null);
+
+  const handleTestPush = async () => {
+    setIsSendingTest(true);
+    setTestPushStatus(null);
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('bloodlink_token');
+      const res = await fetch('/api/notifications/test-push', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTestPushStatus({
+          type: 'success',
+          text: `Test push sent to ${data.tokenCount} registered device(s)!`,
+        });
+      } else {
+        setTestPushStatus({
+          type: 'error',
+          text: data.error || 'Failed to send test push.',
+        });
+      }
+    } catch (err) {
+      setTestPushStatus({
+        type: 'error',
+        text: 'Network error: ' + err.message,
+      });
+    } finally {
+      setIsSendingTest(false);
+    }
+  };
+
   const handleMarkAllRead = async () => {
     try {
       const token = localStorage.getItem('token') || localStorage.getItem('bloodlink_token');
@@ -101,10 +138,31 @@ function NotificationsScreen() {
         </div>
       </div>
 
+      {/* Test Push Status Toast */}
+      {testPushStatus && (
+        <div className={`mb-4 p-3.5 rounded-xl text-xs font-semibold flex items-center justify-between gap-3 animate-fade-in ${
+          testPushStatus.type === 'success' ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : 'bg-rose-50 border border-rose-200 text-rose-800'
+        }`}>
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px]">
+              {testPushStatus.type === 'success' ? 'check_circle' : 'error'}
+            </span>
+            <span>{testPushStatus.text}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setTestPushStatus(null)}
+            className="text-xs font-bold opacity-70 hover:opacity-100"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* ─── TAB 1: NOTIFICATIONS ─────────────────────────────────────────── */}
       {activeTab === 'notifications' && (
         <div className="glass-panel rounded-2xl border border-outline-variant/30 overflow-hidden shadow-sm">
-          <div className="p-4 border-b border-outline-variant/30 flex items-center justify-between bg-surface-container-lowest/60">
+          <div className="p-4 border-b border-outline-variant/30 flex items-center justify-between flex-wrap gap-3 bg-surface-container-lowest/60">
             <div className="flex items-center gap-2">
               <span className="font-bold text-sm text-on-surface">Campus Activity &amp; Urgent Alerts</span>
               {unreadCount > 0 && (
@@ -114,14 +172,29 @@ function NotificationsScreen() {
               )}
             </div>
 
-            {unreadCount > 0 && (
+            <div className="flex items-center gap-3">
               <button
-                onClick={handleMarkAllRead}
-                className="text-xs font-bold text-primary hover:underline"
+                type="button"
+                id="btn-test-push-notification"
+                onClick={handleTestPush}
+                disabled={isSendingTest}
+                className="btn-outline py-1.5 px-3 text-xs font-bold flex items-center gap-1.5 rounded-lg border-primary/40 text-primary hover:bg-primary/5 disabled:opacity-60 cursor-pointer"
               >
-                Mark all as read
+                <span className="material-symbols-outlined text-[15px]">
+                  {isSendingTest ? 'progress_activity' : 'send'}
+                </span>
+                <span>{isSendingTest ? 'Sending Push…' : 'Send Test Push to My Devices'}</span>
               </button>
-            )}
+
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllRead}
+                  className="text-xs font-bold text-primary hover:underline"
+                >
+                  Mark all as read
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="divide-y divide-outline-variant/20 max-h-[600px] overflow-y-auto">
