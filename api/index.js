@@ -21,6 +21,7 @@ const allowedOrigins = process.env.CORS_ORIGINS
   : [
       'http://localhost:5173',
       'http://localhost:4173',
+      'https://baust-blood-link.vercel.app',
       'https://baust-bloodlink.vercel.app',
     ];
 
