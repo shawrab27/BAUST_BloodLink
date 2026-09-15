@@ -284,7 +284,7 @@ function BloodHubScreen() {
         </div>
 
         {/* Stat 3: Live Pending Requests */}
-        <div className="bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-4 border border-primary/20 shadow-sm flex items-center justify-between">
+        <div className="bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-4 border border-outline-variant/30 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
               <span className="material-symbols-outlined text-[22px]">pending_actions</span>
@@ -298,10 +298,6 @@ function BloodHubScreen() {
               </span>
             </div>
           </div>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
-            Live
-          </span>
         </div>
 
         {/* Stat 4: Average Response Time */}
