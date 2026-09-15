@@ -66,17 +66,24 @@ function ProtectedRoute({ children }) {
 }
 
 /**
- * PublicRoute — For login / register screens.
- * If user is already authenticated, redirects to /feed.
+ * AdminRoute — Ensures only authenticated Administrator users can access the admin dashboard.
+ * If not authenticated, redirects to /login.
+ * If authenticated but non-admin, safely redirects to /feed.
  */
-function PublicRoute({ children }) {
-  const { isAuthenticated, isLoading } = useAuth();
+function AdminRoute({ children }) {
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
-    return <FullScreenSpinner message="Checking authentication..." />;
+    return <FullScreenSpinner message="Verifying administrative clearance..." />;
   }
 
-  if (isAuthenticated) {
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  const isAdmin = user && (user.userType === 'Admin' || user.role === 'Admin');
+  if (!isAdmin) {
     return <Navigate to="/feed" replace />;
   }
 
@@ -84,17 +91,41 @@ function PublicRoute({ children }) {
 }
 
 /**
+ * PublicRoute — For login / register screens.
+ * If user is already authenticated, redirects to /admin (if admin) or /feed.
+ */
+function PublicRoute({ children }) {
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  if (isLoading) {
+    return <FullScreenSpinner message="Checking authentication..." />;
+  }
+
+  if (isAuthenticated) {
+    const isAdmin = user && (user.userType === 'Admin' || user.role === 'Admin');
+    return <Navigate to={isAdmin ? '/admin' : '/feed'} replace />;
+  }
+
+  return children;
+}
+
+/**
  * RootRedirect — Handles "/" path.
- * Renders spinner while checking auth; redirects to /feed if logged in, /login if not.
+ * Renders spinner while checking auth; redirects to /admin (if admin) or /feed if logged in, /login if not.
  */
 function RootRedirect() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
     return <FullScreenSpinner message="Loading BAUST BloodLink..." />;
   }
 
-  return <Navigate to={isAuthenticated ? '/feed' : '/login'} replace />;
+  if (isAuthenticated) {
+    const isAdmin = user && (user.userType === 'Admin' || user.role === 'Admin');
+    return <Navigate to={isAdmin ? '/admin' : '/feed'} replace />;
+  }
+
+  return <Navigate to="/login" replace />;
 }
 
 /**
@@ -108,7 +139,7 @@ function AppRoutes() {
       {/* ── Root redirect ──────────────────────────────────────────────── */}
       <Route path="/" element={<RootRedirect />} />
 
-      {/* ── Public Auth routes (redirect to /feed if already logged in) ─ */}
+      {/* ── Public Auth routes (redirect to /feed or /admin if already logged in) ─ */}
       <Route
         path="/login"
         element={
@@ -142,11 +173,11 @@ function AppRoutes() {
         }
       />
 
-      {/* ── Admin routes (protected) ───────────────────────────────────── */}
+      {/* ── Admin routes (protected by AdminRoute) ────────────────────── */}
       <Route
         path="/admin/*"
         element={
-          <ProtectedRoute>
+          <AdminRoute>
             <ErrorBoundary section="Admin Panel">
               <AppLayout user={user} isAdmin={true} notificationCount={0}>
                 <Routes>
@@ -155,7 +186,7 @@ function AppRoutes() {
                 </Routes>
               </AppLayout>
             </ErrorBoundary>
-          </ProtectedRoute>
+          </AdminRoute>
         }
       />
 

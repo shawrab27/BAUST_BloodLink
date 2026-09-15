@@ -67,7 +67,10 @@ function Topbar({ user: propUser = null, notificationCount = 0, isAdmin = false 
     }
   };
 
+  const isUserAdmin = isAdmin || (user && (user.userType === 'Admin' || user.role === 'Admin'));
+
   const navLinks = [
+    ...(isUserAdmin ? [{ id: 'admin', label: 'Admin Command', icon: 'shield_person', to: '/admin', iconFill: true, isAdminItem: true }] : []),
     { id: 'feed', label: 'Feed', icon: 'newspaper', to: '/feed' },
     { id: 'blood-hub', label: 'Blood Hub', icon: 'water_drop', to: '/blood-hub', iconFill: true },
     { id: 'emergency', label: 'Emergency SOS', icon: 'e911_emergency', to: '/emergency', iconFill: true, isEmergency: true },
@@ -94,7 +97,7 @@ function Topbar({ user: propUser = null, notificationCount = 0, isAdmin = false 
 
             {/* Logo Link */}
             <Link
-              to="/feed"
+              to={isUserAdmin ? '/admin' : '/feed'}
               className="flex items-center gap-2 sm:gap-3 hover:opacity-95 transition-all flex-shrink-0 group"
               aria-label="BAUST BloodLink Home"
               id="topbar-logo-link"
@@ -124,6 +127,19 @@ function Topbar({ user: propUser = null, notificationCount = 0, isAdmin = false 
 
           {/* ── RIGHT: Controls ── */}
           <div className="flex items-center gap-2 sm:gap-space-md">
+
+            {/* Admin Command Header Shortcut (Visible on Desktop / Tablet for Admins) */}
+            {isUserAdmin && (
+              <Link
+                to="/admin"
+                id="topbar-admin-shortcut-btn"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-400/30 text-xs font-bold transition shadow-xs hover:scale-105"
+                title="Open Admin Command Center"
+              >
+                <span className="material-symbols-outlined text-[16px]">shield_person</span>
+                <span className="hidden sm:inline">Admin Command</span>
+              </Link>
+            )}
 
             {/* Language Toggle */}
             <div className="flex items-center bg-surface-container-lowest/80 border border-outline-variant/40 rounded-full p-0.5 shadow-sm">
@@ -286,13 +302,13 @@ function Topbar({ user: propUser = null, notificationCount = 0, isAdmin = false 
                       </div>
                       <ProfileMenuItem icon="person" label="My Profile" to="/profile" onClick={() => setProfileOpen(false)} />
                       <ProfileMenuItem icon="settings" label="Settings" to="/profile/settings" onClick={() => setProfileOpen(false)} />
-                      {user.userType === 'Admin' && (
+                      {isUserAdmin && (
                         <ProfileMenuItem
-                          icon="admin_panel_settings"
-                          label="Admin Panel"
+                          icon="shield_person"
+                          label="Admin Command Center"
                           to="/admin"
                           onClick={() => setProfileOpen(false)}
-                          className="text-primary"
+                          className="text-amber-700 font-bold bg-amber-500/10 border-l-2 border-amber-500"
                         />
                       )}
                       <div className="border-t border-outline-variant/40 mt-1 pt-1">

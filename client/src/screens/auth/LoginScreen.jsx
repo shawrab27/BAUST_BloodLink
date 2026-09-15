@@ -45,7 +45,9 @@ function LoginScreen() {
 
     const res = await login({ institutionalId: id, password: form.password });
     if (res.success) {
-      navigate(from, { replace: true });
+      const isAdmin = res.user?.userType === 'Admin' || res.user?.role === 'Admin';
+      const targetPath = location.state?.from?.pathname || (isAdmin ? '/admin' : '/feed');
+      navigate(targetPath, { replace: true });
     } else {
       setServerError(res.error || 'Invalid credentials.');
     }
@@ -58,7 +60,9 @@ function LoginScreen() {
     try {
       const res = await socialLogin(provider);
       if (res.success) {
-        navigate('/feed', { replace: true });
+        const isAdmin = res.user?.userType === 'Admin' || res.user?.role === 'Admin';
+        const targetPath = location.state?.from?.pathname || (isAdmin ? '/admin' : '/feed');
+        navigate(targetPath, { replace: true });
       } else if (res.error && res.error !== 'Sign-in cancelled.') {
         setServerError(res.error);
       }
