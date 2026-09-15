@@ -138,7 +138,7 @@ function LoginScreen() {
         >
           <div className="mb-6 text-center sm:text-left">
             <h1 className="text-xl sm:text-2xl font-black text-on-surface tracking-tight">
-              Institutional Sign In
+              Log In
             </h1>
             <p className="text-xs sm:text-sm text-on-surface-variant mt-1">
               Enter your integer institutional ID to access your dashboard.
