@@ -107,13 +107,7 @@ function Sidebar({ user = null }) {
       {user && (
         <div className="border-t border-outline-variant/40 pt-space-sm mt-space-sm">
           {/* Desktop full view */}
-          <div className="hidden lg:flex items-center gap-space-sm px-2 py-2">
-            <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined text-[16px] text-on-primary-container"
-                style={{ fontVariationSettings: '"FILL" 1' }}>
-                account_circle
-              </span>
-            </div>
+          <div className="hidden lg:flex items-center justify-between px-2 py-2">
             <div className="min-w-0">
               <p className="text-label-lg font-semibold text-on-surface truncate leading-none">
                 {isGuest ? (user.name || 'Guest Explorer') : (user.name || 'Unknown')}
