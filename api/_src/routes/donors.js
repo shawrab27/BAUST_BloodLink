@@ -17,11 +17,11 @@ const router = express.Router();
  * - Filter by userType (Student, Teacher, Staff)
  * - Search by name or 16-character institutional ID
  */
-// Fallback demo donors matching Stitch directory when MONGODB_URI is not configured
+// Fallback demo donors matching Stitch directory with integer institutional IDs
 const DEMO_DONORS = [
   {
     _id: '6751a0000000000000000001',
-    institutionalId: 'CSE0120210001A12',
+    institutionalId: '210201001',
     name: 'Tanvir Ahmed',
     department: 'CSE',
     userType: 'Student',
@@ -35,7 +35,7 @@ const DEMO_DONORS = [
   },
   {
     _id: '6751a0000000000000000002',
-    institutionalId: 'EEE0120210002B23',
+    institutionalId: '210202002',
     name: 'Nusrat Jahan Mim',
     department: 'EEE',
     userType: 'Student',
@@ -49,7 +49,7 @@ const DEMO_DONORS = [
   },
   {
     _id: '6751a0000000000000000003',
-    institutionalId: 'TEA0120210003C34',
+    institutionalId: '100201003',
     name: 'Dr. Mahfuzur Rahman',
     department: 'CSE',
     userType: 'Teacher',
@@ -63,7 +63,7 @@ const DEMO_DONORS = [
   },
   {
     _id: '6751a0000000000000000004',
-    institutionalId: 'ME0120210004D45',
+    institutionalId: '210203004',
     name: 'Shamima Akter',
     department: 'ME',
     userType: 'Student',
@@ -77,7 +77,7 @@ const DEMO_DONORS = [
   },
   {
     _id: '6751a0000000000000000005',
-    institutionalId: 'STF0120210005E56',
+    institutionalId: '300201005',
     name: 'Md. Al-Amin',
     department: 'ICT',
     userType: 'Staff',
@@ -91,7 +91,7 @@ const DEMO_DONORS = [
   },
   {
     _id: '6751a0000000000000000006',
-    institutionalId: 'CE0120210006F67',
+    institutionalId: '210204006',
     name: 'Farzana Yeasmin',
     department: 'CE',
     userType: 'Student',
@@ -105,7 +105,7 @@ const DEMO_DONORS = [
   },
   {
     _id: '6751a0000000000000000007',
-    institutionalId: 'IPE0120210007G78',
+    institutionalId: '210205007',
     name: 'Kazi Ariful Islam',
     department: 'IPE',
     userType: 'Student',
@@ -119,7 +119,7 @@ const DEMO_DONORS = [
   },
   {
     _id: '6751a0000000000000000008',
-    institutionalId: 'BBA0120210008H89',
+    institutionalId: '100202008',
     name: 'Tahmina Sultana',
     department: 'BBA',
     userType: 'Teacher',
@@ -133,7 +133,7 @@ const DEMO_DONORS = [
   },
   {
     _id: '6751a0000000000000000009',
-    institutionalId: 'AIS0120210009I90',
+    institutionalId: '210206009',
     name: 'Rakibul Hasan',
     department: 'AIS',
     userType: 'Student',

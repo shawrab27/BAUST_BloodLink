@@ -83,9 +83,9 @@ function CompleteProfileScreen() {
 
   const validate = () => {
     const e = {};
-    const idPattern = /^[A-Za-z0-9]{16}$/;
+    const idPattern = /^\d+$/;
     if (!idPattern.test(form.institutionalId.trim())) {
-      e.institutionalId = 'Must be exactly 16 alphanumeric characters (e.g. CSE0120210001A23)';
+      e.institutionalId = 'Must be a valid integer ID (e.g. 210201054)';
     }
     if (!form.department) e.department = 'Department is required';
     if (!form.bloodGroup) e.bloodGroup = 'Blood group is required';
@@ -240,7 +240,7 @@ function CompleteProfileScreen() {
                 type="button"
                 onClick={() => {
                   setForm({
-                    institutionalId: `CSE${Date.now().toString().slice(-4)}20210001`,
+                    institutionalId: `${Date.now().toString().slice(-9)}`,
                     name: user?.name || 'Nasim Shawrab',
                     gender: 'Male',
                     department: 'CSE',
@@ -267,7 +267,7 @@ function CompleteProfileScreen() {
                 onClick={() => {
                   const cooldownDate = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
                   setForm({
-                    institutionalId: `EEE${Date.now().toString().slice(-4)}20210002`,
+                    institutionalId: `${Date.now().toString().slice(-9)}`,
                     name: user?.name || 'Nasim Shawrab',
                     gender: 'Male',
                     department: 'EEE',
@@ -294,7 +294,7 @@ function CompleteProfileScreen() {
                 onClick={() => {
                   const pastDate = new Date(Date.now() - 110 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
                   setForm({
-                    institutionalId: `TEA${Date.now().toString().slice(-4)}20210003`,
+                    institutionalId: `100201${Date.now().toString().slice(-3)}`,
                     name: user?.name || 'Nasim Shawrab',
                     gender: 'Male',
                     department: 'CSE',
@@ -334,11 +334,11 @@ function CompleteProfileScreen() {
             <input
               id="cp-institutional-id"
               type="text"
-              maxLength={16}
+              inputMode="numeric"
               className={inputCls('institutionalId')}
-              placeholder="e.g. CSE0120210001A23"
+              placeholder="e.g. 210201054"
               value={form.institutionalId}
-              onChange={(e) => set('institutionalId', e.target.value.toUpperCase())}
+              onChange={(e) => set('institutionalId', e.target.value.trim())}
               required
             />
             {errors.institutionalId && (

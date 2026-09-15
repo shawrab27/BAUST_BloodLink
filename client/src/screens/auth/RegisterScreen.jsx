@@ -253,8 +253,8 @@ function RegisterScreen() {
 
     if (!id) {
       errs.institutionalId = 'Institutional ID is required.';
-    } else if (!/^[A-Z0-9]{16}$/.test(id)) {
-      errs.institutionalId = 'Institutional ID must be exactly 16 alphanumeric characters.';
+    } else if (!/^\d+$/.test(id)) {
+      errs.institutionalId = 'Institutional ID must be a valid integer number (e.g. 210201054).';
     }
 
     const ageNum = parseInt(form.age, 10);
@@ -511,17 +511,17 @@ function RegisterScreen() {
                 {errors.name && <p className="text-[11px] text-rose-600 font-medium mt-0.5">{errors.name}</p>}
               </div>
 
-              {/* Full ID (Strictly 16-character text input with live counter) */}
+              {/* Full ID (Integer text input) */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <label htmlFor="fullId" className="text-xs font-semibold text-slate-700 flex items-center gap-1">
-                    Full ID <span className="text-rose-600 font-bold">*</span>
+                    Institutional ID <span className="text-rose-600 font-bold">*</span>
                   </label>
                   <span
                     id="idCharCounter"
-                    className="text-[11px] font-mono font-medium text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-100"
+                    className="text-[11px] font-mono font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200"
                   >
-                    {form.institutionalId.length} / 16 chars
+                    Numeric Integer
                   </span>
                 </div>
                 <div className="relative flex items-center">
@@ -531,14 +531,14 @@ function RegisterScreen() {
                   <input
                     type="text"
                     id="fullId"
-                    maxLength={16}
+                    inputMode="numeric"
                     required
                     value={form.institutionalId}
-                    onChange={(e) => update('institutionalId', e.target.value.toUpperCase())}
-                    className={`glass-input w-full pl-11 pr-4 py-3 rounded-xl text-sm font-mono uppercase tracking-wider text-slate-900 placeholder:text-slate-400 placeholder:normal-case placeholder:tracking-normal font-medium ${
+                    onChange={(e) => update('institutionalId', e.target.value.trim())}
+                    className={`glass-input w-full pl-11 pr-4 py-3 rounded-xl text-sm font-mono text-slate-900 placeholder:text-slate-400 placeholder:normal-case placeholder:tracking-normal font-medium ${
                       errors.institutionalId ? 'border-rose-500 ring-1 ring-rose-500' : ''
                     }`}
-                    placeholder="Enter 16-character institutional ID"
+                    placeholder="Enter integer ID (e.g. 210201054)"
                   />
                 </div>
                 {errors.institutionalId && (

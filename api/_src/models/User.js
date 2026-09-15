@@ -80,17 +80,16 @@ const UserSchema = new mongoose.Schema(
       unique: true,
       sparse: true, // allows multiple null values for Guest accounts
       trim: true,
-      uppercase: true,
-      match: [/^[a-zA-Z0-9]{16}$/, 'Institutional ID must be exactly 16 alphanumeric characters'],
+      match: [/^\d+$/, 'Institutional ID must be a valid integer number'],
       validate: {
         validator: function (v) {
           // Required only for Verified accounts
           if (this.accountStatus === 'Verified' && this.authProvider === 'local') {
-            return !!v;
+            return !!v && /^\d+$/.test(v);
           }
           return true;
         },
-        message: 'Institutional ID is required for campus accounts',
+        message: 'Institutional ID must be a valid integer number',
       },
     },
     name: {

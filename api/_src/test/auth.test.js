@@ -15,18 +15,15 @@ const { verifyToken, requireAdmin, JWT_SECRET } = require('../middleware/auth');
 describe('BAUST BloodLink Phase 2 — Auth & User Model Tests', () => {
 
   describe('1. Data Validation Rules & Schema Constraints', () => {
-    test('Institutional ID: exactly 16 alphanumeric characters', () => {
-      const regex = /^[a-zA-Z0-9]{16}$/;
+    test('Institutional ID: valid integer numbers', () => {
+      const regex = /^\d+$/;
 
-      assert.strictEqual(regex.test('CSE0120210001A12'), true);
+      assert.strictEqual(regex.test('210201054'), true);
+      assert.strictEqual(regex.test('1001'), true);
       assert.strictEqual(regex.test('1234567890123456'), true);
-      assert.strictEqual(regex.test('cse0120210001a12'), true);
 
-      // Too short (15 chars)
+      // Non-integer strings
       assert.strictEqual(regex.test('CSE0120210001A1'), false);
-      // Too long (17 chars)
-      assert.strictEqual(regex.test('CSE0120210001A123'), false);
-      // Special characters
       assert.strictEqual(regex.test('CSE0120210001A!@'), false);
       assert.strictEqual(regex.test('CSE-012-0210-001'), false);
       assert.strictEqual(regex.test('                '), false);

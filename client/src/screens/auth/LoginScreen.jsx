@@ -27,14 +27,14 @@ function LoginScreen() {
     setClientError('');
     setServerError('');
 
-    const id = form.institutionalId.trim().toUpperCase();
+    const id = form.institutionalId.trim();
     if (!id) {
       setClientError('Institutional ID is required.');
       return;
     }
 
-    if (!/^[A-Z0-9]{16}$/.test(id)) {
-      setClientError('Institutional ID must be exactly 16 alphanumeric characters.');
+    if (!/^\d+$/.test(id) && !/^[A-Za-z0-9_-]{3,20}$/.test(id)) {
+      setClientError('Institutional ID must be a valid integer (e.g. 1001 or 210201054).');
       return;
     }
 
@@ -102,7 +102,7 @@ function LoginScreen() {
                 <stop offset="0%" stopColor="#e11d48" stopOpacity="0.1" />
                 <stop offset="40%" stopColor="#b80035" stopOpacity="0.6" />
                 <stop offset="70%" stopColor="#db2e4e" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="#e11d48" stopOpacity="0.05" />
+                <stop offset="100%" stopColor="#b80035" stopOpacity="0.8" />
               </linearGradient>
             </defs>
           </svg>
@@ -113,57 +113,66 @@ function LoginScreen() {
           <div className="absolute bottom-[22%] left-[18%] w-16 h-16 rounded-full bg-gradient-to-r from-primary-container/25 to-primary/10 blur-[7px]" />
         </div>
 
-        {/* Central Authentication Glass Card */}
-        <div className="relative z-10 w-full max-w-[530px] rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 bg-white/80 backdrop-blur-2xl shadow-[0_24px_60px_-15px_rgba(184,0,53,0.14),0_10px_25px_-5px_rgba(13,28,47,0.06)] border border-[#e11d48]/20 transition-all duration-300 hover:shadow-[0_30px_70px_-12px_rgba(184,0,53,0.22),0_12px_30px_-5px_rgba(13,28,47,0.08)] ring-1 ring-white/60">
-          
-          {/* Card Top Brand & Header Module */}
-          <header className="flex flex-col items-center text-center">
-            <div className="relative flex items-center justify-center p-2 mb-2 group">
-              <div className="absolute inset-0 rounded-full bg-primary-container/10 blur-xl scale-95 group-hover:scale-110 transition-transform duration-500" />
-              <img
-                alt="BAUST BloodLink Official Insignia"
-                className="relative h-20 sm:h-24 w-auto object-contain drop-shadow-[0_6px_14px_rgba(184,0,53,0.18)]"
-                src="/emblem.png"
-              />
+        {/* Brand Header */}
+        <header className="relative z-10 flex flex-col items-center text-center mb-6">
+          <div className="flex items-center gap-2.5 mb-2">
+            <img
+              src="/emblem.png"
+              alt="BAUST BloodLink Logo"
+              className="h-10 w-auto object-contain drop-shadow-sm"
+            />
+            <div className="flex items-center gap-1 font-black text-2xl tracking-tight">
+              <span className="brand-baust">BAUST</span>
+              <span className="brand-bloodlink">BloodLink</span>
             </div>
-            <h1 className="text-2xl sm:text-4xl font-black tracking-tight flex items-center justify-center gap-2">
-              <span className="brand-baust">
-                BAUST
-              </span>
-              <span className="brand-bloodlink">
-                BloodLink
-              </span>
-            </h1>
-            
-            {/* Tagline Pill */}
-            <div className="mt-2 inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1 rounded-full bg-primary-fixed/50 text-primary text-[10px] sm:text-xs font-bold tracking-widest uppercase border border-primary/15">
-              <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: '"FILL" 1' }}>
-                bloodtype
-              </span>
-              <span>Donate • Connect • Save Lives</span>
-            </div>
-          </header>
+          </div>
+          <span className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] sm:text-xs font-bold tracking-wider text-primary uppercase shadow-xs">
+            CAMPUS EMERGENCY LIFE-SUPPORT NETWORK
+          </span>
+        </header>
 
-          {/* Server / Client Error Alert */}
+        {/* Login Card */}
+        <div
+          className="relative z-10 w-full max-w-md glass-card border border-white/70 p-6 sm:p-8 rounded-3xl shadow-2xl backdrop-blur-xl bg-white/80 animate-scale-in"
+          id="login-card"
+        >
+          <div className="mb-6 text-center sm:text-left">
+            <h1 className="text-xl sm:text-2xl font-black text-on-surface tracking-tight">
+              Institutional Sign In
+            </h1>
+            <p className="text-xs sm:text-sm text-on-surface-variant mt-1">
+              Enter your integer institutional ID to access your dashboard.
+            </p>
+          </div>
+
+          {/* Error Banner */}
           {(clientError || serverError) && (
             <div
-              className="mt-5 p-3.5 rounded-xl bg-rose-50 border border-primary/30 text-slate-900 flex items-start gap-2.5 animate-fade-in text-xs font-medium"
+              className="mb-5 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-start gap-2 animate-fade-in"
               role="alert"
+              id="login-error-alert"
             >
-              <span className="material-symbols-outlined text-[19px] text-primary shrink-0 mt-0.5">
+              <span className="material-symbols-outlined text-[18px] shrink-0 text-rose-600 mt-0.5">
                 error
               </span>
-              <p>{clientError || serverError}</p>
+              <div className="flex-1 leading-relaxed">
+                {clientError || serverError}
+              </div>
             </div>
           )}
 
-          {/* Authentication Form */}
-          <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4">
-            {/* Institutional ID Input Field */}
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            {/* Institutional ID Field */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-on-surface flex items-center gap-1" htmlFor="instIdInput">
-                Institutional ID
-                <span className="text-primary font-bold">*</span>
+              <label className="text-xs font-semibold text-on-surface flex items-center justify-between" htmlFor="instIdInput">
+                <span>
+                  Institutional ID
+                  <span className="text-primary font-bold ml-0.5">*</span>
+                </span>
+                <span className="text-[10px] text-on-surface-variant font-normal">
+                  (Integer numeric ID)
+                </span>
               </label>
               
               <div className="relative flex items-center">
@@ -171,28 +180,22 @@ function LoginScreen() {
                   badge
                 </span>
                 <input
-                  className={`w-full pl-11 pr-16 py-3.5 bg-white/90 text-on-surface font-mono uppercase tracking-wider text-sm rounded-xl shadow-sm border outline-none placeholder:text-on-surface-variant/40 placeholder:normal-case placeholder:tracking-normal focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all ${
+                  className={`w-full pl-11 pr-4 py-3.5 bg-white/90 text-on-surface font-mono text-sm rounded-xl shadow-sm border outline-none placeholder:text-on-surface-variant/40 placeholder:font-sans focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all ${
                     clientError && !form.institutionalId ? 'border-primary' : 'border-outline-variant/40'
                   }`}
                   id="instIdInput"
-                  maxLength={16}
                   value={form.institutionalId}
                   onChange={(e) => {
                     setClientError('');
                     setServerError('');
-                    setForm((f) => ({ ...f, institutionalId: e.target.value.toUpperCase() }));
+                    setForm((f) => ({ ...f, institutionalId: e.target.value.trim() }));
                   }}
-                  placeholder="e.g. 2021-1-60-001234"
+                  placeholder="e.g. 1001 or 210201054"
                   type="text"
+                  inputMode="numeric"
                   autoComplete="username"
                   disabled={isLoading}
                 />
-                <span
-                  className="absolute right-3.5 text-[11px] font-mono text-on-surface-variant/70 font-semibold pointer-events-none select-none bg-surface-container-high/60 px-1.5 py-0.5 rounded"
-                  id="charCounter"
-                >
-                  {form.institutionalId.length}/16
-                </span>
               </div>
             </div>
 
