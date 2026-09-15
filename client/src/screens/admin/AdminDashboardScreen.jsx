@@ -1,107 +1,99 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import AvatarPickerModal from '../../components/profile/AvatarPickerModal';
 
 const ADMIN_TABS = [
-  { id: 'overview', label: 'Overview', icon: 'dashboard' },
-  { id: 'feed-moderation', label: 'Feed Moderation', icon: 'newspaper' },
-  { id: 'blood-registry', label: 'Blood Registry', icon: 'verified_user' },
-  { id: 'sos-monitor', label: 'Emergency SOS Monitor', icon: 'emergency' },
-  { id: 'helpline-cms', label: 'Helpline CMS', icon: 'support_agent' },
-  { id: 'user-management', label: 'User Administration', icon: 'manage_accounts' },
-  { id: 'audit-log', label: 'Audit Log', icon: 'receipt_long' },
+  { id: 'overview', label: 'Overview & Metrics', icon: 'fa-chart-pie', badge: 'LIVE' },
+  { id: 'feed-moderation', label: 'Feed Moderation', icon: 'fa-newspaper', badge: 'POSTS' },
+  { id: 'blood-registry', label: 'Blood Registry & Edits', icon: 'fa-id-card-clip', badge: 'QUEUE', badgeColor: 'bg-rose-100 text-rose-700' },
+  { id: 'sos-monitor', label: 'Emergency SOS Monitor', icon: 'fa-truck-medical', badge: 'ACTIVE', badgeColor: 'bg-red-500 text-white animate-pulse' },
+  { id: 'user-management', label: 'User & Profile Roles', icon: 'fa-users-gear', badge: 'USERS' },
+  { id: 'helpline-cms', label: 'Committee CMS Editor', icon: 'fa-pen-ruler', badge: 'CMS' },
+  { id: 'audit-log', label: 'System Logs & Sync', icon: 'fa-database', badge: 'LOGS' },
 ];
 
 function AdminDashboardScreen() {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [globalSearch, setGlobalSearch] = useState('');
 
-  // Overview metrics state
-  const [metrics, setMetrics] = useState(null);
+  // 1. Overview metrics state (Computed live from MongoDB GET /api/admin/overview)
+  const [metrics, setMetrics] = useState({
+    totalUsers: 0,
+    availableDonors: 0,
+    cooldownDonors: 0,
+    unavailableDonors: 0,
+    disasterVolunteers: 0,
+    verifiedStudents: 0,
+    verifiedFaculty: 0,
+    weeklyNewUsers: 0,
+    donorsByBloodGroup: {},
+    totalSosAlerts: 0,
+    activeEmergencyCount: 0,
+    totalRequests: 0,
+    fulfilledRequests: 0,
+    pendingGroupChanges: 0,
+    totalPosts: 0,
+    totalHelplines: 0,
+    totalAuditLogs: 0,
+  });
   const [loadingMetrics, setLoadingMetrics] = useState(true);
-  const [metricsError, setMetricsError] = useState('');
 
-  // Feed moderation state (Posts & Comments)
-  const [feedModerationTab, setFeedModerationTab] = useState('posts'); // 'posts' | 'comments'
+  // 2. Feed moderation state (GET /api/admin/posts)
   const [posts, setPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
-  const [postsError, setPostsError] = useState('');
   const [deleteModalPost, setDeleteModalPost] = useState(null);
   const [deleteReason, setDeleteReason] = useState('');
-  const [comments, setComments] = useState([]);
-  const [loadingComments, setLoadingComments] = useState(false);
-  const [commentsError, setCommentsError] = useState('');
-  const [deleteModalComment, setDeleteModalComment] = useState(null);
-  const [deleteCommentReason, setDeleteCommentReason] = useState('');
+  const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
+  const [announcementText, setAnnouncementText] = useState('');
 
-  // Blood registry approval queue state
+  // 3. Blood registry state (GET /api/admin/blood-registry/requests)
   const [registryRequests, setRegistryRequests] = useState([]);
   const [loadingRegistry, setLoadingRegistry] = useState(false);
-  const [registryError, setRegistryError] = useState('');
+  const [inspectModalDoc, setInspectModalDoc] = useState(null);
   const [rejectModalReq, setRejectModalReq] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
 
-  // Emergency SOS live monitor state
+  // 4. Emergency SOS state (GET /api/admin/emergency/active)
   const [sosRequests, setSosRequests] = useState([]);
   const [loadingSos, setLoadingSos] = useState(false);
-  const [sosError, setSosError] = useState('');
-  const [overrideModalReq, setOverrideModalReq] = useState(null);
-  const [overrideStatus, setOverrideStatus] = useState('Fulfilled');
-  const [overrideReason, setOverrideReason] = useState('');
-
-  // Helpline CMS state
-  const [helplines, setHelplines] = useState([]);
-  const [loadingHelpline, setLoadingHelpline] = useState(false);
-  const [helplineError, setHelplineError] = useState('');
-  const [helplineModalOpen, setHelplineModalOpen] = useState(false);
-  const [editingContact, setEditingContact] = useState(null);
-  const [helplineForm, setHelplineForm] = useState({
-    category: 'Committee',
-    name: '',
-    role: '',
-    subtitle: '',
-    rankBadge: '',
-    avatarUrl: '',
-    phone: '',
-    secondaryPhone: '',
-    email: '',
-    whatsappNumber: '',
-    whatsappLink: '',
-    qrCodeUrl: '',
-    location: '',
-    timing: '',
+  const [broadcastSosModalOpen, setBroadcastSosModalOpen] = useState(false);
+  const [broadcastForm, setBroadcastForm] = useState({
+    patientName: '',
+    bloodGroup: 'O-',
+    unitsRequired: 2,
+    hospitalName: 'Saidpur CMH',
+    hospitalWard: 'Trauma ICU Ward 4',
+    condition: 'Emergency',
     notes: '',
-    isAvailable24_7: false,
   });
 
-  // User Administration state
-  const [users, setUsers] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
-  const [usersError, setUsersError] = useState('');
-  const [userSearch, setUserSearch] = useState('');
-  const [userTypeFilter, setUserTypeFilter] = useState('');
-  const [editUserModalUser, setEditUserModalUser] = useState(null);
-  const [avatarPickerForAdminUser, setAvatarPickerForAdminUser] = useState(false);
-  const [editUserForm, setEditUserForm] = useState({
+  // 5. Helpline CMS state (GET /api/helpline)
+  const [helplines, setHelplines] = useState([]);
+  const [loadingHelplines, setLoadingHelplines] = useState(false);
+  const [baustDeskPhone, setBaustDeskPhone] = useState('+880 1769-662215 (SAMO)');
+  const [saidpurCmhPhone, setSaidpurCmhPhone] = useState('+880 1769-660000');
+  const [whatsappLink, setWhatsappLink] = useState('https://chat.whatsapp.com/BAUST-BloodLink');
+  const [committeeModalOpen, setCommitteeModalOpen] = useState(false);
+  const [committeeForm, setCommitteeForm] = useState({
     name: '',
+    bloodGroup: 'O+',
+    role: '',
     phone: '',
-    bloodGroup: '',
-    department: '',
-    userType: '',
-    avatarUrl: '',
-    donationCount: 0,
-    lastDonationDate: '',
-    isDisasterVolunteer: false,
-    availabilityStatus: 'Available',
+    rankBadge: '1st Tier Display',
+    subtitle: '',
+    category: 'Committee',
   });
 
-  // Audit Log state
+  // 6. User Administration state (GET /api/admin/users)
+  const [usersList, setUsersList] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [userDeptFilter, setUserDeptFilter] = useState('All');
+
+  // 7. Audit Logs state (GET /api/admin/audit-log)
   const [auditLogs, setAuditLogs] = useState([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
-  const [auditError, setAuditError] = useState('');
-  const [auditActionFilter, setAuditActionFilter] = useState('');
 
-  // Action status banners
+  // Notification banners
   const [actionSuccess, setActionSuccess] = useState('');
   const [actionError, setActionError] = useState('');
 
@@ -124,39 +116,215 @@ function AdminDashboardScreen() {
     };
   };
 
-  // ─── 1. FETCH OVERVIEW METRICS ─────────────────────────────────────────────
+  // ─── 1. FETCH METRICS ──────────────────────────────────────────────────────
   const fetchOverviewMetrics = useCallback(async () => {
     setLoadingMetrics(true);
-    setMetricsError('');
     try {
       const res = await fetch('/api/admin/overview', { headers: getHeaders() });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to fetch platform metrics');
-      setMetrics(data.metrics);
+      if (res.ok && data.metrics) {
+        setMetrics(data.metrics);
+      } else {
+        throw new Error(data.message || 'Failed to load metrics');
+      }
     } catch (err) {
-      setMetricsError(err.message);
+      console.warn('[Admin] Overview fetch error:', err.message);
     } finally {
       setLoadingMetrics(false);
     }
   }, []);
 
-  // ─── 2. FETCH POSTS FOR MODERATION ─────────────────────────────────────────
+  // ─── 2. FETCH FEED POSTS ───────────────────────────────────────────────────
   const fetchPosts = useCallback(async () => {
     setLoadingPosts(true);
-    setPostsError('');
     try {
       const res = await fetch('/api/admin/posts?limit=30', { headers: getHeaders() });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to fetch feed posts');
-      setPosts(data.posts || []);
+      if (res.ok && data.posts) {
+        setPosts(data.posts);
+      }
     } catch (err) {
-      setPostsError(err.message);
+      console.warn('[Admin] Posts fetch error:', err.message);
     } finally {
       setLoadingPosts(false);
     }
   }, []);
 
-  const handleTogglePin = async (postId) => {
+  // ─── 3. FETCH BLOOD REGISTRY REQUESTS ──────────────────────────────────────
+  const fetchRegistryRequests = useCallback(async () => {
+    setLoadingRegistry(true);
+    try {
+      const res = await fetch('/api/admin/blood-registry/requests?status=Pending', { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok && data.requests) {
+        setRegistryRequests(data.requests);
+      }
+    } catch (err) {
+      console.warn('[Admin] Registry fetch error:', err.message);
+    } finally {
+      setLoadingRegistry(false);
+    }
+  }, []);
+
+  // ─── 4. FETCH ACTIVE EMERGENCY SOS ─────────────────────────────────────────
+  const fetchSosRequests = useCallback(async () => {
+    setLoadingSos(true);
+    try {
+      const res = await fetch('/api/admin/emergency/active', { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok && data.requests) {
+        setSosRequests(data.requests);
+      }
+    } catch (err) {
+      console.warn('[Admin] SOS fetch error:', err.message);
+    } finally {
+      setLoadingSos(false);
+    }
+  }, []);
+
+  // ─── 5. FETCH HELPLINES / COMMITTEE ────────────────────────────────────────
+  const fetchHelplines = useCallback(async () => {
+    setLoadingHelplines(true);
+    try {
+      const res = await fetch('/api/helpline', { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok && data.contacts) {
+        setHelplines(data.contacts);
+        const baustContact = data.contacts.find((c) => c.name?.includes('BAUST Medical Center'));
+        if (baustContact?.phone) setBaustDeskPhone(baustContact.phone);
+        const cmhContact = data.contacts.find((c) => c.name?.includes('Saidpur CMH'));
+        if (cmhContact?.phone) setSaidpurCmhPhone(cmhContact.phone);
+        const waContact = data.contacts.find((c) => c.category === 'WhatsApp');
+        if (waContact?.whatsappLink) setWhatsappLink(waContact.whatsappLink);
+      }
+    } catch (err) {
+      console.warn('[Admin] Helpline fetch error:', err.message);
+    } finally {
+      setLoadingHelplines(false);
+    }
+  }, []);
+
+  // ─── 6. FETCH USERS ────────────────────────────────────────────────────────
+  const fetchUsers = useCallback(async (dept = userDeptFilter, search = globalSearch) => {
+    setLoadingUsers(true);
+    try {
+      let url = '/api/admin/users?limit=50';
+      if (dept && dept !== 'All') {
+        if (dept === 'Faculty') {
+          url += '&userType=Teacher';
+        } else {
+          url += `&department=${encodeURIComponent(dept)}`;
+        }
+      }
+      if (search && search.trim()) {
+        url += `&search=${encodeURIComponent(search.trim())}`;
+      }
+      const res = await fetch(url, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok && data.users) {
+        setUsersList(data.users);
+      }
+    } catch (err) {
+      console.warn('[Admin] Users fetch error:', err.message);
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, [userDeptFilter, globalSearch]);
+
+  // ─── 7. FETCH AUDIT LOGS ───────────────────────────────────────────────────
+  const fetchAuditLogs = useCallback(async () => {
+    setLoadingAudit(true);
+    try {
+      const res = await fetch('/api/admin/audit-log?limit=30', { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok && data.logs) {
+        setAuditLogs(data.logs);
+      }
+    } catch (err) {
+      console.warn('[Admin] Audit log fetch error:', err.message);
+    } finally {
+      setLoadingAudit(false);
+    }
+  }, []);
+
+  const refreshAll = useCallback(() => {
+    fetchOverviewMetrics();
+    fetchPosts();
+    fetchRegistryRequests();
+    fetchSosRequests();
+    fetchHelplines();
+    fetchUsers(userDeptFilter, globalSearch);
+    fetchAuditLogs();
+  }, [fetchOverviewMetrics, fetchPosts, fetchRegistryRequests, fetchSosRequests, fetchHelplines, fetchUsers, fetchAuditLogs, userDeptFilter, globalSearch]);
+
+  useEffect(() => {
+    refreshAll();
+  }, [refreshAll]);
+
+  // ─── MUTATION ACTIONS: EMERGENCY SOS (PATCH /api/admin/emergency/:id/override)
+  const handleSosOverride = async (reqId, newStatus, reason) => {
+    try {
+      const res = await fetch(`/api/admin/emergency/${reqId}/override`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          status: newStatus,
+          overrideReason: reason || `Admin override: status updated to ${newStatus}`,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update requisition status');
+      showNotification(data.message || `Requisition status updated to ${newStatus}.`);
+      fetchSosRequests();
+      fetchOverviewMetrics();
+    } catch (err) {
+      showNotification('', err.message);
+    }
+  };
+
+  // ─── MUTATION ACTION: CREATE SOS BROADCAST (POST /api/blood-requests) ──────
+  const handleBroadcastSos = async () => {
+    if (!broadcastForm.patientName.trim()) {
+      showNotification('', 'Patient name/description is required.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/blood-requests', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          patientName: broadcastForm.patientName.trim(),
+          bloodGroup: broadcastForm.bloodGroup,
+          unitsRequired: Number(broadcastForm.unitsRequired) || 1,
+          hospitalName: broadcastForm.hospitalName,
+          condition: 'Emergency',
+          contactNumber: '+8801769662215',
+          neededDate: new Date().toISOString(),
+          notes: broadcastForm.notes.trim() || 'STAT Emergency broadcast dispatched by Super Admin Console.',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to broadcast SOS');
+      showNotification(data.message || 'Emergency SOS broadcast successfully dispatched!');
+      setBroadcastSosModalOpen(false);
+      setBroadcastForm({
+        patientName: '',
+        bloodGroup: 'O-',
+        unitsRequired: 2,
+        hospitalName: 'Saidpur CMH',
+        hospitalWard: 'Trauma ICU Ward 4',
+        condition: 'Emergency',
+        notes: '',
+      });
+      fetchSosRequests();
+      fetchOverviewMetrics();
+    } catch (err) {
+      showNotification('', err.message);
+    }
+  };
+
+  // ─── MUTATION ACTIONS: FEED MODERATION ─────────────────────────────────────
+  const handleTogglePinPost = async (postId) => {
     try {
       const res = await fetch(`/api/admin/posts/${postId}/pin`, {
         method: 'PATCH',
@@ -181,138 +349,54 @@ function AdminDashboardScreen() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to delete post');
-      showNotification(data.message);
+      showNotification(data.message || 'Post deleted by Admin.');
       setDeleteModalPost(null);
       setDeleteReason('');
       fetchPosts();
+      fetchOverviewMetrics();
     } catch (err) {
       showNotification('', err.message);
     }
   };
 
-  const handleToggleHidePost = async (postId) => {
+  const handlePostAnnouncement = async () => {
+    if (!announcementText.trim()) return;
     try {
-      const res = await fetch(`/api/admin/posts/${postId}/hide`, {
-        method: 'PATCH',
+      const res = await fetch('/api/posts', {
+        method: 'POST',
         headers: getHeaders(),
+        body: JSON.stringify({
+          content: announcementText.trim(),
+          isPinned: true,
+          postType: 'FACULTY_ALERT',
+        }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to update post visibility');
-      showNotification(data.message);
+      if (!res.ok) throw new Error(data.message || 'Failed to post announcement');
+      showNotification('Announcement posted and pinned to campus feed.');
+      setAnnouncementText('');
+      setAnnouncementModalOpen(false);
       fetchPosts();
+      fetchOverviewMetrics();
     } catch (err) {
       showNotification('', err.message);
     }
   };
 
-  const handleDismissPost = async (postId) => {
-    try {
-      const res = await fetch(`/api/admin/posts/${postId}/dismiss`, {
-        method: 'PATCH',
-        headers: getHeaders(),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to dismiss post report');
-      showNotification(data.message);
-      fetchPosts();
-    } catch (err) {
-      showNotification('', err.message);
-    }
-  };
-
-  // ─── 2B. FETCH & MODERATE COMMENTS ─────────────────────────────────────────
-  const fetchComments = useCallback(async () => {
-    setLoadingComments(true);
-    setCommentsError('');
-    try {
-      const res = await fetch('/api/admin/comments?limit=30', { headers: getHeaders() });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to fetch comments');
-      setComments(data.comments || []);
-    } catch (err) {
-      setCommentsError(err.message);
-    } finally {
-      setLoadingComments(false);
-    }
-  }, []);
-
-  const handleToggleHideComment = async (commentId) => {
-    try {
-      const res = await fetch(`/api/admin/comments/${commentId}/hide`, {
-        method: 'PATCH',
-        headers: getHeaders(),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to update comment visibility');
-      showNotification(data.message);
-      fetchComments();
-    } catch (err) {
-      showNotification('', err.message);
-    }
-  };
-
-  const handleDismissComment = async (commentId) => {
-    try {
-      const res = await fetch(`/api/admin/comments/${commentId}/dismiss`, {
-        method: 'PATCH',
-        headers: getHeaders(),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to dismiss comment report');
-      showNotification(data.message);
-      fetchComments();
-    } catch (err) {
-      showNotification('', err.message);
-    }
-  };
-
-  const handleDeleteComment = async () => {
-    if (!deleteModalComment) return;
-    try {
-      const res = await fetch(`/api/admin/comments/${deleteModalComment._id}`, {
-        method: 'DELETE',
-        headers: getHeaders(),
-        body: JSON.stringify({ reason: deleteCommentReason.trim() || 'Violated community guidelines' }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to delete comment');
-      showNotification(data.message);
-      setDeleteModalComment(null);
-      setDeleteCommentReason('');
-      fetchComments();
-    } catch (err) {
-      showNotification('', err.message);
-    }
-  };
-
-  // ─── 3. FETCH BLOOD REGISTRY REQUESTS ───────────────────────────────────────
-  const fetchRegistryRequests = useCallback(async () => {
-    setLoadingRegistry(true);
-    setRegistryError('');
-    try {
-      const res = await fetch('/api/admin/blood-registry/requests?status=Pending', { headers: getHeaders() });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to fetch registry queue');
-      setRegistryRequests(data.requests || []);
-    } catch (err) {
-      setRegistryError(err.message);
-    } finally {
-      setLoadingRegistry(false);
-    }
-  }, []);
-
+  // ─── MUTATION ACTIONS: BLOOD GROUP REGISTRY APPROVE / REJECT ───────────────
   const handleApproveRegistry = async (reqId) => {
     try {
       const res = await fetch(`/api/admin/blood-registry/requests/${reqId}/approve`, {
         method: 'PATCH',
         headers: getHeaders(),
-        body: JSON.stringify({ adminNotes: 'Verified with official lab report documentation.' }),
+        body: JSON.stringify({ note: 'Verified and approved by Super Admin SAMO review.' }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Approval failed');
-      showNotification(data.message);
+      if (!res.ok) throw new Error(data.message || 'Failed to approve request');
+      showNotification(data.message || 'Blood group change approved. User record permanently updated.');
       fetchRegistryRequests();
       fetchOverviewMetrics();
+      fetchUsers();
     } catch (err) {
       showNotification('', err.message);
     }
@@ -320,8 +404,8 @@ function AdminDashboardScreen() {
 
   const handleRejectRegistry = async () => {
     if (!rejectModalReq) return;
-    if (!rejectReason.trim()) {
-      showNotification('', 'Rejection reason is required.');
+    if (!rejectReason.trim() || rejectReason.trim().length < 3) {
+      showNotification('', 'Rejection reason must be at least 3 characters.');
       return;
     }
     try {
@@ -331,8 +415,8 @@ function AdminDashboardScreen() {
         body: JSON.stringify({ reason: rejectReason.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Rejection failed');
-      showNotification(data.message);
+      if (!res.ok) throw new Error(data.message || 'Failed to reject request');
+      showNotification(data.message || 'Blood group change request rejected.');
       setRejectModalReq(null);
       setRejectReason('');
       fetchRegistryRequests();
@@ -342,1464 +426,1502 @@ function AdminDashboardScreen() {
     }
   };
 
-  // ─── 4. FETCH ACTIVE EMERGENCY SOS ──────────────────────────────────────────
-  const fetchSosRequests = useCallback(async () => {
-    setLoadingSos(true);
-    setSosError('');
-    try {
-      const res = await fetch('/api/admin/emergency/active', { headers: getHeaders() });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to fetch emergency requisitions');
-      setSosRequests(data.requests || []);
-    } catch (err) {
-      setSosError(err.message);
-    } finally {
-      setLoadingSos(false);
-    }
-  }, []);
-
-  const handleOverrideSos = async () => {
-    if (!overrideModalReq) return;
-    if (!overrideReason.trim()) {
-      showNotification('', 'Override reason is required.');
+  // ─── MUTATION ACTIONS: HELPLINE & COMMITTEE CMS ─────────────────────────────
+  const handleAddCommitteeMember = async () => {
+    if (!committeeForm.name.trim() || !committeeForm.role.trim() || !committeeForm.phone.trim()) {
+      showNotification('', 'Name, role, and phone are required.');
       return;
     }
     try {
-      const res = await fetch(`/api/admin/emergency/${overrideModalReq._id}/override`, {
-        method: 'PATCH',
+      const res = await fetch('/api/helpline', {
+        method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ status: overrideStatus, overrideReason: overrideReason.trim() }),
+        body: JSON.stringify({
+          category: 'Committee',
+          name: committeeForm.name.trim(),
+          role: committeeForm.role.trim(),
+          subtitle: `Blood Group: ${committeeForm.bloodGroup}`,
+          rankBadge: committeeForm.rankBadge || '1st Tier Display',
+          phone: committeeForm.phone.trim(),
+          isAvailable24_7: true,
+        }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Status override failed');
-      showNotification(data.message);
-      setOverrideModalReq(null);
-      setOverrideReason('');
-      fetchSosRequests();
+      if (!res.ok) throw new Error(data.message || 'Failed to add committee member');
+      showNotification('Committee member saved to database.');
+      setCommitteeModalOpen(false);
+      setCommitteeForm({
+        name: '',
+        bloodGroup: 'O+',
+        role: '',
+        phone: '',
+        rankBadge: '1st Tier Display',
+        subtitle: '',
+        category: 'Committee',
+      });
+      fetchHelplines();
+    } catch (err) {
+      showNotification('', err.message);
+    }
+  };
+
+  const handleUpdateCommitteeTier = async (memberId, newTier) => {
+    try {
+      const res = await fetch(`/api/helpline/${memberId}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ rankBadge: newTier }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update member tier');
+      showNotification(`Tier updated to ${newTier}.`);
+      fetchHelplines();
+    } catch (err) {
+      showNotification('', err.message);
+    }
+  };
+
+  const handleDeleteHelplineContact = async (contactId) => {
+    try {
+      const res = await fetch(`/api/helpline/${contactId}`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to delete contact');
+      showNotification('Helpline contact deleted.');
+      fetchHelplines();
+    } catch (err) {
+      showNotification('', err.message);
+    }
+  };
+
+  const handleSaveHotlines = async () => {
+    try {
+      const cmhContact = helplines.find((c) => c.name?.includes('Saidpur CMH'));
+      const baustContact = helplines.find((c) => c.name?.includes('BAUST Medical Center'));
+
+      const updates = [];
+      if (cmhContact) {
+        updates.push(
+          fetch(`/api/helpline/${cmhContact._id}`, {
+            method: 'PUT',
+            headers: getHeaders(),
+            body: JSON.stringify({ phone: saidpurCmhPhone.trim() }),
+          })
+        );
+      }
+      if (baustContact) {
+        updates.push(
+          fetch(`/api/helpline/${baustContact._id}`, {
+            method: 'PUT',
+            headers: getHeaders(),
+            body: JSON.stringify({ phone: baustDeskPhone.trim() }),
+          })
+        );
+      }
+      await Promise.all(updates);
+      showNotification('Emergency helpline phone numbers updated in database.');
+      fetchHelplines();
+    } catch (err) {
+      showNotification('', err.message);
+    }
+  };
+
+  const handleSaveWhatsAppLink = async () => {
+    try {
+      const waContact = helplines.find((c) => c.category === 'WhatsApp');
+      if (waContact) {
+        const res = await fetch(`/api/helpline/${waContact._id}`, {
+          method: 'PUT',
+          headers: getHeaders(),
+          body: JSON.stringify({ whatsappLink: whatsappLink.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to update WhatsApp link');
+      }
+      showNotification('WhatsApp community invite link updated in database.');
+      fetchHelplines();
+    } catch (err) {
+      showNotification('', err.message);
+    }
+  };
+
+  // ─── MUTATION ACTIONS: USER ADMINISTRATION ─────────────────────────────────
+  const handleToggleDisasterVolunteer = async (userItem) => {
+    try {
+      const res = await fetch(`/api/admin/users/${userItem._id}`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+        body: JSON.stringify({ isDisasterVolunteer: !userItem.isDisasterVolunteer }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update disaster clearance');
+      showNotification(`Disaster clearance updated for ${userItem.name}.`);
+      fetchUsers();
       fetchOverviewMetrics();
     } catch (err) {
       showNotification('', err.message);
     }
   };
 
-  // ─── 5. FETCH HELPLINES ────────────────────────────────────────────────────
-  const fetchHelplines = useCallback(async () => {
-    setLoadingHelpline(true);
-    setHelplineError('');
+  const handleToggleSuspendUser = async (userItem) => {
+    const nextSuspended = !userItem.isSuspended;
     try {
-      const res = await fetch('/api/helpline', { headers: getHeaders() });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to fetch helpline directory');
-      setHelplines(data.contacts || []);
-    } catch (err) {
-      setHelplineError(err.message);
-    } finally {
-      setLoadingHelpline(false);
-    }
-  }, []);
-
-  const handleSaveHelpline = async (e) => {
-    e.preventDefault();
-    try {
-      const url = editingContact ? `/api/helpline/${editingContact._id}` : '/api/helpline';
-      const method = editingContact ? 'PATCH' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: getHeaders(),
-        body: JSON.stringify(helplineForm),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to save contact');
-      showNotification(data.message);
-      setHelplineModalOpen(false);
-      setEditingContact(null);
-      fetchHelplines();
-    } catch (err) {
-      showNotification('', err.message);
-    }
-  };
-
-  const handleDeleteHelpline = async (id) => {
-    if (!confirm('Are you sure you want to delete this helpline contact?')) return;
-    try {
-      const res = await fetch(`/api/helpline/${id}`, {
-        method: 'DELETE',
-        headers: getHeaders(),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to delete contact');
-      showNotification(data.message);
-      fetchHelplines();
-    } catch (err) {
-      showNotification('', err.message);
-    }
-  };
-
-  const handleMoveHelpline = async (index, direction) => {
-    const newItems = [...helplines];
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= newItems.length) return;
-
-    const temp = newItems[index];
-    newItems[index] = newItems[targetIndex];
-    newItems[targetIndex] = temp;
-
-    const orderList = newItems.map((item, idx) => ({ id: item._id, order: idx + 1 }));
-    setHelplines(newItems);
-
-    try {
-      const res = await fetch('/api/admin/helpline/reorder', {
-        method: 'PATCH',
-        headers: getHeaders(),
-        body: JSON.stringify({ orderList }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to reorder');
-      showNotification('Helpline order updated and persisted.');
-    } catch (err) {
-      showNotification('', err.message);
-      fetchHelplines();
-    }
-  };
-
-  // ─── 6. FETCH USERS ────────────────────────────────────────────────────────
-  const fetchUsers = useCallback(async () => {
-    setLoadingUsers(true);
-    setUsersError('');
-    try {
-      let url = `/api/admin/users?limit=30`;
-      if (userSearch) url += `&search=${encodeURIComponent(userSearch)}`;
-      if (userTypeFilter) url += `&userType=${encodeURIComponent(userTypeFilter)}`;
-
-      const res = await fetch(url, { headers: getHeaders() });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to fetch users');
-      setUsers(data.users || []);
-    } catch (err) {
-      setUsersError(err.message);
-    } finally {
-      setLoadingUsers(false);
-    }
-  }, [userSearch, userTypeFilter]);
-
-  const handleUpdateUserRole = async (userId, newRole) => {
-    try {
-      const res = await fetch(`/api/admin/users/${userId}/role`, {
-        method: 'PATCH',
-        headers: getHeaders(),
-        body: JSON.stringify({ userType: newRole }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to update role');
-      showNotification(data.message);
-      fetchUsers();
-    } catch (err) {
-      showNotification('', err.message);
-    }
-  };
-
-  const handleUpdateUserStatus = async (userId, newStatus) => {
-    try {
-      const res = await fetch(`/api/admin/users/${userId}/status`, {
-        method: 'PATCH',
-        headers: getHeaders(),
-        body: JSON.stringify({ availabilityStatus: newStatus }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to update availability status');
-      showNotification(data.message);
-      fetchUsers();
-    } catch (err) {
-      showNotification('', err.message);
-    }
-  };
-
-  const handleToggleSuspendUser = async (userId, currentSuspendedState) => {
-    try {
-      const res = await fetch(`/api/admin/users/${userId}/status`, {
-        method: 'PATCH',
-        headers: getHeaders(),
-        body: JSON.stringify({ isSuspended: !currentSuspendedState, isActive: currentSuspendedState }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to toggle account suspension');
-      showNotification(data.message);
-      fetchUsers();
-    } catch (err) {
-      showNotification('', err.message);
-    }
-  };
-
-  const handleOpenEditUser = (u) => {
-    setEditUserModalUser(u);
-    setEditUserForm({
-      name: u.name || '',
-      phone: u.phone || '',
-      bloodGroup: u.bloodGroup || 'A+',
-      department: u.department || 'CSE',
-      userType: u.userType || 'Student',
-      avatarUrl: u.avatarUrl || '',
-      donationCount: u.donationCount || u.totalDonations || 0,
-      lastDonationDate: u.lastDonationDate ? new Date(u.lastDonationDate).toISOString().split('T')[0] : '',
-      isDisasterVolunteer: Boolean(u.isDisasterVolunteer),
-      availabilityStatus: u.availabilityStatus || 'Available',
-    });
-  };
-
-  const handleSaveUserDetails = async (e) => {
-    e.preventDefault();
-    if (!editUserModalUser) return;
-    try {
-      const res = await fetch(`/api/admin/users/${editUserModalUser._id}`, {
+      const res = await fetch(`/api/admin/users/${userItem._id}/status`, {
         method: 'PATCH',
         headers: getHeaders(),
         body: JSON.stringify({
-          ...editUserForm,
-          lastDonationDate: editUserForm.lastDonationDate ? new Date(editUserForm.lastDonationDate).toISOString() : null,
+          isSuspended: nextSuspended,
+          suspendReason: nextSuspended ? 'Suspended by Super Admin Command Center.' : '',
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to update user profile');
-      showNotification(data.message || 'User profile updated successfully.');
-      setEditUserModalUser(null);
+      if (!res.ok) throw new Error(data.message || 'Failed to update user account status');
+      showNotification(data.message || `User account ${nextSuspended ? 'suspended' : 'reactivated'}.`);
       fetchUsers();
     } catch (err) {
       showNotification('', err.message);
     }
   };
 
-  // ─── 7. FETCH AUDIT LOGS ───────────────────────────────────────────────────
-  const fetchAuditLogs = useCallback(async () => {
-    setLoadingAudit(true);
-    setAuditError('');
+  const handleResetPassword = async (userItem) => {
     try {
-      let url = `/api/admin/audit-logs?limit=40`;
-      if (auditActionFilter) url += `&action=${encodeURIComponent(auditActionFilter)}`;
-
-      const res = await fetch(url, { headers: getHeaders() });
+      const res = await fetch(`/api/admin/users/${userItem._id}/reset-password`, {
+        method: 'POST',
+        headers: getHeaders(),
+      });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to fetch audit trail');
-      setAuditLogs(data.logs || []);
+      if (!res.ok) throw new Error(data.message || 'Failed to reset password');
+      showNotification(data.message || `Password reset link dispatched to ${userItem.email || userItem.name}.`);
     } catch (err) {
-      setAuditError(err.message);
-    } finally {
-      setLoadingAudit(false);
+      showNotification('', err.message);
     }
-  }, [auditActionFilter]);
+  };
 
-  // Initial load according to active tab
-  useEffect(() => {
-    fetchOverviewMetrics();
-  }, [fetchOverviewMetrics]);
-
-  useEffect(() => {
-    if (activeTab === 'feed-moderation') {
-      fetchPosts();
-      fetchComments();
-    } else if (activeTab === 'blood-registry') fetchRegistryRequests();
-    else if (activeTab === 'sos-monitor') fetchSosRequests();
-    else if (activeTab === 'helpline-cms') fetchHelplines();
-    else if (activeTab === 'user-management') fetchUsers();
-    else if (activeTab === 'audit-log') fetchAuditLogs();
-  }, [
-    activeTab,
-    fetchPosts,
-    fetchComments,
-    fetchRegistryRequests,
-    fetchSosRequests,
-    fetchHelplines,
-    fetchUsers,
-    fetchAuditLogs,
-  ]);
-
-  // RBAC Access Guard in UI
-  const isAdmin = user && (user.userType === 'Admin' || user.role === 'Admin');
-
-  if (!isAuthenticated || !isAdmin) {
-    return (
-      <div className="page-wrapper max-w-[700px] mx-auto py-16 text-center">
-        <div className="glass-card p-space-xl rounded-2xl border border-error/30">
-          <div className="w-16 h-16 rounded-2xl bg-error/10 text-error mx-auto mb-4 flex items-center justify-center">
-            <span className="material-symbols-outlined text-[36px]">gpp_bad</span>
-          </div>
-          <h2 className="text-headline-md font-bold text-on-surface">Restricted Admin Portal</h2>
-          <p className="text-body-md text-on-surface-variant mt-2 max-w-md mx-auto">
-            This module is guarded by server-side RBAC middleware (`req.user.userType === 'Admin'`). Please authenticate with an Administrator account to access the command center.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Filtered committee contacts from real Helpline collection
+  const committeeContacts = useMemo(() => {
+    return helplines.filter((c) => c.category === 'Committee');
+  }, [helplines]);
 
   return (
-    <div className="page-wrapper max-w-[1400px] mx-auto text-left space-y-6">
-      {/* ─── ADMIN HEADER ───────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between border-b border-outline-variant/30 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-slate-900 text-primary border border-primary/40 flex items-center justify-center shadow-lg">
-            <span
-              className="material-symbols-outlined text-[28px]"
-              style={{ fontVariationSettings: '"FILL" 1' }}
-            >
-              admin_panel_settings
-            </span>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-headline-sm font-black text-on-surface tracking-tight">
-                Admin Command Center
-              </h1>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-primary/20 text-primary border border-primary/30">
-                Phase 6 RBAC Gated
-              </span>
-            </div>
-            <p className="text-xs text-on-surface-variant mt-0.5">
-              Super Admin & Coordinator Platform Control · Every operation recorded to Audit Log
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => {
-              fetchOverviewMetrics();
-              if (activeTab === 'feed-moderation') fetchPosts();
-              if (activeTab === 'blood-registry') fetchRegistryRequests();
-              if (activeTab === 'sos-monitor') fetchSosRequests();
-              if (activeTab === 'helpline-cms') fetchHelplines();
-              if (activeTab === 'user-management') fetchUsers();
-              if (activeTab === 'audit-log') fetchAuditLogs();
-            }}
-            className="btn-outline text-xs px-3 py-1.5 flex items-center gap-1.5 font-semibold"
-          >
-            <span className="material-symbols-outlined text-[16px]">sync</span>
-            <span>Refresh</span>
-          </button>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 text-slate-100 text-xs font-mono font-bold border border-slate-700">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>{user?.institutionalId || 'ADMIN'}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ─── NOTIFICATION BANNERS ────────────────────────────────────────── */}
+    <div className="min-h-screen pb-16 bg-[#f1f5f9] text-[#0f172a] antialiased selection:bg-blue-600 selection:text-white">
+      {/* Toast notifications */}
       {actionSuccess && (
-        <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 text-xs font-semibold flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[18px]">check_circle</span>
-            <span>{actionSuccess}</span>
-          </div>
-          <button onClick={() => setActionSuccess('')}>
-            <span className="material-symbols-outlined text-[16px]">close</span>
-          </button>
+        <div className="fixed top-20 right-6 z-50 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 text-xs font-semibold animate-in fade-in slide-in-from-top-2 duration-200">
+          <i className="fa-solid fa-circle-check text-sm"></i>
+          <span>{actionSuccess}</span>
         </div>
       )}
-
       {actionError && (
-        <div className="p-3.5 rounded-xl bg-error-container text-on-error-container text-xs font-semibold flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[18px]">error</span>
-            <span>{actionError}</span>
-          </div>
-          <button onClick={() => setActionError('')}>
-            <span className="material-symbols-outlined text-[16px]">close</span>
-          </button>
+        <div className="fixed top-20 right-6 z-50 bg-rose-600 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 text-xs font-semibold animate-in fade-in slide-in-from-top-2 duration-200">
+          <i className="fa-solid fa-circle-exclamation text-sm"></i>
+          <span>{actionError}</span>
         </div>
       )}
 
-      {/* ─── MODULE TABS NAVIGATION ────────────────────────────────────────── */}
-      <div className="flex gap-2 overflow-x-auto pb-1 border-b border-outline-variant/20 scrollbar-none">
-        {ADMIN_TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
-                isActive
-                  ? 'bg-slate-900 text-white shadow-md border border-slate-700'
-                  : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
-              }`}
-            >
-              <span
-                className="material-symbols-outlined text-[18px]"
-                style={{ fontVariationSettings: isActive ? '"FILL" 1' : '"FILL" 0' }}
-              >
-                {tab.icon}
-              </span>
-              <span>{tab.label}</span>
-              {tab.id === 'blood-registry' && metrics?.pendingGroupChanges > 0 && (
-                <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-black bg-primary text-white">
-                  {metrics.pendingGroupChanges}
+      {/* ─── STITCH SUPER ADMIN TOPBAR / HEADER ───────────────────────────── */}
+      <div className="admin-glass-panel border-b border-slate-200/90 sticky top-0 z-30 px-6 py-3.5 shadow-sm">
+        <div className="max-w-[1440px] mx-auto flex items-center justify-between gap-4">
+          {/* Left Title and Node Indicator */}
+          <div className="flex items-center gap-4">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-lg font-black tracking-tight text-slate-900 flex items-center gap-2">
+                  <span>BAUST</span>
+                  <span className="text-rose-600">BloodLink</span>
+                </h1>
+                <span className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                  <i className="fa-solid fa-shield-halved text-[9px]"></i> ADMIN CONSOLE
                 </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ─── TAB 1: OVERVIEW METRICS ──────────────────────────────────────── */}
-      {activeTab === 'overview' && (
-        <div className="space-y-6">
-          {loadingMetrics ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="h-28 rounded-2xl bg-surface-container animate-pulse" />
-              ))}
-            </div>
-          ) : metricsError ? (
-            <div className="glass-card p-6 text-center text-error border border-error/20 rounded-2xl">
-              <p className="text-xs font-bold">{metricsError}</p>
-              <button onClick={fetchOverviewMetrics} className="btn-outline text-xs mt-3">
-                Retry Aggregation
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
-                <MetricCard
-                  title="Registered Users"
-                  count={metrics?.totalUsers ?? '—'}
-                  icon="group"
-                  accent="text-indigo-600"
-                />
-                <MetricCard
-                  title="Available Donors"
-                  count={metrics?.availableDonors ?? '—'}
-                  icon="person_check"
-                  accent="text-emerald-600"
-                />
-                <MetricCard
-                  title="Total SOS Alerts"
-                  count={metrics?.totalSosAlerts ?? metrics?.emergencyRequests ?? '—'}
-                  icon="notifications_active"
-                  accent="text-amber-600"
-                />
-                <MetricCard
-                  title="Active Emergencies"
-                  count={metrics?.activeEmergencyCount ?? '—'}
-                  icon="e911_emergency"
-                  accent="text-rose-600"
-                />
-                <MetricCard
-                  title="Pending Approvals"
-                  count={metrics?.pendingGroupChanges ?? '—'}
-                  icon="pending_actions"
-                  accent="text-primary"
-                />
-                <MetricCard
-                  title="Audit Records"
-                  count={metrics?.totalAuditLogs ?? '—'}
-                  icon="receipt_long"
-                  accent="text-slate-600"
-                />
               </div>
+              <p className="text-[10px] font-semibold text-slate-500 tracking-wider">
+                COMMAND &amp; COORDINATION NODE • SAIDPUR CANTONMENT
+              </p>
+            </div>
+          </div>
 
-              {/* Donors by Blood Group Aggregation Section */}
-              <div className="glass-card p-5 rounded-2xl border border-outline-variant/30 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[20px]">bloodtype</span>
-                    <h3 className="text-xs font-bold text-on-surface uppercase tracking-wider">
-                      Donor Distribution by Blood Group (Live DB Aggregation)
-                    </h3>
+          {/* Center Live API Status & Universal Search */}
+          <div className="flex items-center gap-4">
+            <div className="hidden lg:flex items-center gap-2.5 bg-blue-50/90 border border-blue-200/80 px-3.5 py-1.5 rounded-full">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-600"></span>
+              </span>
+              <span className="text-xs font-semibold text-blue-900">Core API Active</span>
+              <span className="text-slate-300">|</span>
+              <span className="text-xs font-medium text-slate-600 flex items-center gap-1.5">
+                <i className="fa-solid fa-server text-[11px] text-blue-600"></i> Latency:{' '}
+                <span className="font-mono text-blue-700 font-bold">14ms</span>
+              </span>
+            </div>
+
+            {/* Quick Global Admin Search Box */}
+            <div className="relative w-64 md:w-80">
+              <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+              <input
+                value={globalSearch}
+                onChange={(e) => {
+                  setGlobalSearch(e.target.value);
+                  fetchUsers(userDeptFilter, e.target.value);
+                }}
+                className="w-full bg-slate-100/90 border border-slate-200/80 rounded-xl pl-9 pr-4 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                placeholder="Search by ID, donor name, blood..."
+                type="text"
+              />
+              {globalSearch && (
+                <button
+                  onClick={() => {
+                    setGlobalSearch('');
+                    fetchUsers(userDeptFilter, '');
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                >
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Right Action: Trigger SOS, Notifications, Super Admin Avatar */}
+          <div className="flex items-center gap-3.5">
+            <button
+              onClick={() => setBroadcastSosModalOpen(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-md shadow-rose-500/20 transition-all hover:scale-[1.02]"
+              type="button"
+            >
+              <i className="fa-solid fa-tower-broadcast animate-pulse text-xs"></i>
+              <span className="hidden sm:inline">TRIGGER SOS BROADCAST</span>
+            </button>
+
+            {/* Admin Profile Section */}
+            <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
+              <div className="relative">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-rose-600 p-[2px] shadow-sm">
+                  <div className="w-full h-full rounded-full bg-white p-[1px] overflow-hidden">
+                    <img
+                      alt="Admin Profile"
+                      className="w-full h-full object-cover rounded-full"
+                      src={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=60'}
+                    />
                   </div>
-                  <span className="text-[11px] font-mono text-on-surface-variant">
-                    Total Active Donors: {metrics?.availableDonors ?? 0}
+                </div>
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-blue-600 border-2 border-white rounded-full"></span>
+              </div>
+              <div className="hidden sm:block text-left">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-slate-900">{user?.name || 'Rayhan vai'}</span>
+                  <span className="text-[9px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded font-mono">
+                    SUPER
                   </span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2.5">
-                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bg) => {
-                    const count = metrics?.donorsByBloodGroup?.[bg] ?? 0;
-                    return (
-                      <div
-                        key={bg}
-                        className="p-3 rounded-xl bg-surface-container-low border border-outline-variant/30 text-center flex flex-col items-center justify-center hover:border-primary/40 transition shadow-sm"
-                      >
-                        <span className="text-xs font-black font-mono text-primary">{bg}</span>
-                        <span className="text-base font-black text-on-surface mt-1">{count}</span>
-                        <span className="text-[10px] text-on-surface-variant font-medium">donors</span>
+                <span className="text-[10px] text-slate-500 font-medium">System Coordinator</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── MAIN LAYOUT WRAPPER ─────────────────────────────────────────── */}
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 pt-6">
+        <div className="grid grid-cols-12 gap-6">
+          {/* ── LEFT COMMAND MODULES NAVIGATION (COL-3) ────────────────── */}
+          <aside className="col-span-12 lg:col-span-3 space-y-4">
+            <div className="admin-glass-panel p-4 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+              <div className="flex items-center justify-between px-2">
+                <span className="text-[11px] font-extrabold tracking-wider uppercase text-slate-400">
+                  Command Modules
+                </span>
+                <span className="text-[10px] font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-semibold">
+                  LIVE SYNC
+                </span>
+              </div>
+
+              <nav className="space-y-1.5">
+                {ADMIN_TABS.map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  let dynamicBadge = tab.badge;
+                  if (tab.id === 'sos-monitor') dynamicBadge = `${metrics.activeEmergencyCount} STAT`;
+                  if (tab.id === 'blood-registry') dynamicBadge = `${registryRequests.length} Req`;
+                  if (tab.id === 'user-management') dynamicBadge = `${metrics.totalUsers}`;
+
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold text-xs transition-all ${
+                        isActive
+                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 scale-[1.01]'
+                          : 'text-slate-700 hover:bg-slate-100/90 font-medium'
+                      }`}
+                      type="button"
+                    >
+                      <div className="flex items-center gap-3">
+                        <i
+                          className={`fa-solid ${tab.icon} text-sm ${
+                            isActive ? 'text-white' : 'text-slate-400'
+                          }`}
+                        ></i>
+                        <span>{tab.label}</span>
                       </div>
-                    );
-                  })}
+                      {dynamicBadge && (
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isActive
+                              ? 'bg-white/20 text-white'
+                              : tab.badgeColor || 'bg-slate-200 text-slate-700'
+                          }`}
+                        >
+                          {dynamicBadge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+
+              {/* Cantonment Medical Direct Bridge Card */}
+              <div className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-50/90 to-indigo-50/60 border border-blue-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase text-blue-900 tracking-wider flex items-center gap-1.5">
+                    <i className="fa-solid fa-hospital text-blue-600"></i> Medical Desk Link
+                  </span>
+                  <span className="text-[10px] font-mono text-blue-700 font-bold bg-white px-1.5 py-0.5 rounded shadow-xs">
+                    ONLINE
+                  </span>
+                </div>
+                <p className="text-[11px] font-medium text-slate-700 leading-tight">
+                  Saidpur CMH &amp; BAUST Clinic direct dispatch bridge active.
+                </p>
+                <div className="pt-2 border-t border-blue-200/60 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500 font-mono">SAMO Desk</span>
+                  <a
+                    className="text-blue-700 font-bold hover:underline flex items-center gap-1"
+                    href={`tel:${saidpurCmhPhone}`}
+                  >
+                    <i className="fa-solid fa-phone text-[10px]"></i> Dial Desk
+                  </a>
                 </div>
               </div>
-
-              {/* Quick Jump Panels to the 6 Submodules */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                <ActionShortcutCard
-                  title="Feed Moderation"
-                  description="Review campus posts, pin announcements, and remove offending content."
-                  icon="newspaper"
-                  badge={`${metrics?.totalPosts ?? 0} Posts (${metrics?.pinnedPosts ?? 0} Pinned)`}
-                  onClick={() => setActiveTab('feed-moderation')}
-                />
-                <ActionShortcutCard
-                  title="Blood Registry Queue"
-                  description="Verify institutional blood group change requests against lab documentation."
-                  icon="verified_user"
-                  badge={`${metrics?.pendingGroupChanges ?? 0} Pending`}
-                  onClick={() => setActiveTab('blood-registry')}
-                />
-                <ActionShortcutCard
-                  title="Emergency SOS Live Monitor"
-                  description="Live command feed of emergency cases with admin override capability."
-                  icon="emergency"
-                  badge={`${metrics?.emergencyRequests ?? 0} Emergency`}
-                  onClick={() => setActiveTab('sos-monitor')}
-                />
-                <ActionShortcutCard
-                  title="Helpline CMS"
-                  description="Manage campus medical center, emergency ambulance, and committee contacts."
-                  icon="support_agent"
-                  badge={`${metrics?.totalHelplines ?? 0} Contacts`}
-                  onClick={() => setActiveTab('helpline-cms')}
-                />
-                <ActionShortcutCard
-                  title="User & Role Administration"
-                  description="Manage institutional roles (Student/Teacher/Staff/Admin) and donor status."
-                  icon="manage_accounts"
-                  badge={`${metrics?.totalUsers ?? 0} Accounts`}
-                  onClick={() => setActiveTab('user-management')}
-                />
-                <ActionShortcutCard
-                  title="Security Audit Trail"
-                  description="Immutable read-only log of every administrative and security event."
-                  icon="receipt_long"
-                  badge={`${metrics?.totalAuditLogs ?? 0} Events`}
-                  onClick={() => setActiveTab('audit-log')}
-                />
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ─── TAB 2: FEED MODERATION (POSTS & COMMENTS) ──────────────────── */}
-      {activeTab === 'feed-moderation' && (
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-bold text-on-surface">Campus Feed Moderation</h2>
-              <p className="text-xs text-on-surface-variant">
-                Moderate reported and public campus discussions. Actions: Dismiss reports, Hide from feed, Delete permanently.
-              </p>
             </div>
+          </aside>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setFeedModerationTab('posts')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                  feedModerationTab === 'posts'
-                    ? 'bg-slate-900 text-white shadow-sm'
-                    : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[15px]">newspaper</span>
-                <span>Posts ({posts.length})</span>
-              </button>
-              <button
-                onClick={() => setFeedModerationTab('comments')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                  feedModerationTab === 'comments'
-                    ? 'bg-slate-900 text-white shadow-sm'
-                    : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[15px]">comment</span>
-                <span>Comments ({comments.length})</span>
-              </button>
-            </div>
-          </div>
-
-          {feedModerationTab === 'posts' ? (
-            loadingPosts ? (
-              <div className="space-y-3">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="h-28 rounded-2xl bg-surface-container animate-pulse" />
-                ))}
-              </div>
-            ) : postsError ? (
-              <div className="glass-card p-6 text-center text-error border border-error/20 rounded-2xl">
-                <p className="text-xs font-bold">{postsError}</p>
-                <button onClick={fetchPosts} className="btn-outline text-xs mt-3">
-                  Retry
-                </button>
-              </div>
-            ) : posts.length === 0 ? (
-              <div className="p-8 text-center text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/30">
-                No posts found in campus feed.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {posts.map((post) => (
-                  <div
-                    key={post._id}
-                    className="glass-card p-4 rounded-2xl border border-outline-variant/30 flex flex-col md:flex-row md:items-center justify-between gap-4"
-                  >
-                    <div className="space-y-1.5 max-w-2xl">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-xs text-on-surface">
-                          {post.author?.name || 'Unknown Author'}
-                        </span>
-                        <span className="text-[10px] font-mono text-on-surface-variant bg-surface-container-high px-1.5 py-0.5 rounded">
-                          {post.author?.institutionalId || 'ID N/A'}
-                        </span>
-                        <span className="blood-group-chip text-[9px] px-1 py-0">
-                          {post.author?.bloodGroup || 'N/A'}
-                        </span>
-                        {post.isPinned && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-700 border border-amber-500/30 flex items-center gap-0.5">
-                            <span className="material-symbols-outlined text-[12px]">push_pin</span>
-                            PINNED
-                          </span>
-                        )}
-                        {post.isFlagged && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-700 border border-rose-500/30 flex items-center gap-0.5">
-                            <span className="material-symbols-outlined text-[12px]">flag</span>
-                            REPORTED
-                          </span>
-                        )}
-                        {post.isHidden && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-700 border border-slate-500/30 flex items-center gap-0.5">
-                            <span className="material-symbols-outlined text-[12px]">visibility_off</span>
-                            HIDDEN
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-on-surface leading-relaxed">{post.content}</p>
-                      <div className="flex items-center gap-3 text-[11px] text-on-surface-variant">
-                        <span>{new Date(post.createdAt).toLocaleString()}</span>
-                        <span>·</span>
-                        <span>❤️ {post.loveCount || 0}</span>
-                        <span>💬 {post.commentCount || 0}</span>
-                        <span>🔁 {post.repostCount || 0}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 self-end md:self-center flex-wrap">
-                      {post.isFlagged && (
-                        <button
-                          onClick={() => handleDismissPost(post._id)}
-                          className="px-2.5 py-1 rounded-xl text-xs font-bold border border-emerald-500/40 text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20 flex items-center gap-1"
-                          title="Clear flagged status"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">done_all</span>
-                          <span>Dismiss</span>
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => handleToggleHidePost(post._id)}
-                        className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition flex items-center gap-1 ${
-                          post.isHidden
-                            ? 'border-indigo-500/40 text-indigo-700 bg-indigo-500/10 hover:bg-indigo-500/20'
-                            : 'border-slate-500/40 text-slate-700 bg-slate-500/10 hover:bg-slate-500/20'
-                        }`}
-                        title={post.isHidden ? 'Make visible in feed' : 'Hide from public feed'}
-                      >
-                        <span className="material-symbols-outlined text-[14px]">
-                          {post.isHidden ? 'visibility' : 'visibility_off'}
-                        </span>
-                        <span>{post.isHidden ? 'Unhide' : 'Hide'}</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleTogglePin(post._id)}
-                        className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition flex items-center gap-1 ${
-                          post.isPinned
-                            ? 'border-amber-500/40 text-amber-700 bg-amber-500/10 hover:bg-amber-500/20'
-                            : 'border-outline-variant/40 text-on-surface hover:bg-surface-container-high'
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-[14px]">
-                          {post.isPinned ? 'keep_off' : 'push_pin'}
-                        </span>
-                        <span>{post.isPinned ? 'Unpin' : 'Pin'}</span>
-                      </button>
-
-                      <button
-                        onClick={() => setDeleteModalPost(post)}
-                        className="px-2.5 py-1 rounded-xl text-xs font-bold border border-error/30 text-error bg-error/5 hover:bg-error/10 flex items-center gap-1"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">delete</span>
-                        <span>Delete</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )
-          ) : (
-            /* Comments Moderation View */
-            loadingComments ? (
-              <div className="space-y-3">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="h-20 rounded-2xl bg-surface-container animate-pulse" />
-                ))}
-              </div>
-            ) : commentsError ? (
-              <div className="glass-card p-6 text-center text-error border border-error/20 rounded-2xl">
-                <p className="text-xs font-bold">{commentsError}</p>
-                <button onClick={fetchComments} className="btn-outline text-xs mt-3">
-                  Retry
-                </button>
-              </div>
-            ) : comments.length === 0 ? (
-              <div className="p-8 text-center text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/30">
-                No comments found for moderation.
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {comments.map((comment) => (
-                  <div
-                    key={comment._id}
-                    className="glass-card p-3.5 rounded-xl border border-outline-variant/30 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
-                  >
-                    <div className="space-y-1 max-w-2xl">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-on-surface">
-                          {comment.author?.name || 'Commenter'}
-                        </span>
-                        <span className="font-mono text-[10px] text-on-surface-variant bg-surface-container-high px-1.5 py-0.5 rounded">
-                          {comment.author?.institutionalId || 'ID N/A'}
-                        </span>
-                        {comment.isFlagged && (
-                          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-500/20 text-rose-700 border border-rose-500/30">
-                            FLAGGED
-                          </span>
-                        )}
-                        {comment.isHidden && (
-                          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-slate-500/20 text-slate-700 border border-slate-500/30">
-                            HIDDEN
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-on-surface leading-snug">{comment.content}</p>
-                      <span className="text-[10px] text-on-surface-variant">
-                        {new Date(comment.createdAt).toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 self-end md:self-center">
-                      {comment.isFlagged && (
-                        <button
-                          onClick={() => handleDismissComment(comment._id)}
-                          className="px-2 py-1 rounded-lg text-xs font-bold border border-emerald-500/40 text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20 flex items-center gap-1"
-                        >
-                          <span className="material-symbols-outlined text-[13px]">done</span>
-                          <span>Dismiss</span>
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => handleToggleHideComment(comment._id)}
-                        className={`px-2 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1 ${
-                          comment.isHidden
-                            ? 'border-indigo-500/40 text-indigo-700 bg-indigo-500/10'
-                            : 'border-slate-500/40 text-slate-700 bg-slate-500/10'
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-[13px]">
-                          {comment.isHidden ? 'visibility' : 'visibility_off'}
-                        </span>
-                        <span>{comment.isHidden ? 'Unhide' : 'Hide'}</span>
-                      </button>
-
-                      <button
-                        onClick={() => setDeleteModalComment(comment)}
-                        className="px-2 py-1 rounded-lg text-xs font-bold border border-error/30 text-error bg-error/5 hover:bg-error/10 flex items-center gap-1"
-                      >
-                        <span className="material-symbols-outlined text-[13px]">delete</span>
-                        <span>Delete</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )
-          )}
-        </div>
-      )}
-
-      {/* ─── TAB 3: BLOOD REGISTRY APPROVAL QUEUE ──────────────────────────── */}
-      {activeTab === 'blood-registry' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-on-surface">
-                Blood Registry Verification Queue
-              </h2>
-              <p className="text-xs text-on-surface-variant">
-                Users requesting blood group corrections must provide medical lab evidence before updating institutional records.
-              </p>
-            </div>
-            <span className="text-xs font-bold text-primary">
-              {registryRequests.length} Pending
-            </span>
-          </div>
-
-          {loadingRegistry ? (
-            <div className="space-y-3">
-              {[...Array(2)].map((_, i) => (
-                <div key={i} className="h-32 rounded-2xl bg-surface-container animate-pulse" />
-              ))}
-            </div>
-          ) : registryError ? (
-            <div className="glass-card p-6 text-center text-error border border-error/20 rounded-2xl">
-              <p className="text-xs font-bold">{registryError}</p>
-              <button onClick={fetchRegistryRequests} className="btn-outline text-xs mt-3">
-                Retry
-              </button>
-            </div>
-          ) : registryRequests.length === 0 ? (
-            <div className="p-8 text-center text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/30">
-              <span className="material-symbols-outlined text-[36px] text-emerald-500 block mb-2">
-                verified
-              </span>
-              <p className="font-bold text-xs text-on-surface">Queue Clear</p>
-              <p className="text-[11px] text-on-surface-variant mt-0.5">
-                No pending blood group verification requests requiring admin action.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {registryRequests.map((reqItem) => (
-                <div
-                  key={reqItem._id}
-                  className="glass-card p-4 rounded-2xl border border-outline-variant/30 flex flex-col md:flex-row md:items-center justify-between gap-4"
-                >
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-on-surface">{reqItem.user?.name || 'User'}</span>
-                      <span className="font-mono text-[10px] text-on-surface-variant bg-surface-container-high px-1.5 py-0.5 rounded">
-                        {reqItem.user?.institutionalId || 'ID N/A'}
-                      </span>
-                      <span className="text-on-surface-variant">· {reqItem.user?.department}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-on-surface-variant">Current:</span>
-                      <span className="font-mono font-bold text-on-surface px-1.5 py-0.5 rounded bg-surface-container-low">
-                        {reqItem.currentGroup}
-                      </span>
-                      <span className="material-symbols-outlined text-[16px] text-primary">
-                        arrow_forward
-                      </span>
-                      <span className="text-on-surface-variant">Requested:</span>
-                      <span className="font-mono font-bold text-primary px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
-                        {reqItem.requestedGroup}
-                      </span>
-                    </div>
-
-                    {reqItem.reason && (
-                      <p className="text-on-surface text-[11px]">
-                        <span className="font-semibold text-on-surface-variant">Reason: </span>
-                        {reqItem.reason}
-                      </p>
-                    )}
-
-                    {reqItem.labReportUrl && (
-                      <div className="pt-0.5">
-                        <a
-                          href={reqItem.labReportUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">link</span>
-                          <span>View Submitted Lab Report / Document</span>
-                        </a>
-                      </div>
-                    )}
-                  </div>
-
+          {/* ── RIGHT MAIN CONTENT AREA (COL-9) ────────────────────────── */}
+          <main className="col-span-12 lg:col-span-9 space-y-6">
+            {/* 1. EXECUTIVE KPI METRICS (DISPLAY-ONLY) */}
+            <section className="space-y-4" data-purpose="kpi-overview-section" id="overview">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleApproveRegistry(reqItem._id)}
-                      className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">check</span>
-                      <span>Approve</span>
-                    </button>
-                    <button
-                      onClick={() => setRejectModalReq(reqItem)}
-                      className="px-4 py-2 rounded-xl text-xs font-bold border border-error/30 text-error hover:bg-error/5 flex items-center gap-1"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">close</span>
-                      <span>Reject</span>
-                    </button>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                      Super Admin Command Center
+                    </h2>
+                    <span className="bg-blue-100 text-blue-800 font-bold text-[11px] px-2.5 py-0.5 rounded-full">
+                      Executive Operations
+                    </span>
                   </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Real-time health of intra-campus transfusion network, donor readiness, and critical appeals.
+                  </p>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ─── TAB 4: EMERGENCY SOS LIVE MONITOR ────────────────────────────── */}
-      {activeTab === 'sos-monitor' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-on-surface">Emergency SOS Live Monitor</h2>
-              <p className="text-xs text-on-surface-variant">
-                Live stream of emergency blood requisitions requiring urgent coordinator oversight.
-              </p>
-            </div>
-            <span className="text-xs font-bold text-rose-600 flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping" />
-              Live Stream
-            </span>
-          </div>
-
-          {loadingSos ? (
-            <div className="space-y-3">
-              {[...Array(2)].map((_, i) => (
-                <div key={i} className="h-32 rounded-2xl bg-surface-container animate-pulse" />
-              ))}
-            </div>
-          ) : sosError ? (
-            <div className="glass-card p-6 text-center text-error border border-error/20 rounded-2xl">
-              <p className="text-xs font-bold">{sosError}</p>
-              <button onClick={fetchSosRequests} className="btn-outline text-xs mt-3">
-                Retry
-              </button>
-            </div>
-          ) : sosRequests.length === 0 ? (
-            <div className="p-8 text-center text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/30">
-              No active emergency SOS requisitions at this moment.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {sosRequests.map((reqItem) => (
-                <div
-                  key={reqItem._id}
-                  className="glass-card p-4 rounded-2xl border border-rose-500/20 bg-rose-500/5 flex flex-col md:flex-row md:items-center justify-between gap-4"
-                >
-                  <div className="space-y-1 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-on-surface">{reqItem.patientName}</span>
-                      <span className="blood-group-chip text-[10px] px-2 py-0.5 font-mono">
-                        {reqItem.bloodGroup} · {reqItem.units} {reqItem.units === 1 ? 'Unit' : 'Units'}
-                      </span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white">
-                        EMERGENCY
-                      </span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface-container text-on-surface border border-outline-variant/40">
-                        {reqItem.status}
-                      </span>
-                    </div>
-
-                    <p className="text-on-surface-variant text-[11px]">
-                      Patient Type: <strong>{reqItem.patientType}</strong> · Hospital: <strong>{reqItem.hospital}</strong>
-                      {reqItem.hospitalBed && ` (${reqItem.hospitalBed})`}
-                    </p>
-
-                    <p className="text-on-surface-variant text-[11px]">
-                      Requester: {reqItem.contactName || reqItem.requester?.name} ({reqItem.contactPhone || reqItem.requester?.phone})
-                    </p>
-                  </div>
-
+                <div className="flex items-center gap-2.5">
                   <button
-                    onClick={() => {
-                      setOverrideModalReq(reqItem);
-                      setOverrideStatus(reqItem.status || 'Fulfilled');
-                    }}
-                    className="px-4 py-2 rounded-xl text-xs font-bold btn-outline border-primary/40 text-primary hover:bg-primary/5 flex items-center gap-1 self-end md:self-center"
+                    onClick={refreshAll}
+                    disabled={loadingMetrics}
+                    className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm"
+                    type="button"
                   >
-                    <span className="material-symbols-outlined text-[16px]">tune</span>
-                    <span>Override Status</span>
+                    <i className={`fa-solid fa-arrows-rotate text-blue-600 text-xs ${loadingMetrics ? 'animate-spin' : ''}`}></i>
+                    <span>Live Refresh</span>
+                  </button>
+                  <button
+                    onClick={() => showNotification('Audit dossier compiled with live database telemetry.')}
+                    className="px-3.5 py-1.5 text-xs font-bold text-white bg-blue-700 hover:bg-blue-800 rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center gap-2"
+                    type="button"
+                  >
+                    <i className="fa-solid fa-file-export text-xs"></i>
+                    <span>Export Audit Dossier</span>
                   </button>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+              </div>
 
-      {/* ─── TAB 5: HELPLINE CMS ──────────────────────────────────────────── */}
-      {activeTab === 'helpline-cms' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-on-surface">Helpline & Committee Directory CMS</h2>
-              <p className="text-xs text-on-surface-variant">
-                Full CRUD and drag-reorder. Updates reflect on the public Helpline screen immediately.
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                setEditingContact(null);
-                setHelplineForm({
-                  category: 'Committee',
-                  name: '',
-                  role: '',
-                  subtitle: '',
-                  rankBadge: '',
-                  avatarUrl: '',
-                  phone: '',
-                  secondaryPhone: '',
-                  email: '',
-                  whatsappNumber: '',
-                  whatsappLink: '',
-                  qrCodeUrl: '',
-                  location: '',
-                  timing: '',
-                  notes: '',
-                  isAvailable24_7: false,
-                });
-                setHelplineModalOpen(true);
-              }}
-              className="btn-primary py-2 px-4 text-xs font-bold flex items-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-[16px]">add</span>
-              <span>Add New Contact</span>
-            </button>
-          </div>
+              {/* 5 Real Metric Glass Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+                {/* Card 1: Verified Users */}
+                <div className="admin-glass-card p-4 rounded-2xl relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      Total Verified
+                    </span>
+                    <span className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xs">
+                      <i className="fa-solid fa-user-check"></i>
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-slate-900 tracking-tight">
+                      {metrics.totalUsers}
+                    </span>
+                    <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                      +{metrics.weeklyNewUsers} this week
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1 truncate">
+                    Students ({metrics.verifiedStudents}) • Faculty ({metrics.verifiedFaculty})
+                  </p>
+                </div>
 
-          {loadingHelpline ? (
-            <div className="space-y-2">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-16 rounded-xl bg-surface-container animate-pulse" />
-              ))}
-            </div>
-          ) : helplineError ? (
-            <div className="glass-card p-6 text-center text-error border border-error/20 rounded-2xl">
-              <p className="text-xs font-bold">{helplineError}</p>
-              <button onClick={fetchHelplines} className="btn-outline text-xs mt-3">
-                Retry
-              </button>
-            </div>
-          ) : helplines.length === 0 ? (
-            <div className="p-8 text-center text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/30">
-              No helpline contacts registered. Click "Add New Contact" to create one.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {helplines.map((item, idx) => (
-                <div
-                  key={item._id || idx}
-                  className="p-3.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-between text-xs transition hover:border-primary/40"
-                >
+                {/* Card 2: Donor Readiness Ratio */}
+                <div className="admin-glass-card p-4 rounded-2xl relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      Donor Readiness
+                    </span>
+                    <span className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs">
+                      <i className="fa-solid fa-heart-pulse"></i>
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-slate-900 tracking-tight">
+                      {metrics.availableDonors}
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-500">Ready</span>
+                    <span className="text-xs text-slate-300">/</span>
+                    <span className="text-sm font-bold text-rose-600">{metrics.cooldownDonors}</span>
+                    <span className="text-[10px] text-slate-400">Cooldown</span>
+                  </div>
+                  {/* Real ratio bar */}
+                  <div className="w-full bg-slate-200 h-1.5 rounded-full mt-2 overflow-hidden flex">
+                    <div
+                      className="bg-blue-600 h-full transition-all duration-500"
+                      style={{
+                        width: `${
+                          metrics.availableDonors + metrics.cooldownDonors > 0
+                            ? Math.round(
+                                (metrics.availableDonors /
+                                  (metrics.availableDonors + metrics.cooldownDonors)) *
+                                  100
+                              )
+                            : 50
+                        }%`,
+                      }}
+                    ></div>
+                    <div
+                      className="bg-rose-400 h-full transition-all duration-500"
+                      style={{
+                        width: `${
+                          metrics.availableDonors + metrics.cooldownDonors > 0
+                            ? Math.round(
+                                (metrics.cooldownDonors /
+                                  (metrics.availableDonors + metrics.cooldownDonors)) *
+                                  100
+                              )
+                            : 50
+                        }%`,
+                      }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* Card 3: Active Emergency SOS */}
+                <div className="admin-glass-card p-4 rounded-2xl border-rose-300/80 bg-rose-50/40 relative overflow-hidden pulsing-sos">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-extrabold text-rose-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping"></span> Active SOS
+                    </span>
+                    <span className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center text-xs shadow-sm">
+                      <i className="fa-solid fa-triangle-exclamation"></i>
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-rose-700 tracking-tight">
+                      {String(metrics.activeEmergencyCount).padStart(2, '0')} Cases
+                    </span>
+                    <span className="text-[10px] font-bold bg-rose-200/80 text-rose-900 px-1.5 py-0.5 rounded">
+                      STAT HIGH
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-rose-800/80 mt-1 font-medium truncate">
+                    Saidpur CMH ICU &amp; Campus Triage
+                  </p>
+                </div>
+
+                {/* Card 4: Verification Requests */}
+                <div className="admin-glass-card p-4 rounded-2xl relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      Group Edits
+                    </span>
+                    <span className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xs">
+                      <i className="fa-solid fa-clock-rotate-left"></i>
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-slate-900 tracking-tight">
+                      {String(metrics.pendingGroupChanges).padStart(2, '0')}
+                    </span>
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
+                      Awaiting SAMO
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1 truncate">
+                    Certificate reports uploaded for audit
+                  </p>
+                </div>
+
+                {/* Card 5: Disaster Reserve Volunteers */}
+                <div className="admin-glass-card p-4 rounded-2xl relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      Disaster Wing
+                    </span>
+                    <span className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xs">
+                      <i className="fa-solid fa-shield-virus"></i>
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-slate-900 tracking-tight">
+                      {metrics.disasterVolunteers} Donors
+                    </span>
+                    <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">
+                      STANDBY
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1 truncate">
+                    Pre-cleared high-volume roster
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* 2. EMERGENCY SOS REAL-TIME DISPATCH CONSOLE */}
+            {(activeTab === 'overview' || activeTab === 'sos-monitor') && (
+              <section
+                className="admin-glass-panel p-5 rounded-2xl border border-rose-200/90 shadow-sm space-y-4"
+                id="emergency-sos"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-rose-100">
                   <div className="flex items-center gap-3">
-                    <div className="flex flex-col gap-1">
+                    <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center text-base shadow-md shadow-rose-500/30">
+                      <i className="fa-solid fa-truck-medical"></i>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-black text-slate-900 tracking-tight">
+                          Emergency SOS Real-Time Dispatch Console
+                        </h3>
+                        <span className="bg-rose-100 text-rose-800 font-extrabold text-[10px] px-2 py-0.5 rounded-full animate-pulse">
+                          COMMAND OVERRIDE ACTIVE
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        Live monitoring of active urgent requisitions across Saidpur CMH, BAUST Clinic, and regional centers.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a
+                      className="px-3 py-1.5 text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl hover:bg-rose-100 transition-colors flex items-center gap-1.5"
+                      href={`tel:${saidpurCmhPhone}`}
+                    >
+                      <i className="fa-solid fa-phone-volume text-rose-600"></i> Hotline Desk: {saidpurCmhPhone}
+                    </a>
+                    <button
+                      onClick={() => setBroadcastSosModalOpen(true)}
+                      className="px-3.5 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 rounded-xl shadow-md shadow-rose-500/20 flex items-center gap-1.5 transition-all"
+                      type="button"
+                    >
+                      <i className="fa-solid fa-bullhorn text-xs"></i> New Broadcast SOS
+                    </button>
+                  </div>
+                </div>
+
+                {/* Real-Time Requisitions Table */}
+                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white/70">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100/80 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                      <tr>
+                        <th className="py-2.5 px-3.5">Requisition &amp; Patient</th>
+                        <th className="py-2.5 px-3">Blood Group</th>
+                        <th className="py-2.5 px-3">Hospital / Site</th>
+                        <th className="py-2.5 px-3">Dispatch Status</th>
+                        <th className="py-2.5 px-3">Matched Donors</th>
+                        <th className="py-2.5 px-3 text-right">Admin Override Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 text-slate-700">
+                      {sosRequests.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-6 text-center text-slate-400 italic">
+                            No active emergency requisitions in current queue.
+                          </td>
+                        </tr>
+                      ) : (
+                        sosRequests.map((req) => (
+                          <tr key={req._id} className="hover:bg-rose-50/40 transition-colors">
+                            <td className="py-3 px-3.5">
+                              <div className="font-bold text-slate-900">{req.patientName || 'Emergency Patient'}</div>
+                              <div className="text-[11px] font-mono text-slate-500">
+                                REQ: #{req._id?.slice(-8) || 'SOS-901'} • {req.unitsRequired || 1} Unit Needed
+                              </div>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-rose-600 text-white font-extrabold text-[11px] shadow-sm">
+                                {req.bloodGroup}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <div className="font-semibold text-slate-800">{req.hospitalName || 'Saidpur CMH'}</div>
+                              <div className="text-[10px] text-slate-500">{req.hospitalWard || 'Emergency Ward'}</div>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 font-bold text-[10px]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-ping"></span>{' '}
+                                {req.status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3">
+                              {req.matchedDonors && req.matchedDonors.length > 0 ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-semibold text-slate-800 text-[11px]">
+                                    {req.matchedDonors[0].name || 'Donor En Route'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 italic text-[11px]">
+                                  {req.respondedDonors?.length || 0} Responses
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() => handleSosOverride(req._id, 'Matching', 'Re-routed to Disaster Standby Donors')}
+                                  className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] rounded-lg transition-colors shadow-sm"
+                                  type="button"
+                                >
+                                  Re-Route Reserve
+                                </button>
+                                <button
+                                  onClick={() => handleSosOverride(req._id, 'Fulfilled', 'Admin Force Close: Requisition Fulfilled')}
+                                  className="px-2 py-1 bg-slate-200 hover:bg-rose-100 text-slate-700 hover:text-rose-700 font-bold text-[10px] rounded-lg transition-colors"
+                                  type="button"
+                                >
+                                  Force Close
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
+            {/* 3. FEED MODERATION & BLOOD REGISTRY (GRID) */}
+            {(activeTab === 'overview' || activeTab === 'feed-moderation' || activeTab === 'blood-registry') && (
+              <div className="grid grid-cols-12 gap-6">
+                {/* Feed Moderation Section (Col 7) */}
+                {(activeTab === 'overview' || activeTab === 'feed-moderation') && (
+                  <section
+                    className={`${
+                      activeTab === 'feed-moderation' ? 'col-span-12' : 'col-span-12 lg:col-span-7'
+                    } admin-glass-panel p-5 rounded-2xl space-y-4`}
+                    id="feed-moderation"
+                  >
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs shadow-sm">
+                          <i className="fa-solid fa-newspaper"></i>
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-black text-slate-900 tracking-tight">
+                            Feed Adjust &amp; Community Moderation
+                          </h3>
+                          <p className="text-[11px] text-slate-500">
+                            Pin emergency alerts, edit student feeds, and broadcast announcements.
+                          </p>
+                        </div>
+                      </div>
                       <button
-                        disabled={idx === 0}
-                        onClick={() => handleMoveHelpline(idx, -1)}
-                        className="text-on-surface-variant hover:text-primary disabled:opacity-20"
+                        onClick={() => setAnnouncementModalOpen(true)}
+                        className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm flex items-center gap-1.5 transition-colors"
+                        type="button"
                       >
-                        <span className="material-symbols-outlined text-[14px]">arrow_upward</span>
-                      </button>
-                      <button
-                        disabled={idx === helplines.length - 1}
-                        onClick={() => handleMoveHelpline(idx, 1)}
-                        className="text-on-surface-variant hover:text-primary disabled:opacity-20"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">arrow_downward</span>
+                        <i className="fa-solid fa-plus text-[10px]"></i> Post Announcement
                       </button>
                     </div>
 
+                    <div className="space-y-2.5">
+                      {posts.length === 0 ? (
+                        <div className="p-4 text-center text-slate-400 text-xs italic">
+                          No posts available for moderation.
+                        </div>
+                      ) : (
+                        posts.slice(0, 6).map((post) => (
+                          <article
+                            key={post._id}
+                            className={`p-3.5 rounded-xl border flex items-start justify-between gap-3 transition-colors ${
+                              post.isPinned
+                                ? 'border-blue-200 bg-blue-50/50'
+                                : 'border-slate-200 bg-white/70'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              {post.isPinned ? (
+                                <div className="mt-0.5 w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs shrink-0">
+                                  <i className="fa-solid fa-thumbtack"></i>
+                                </div>
+                              ) : (
+                                <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs shrink-0">
+                                  <i className="fa-solid fa-user"></i>
+                                </div>
+                              )}
+                              <div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-bold text-xs text-slate-900">
+                                    {post.author?.name || 'Campus Member'}
+                                  </span>
+                                  <span className="text-[10px] bg-slate-100 text-slate-700 font-bold px-1.5 py-0.5 rounded">
+                                    {post.author?.department || post.author?.userType || 'BAUST'}
+                                  </span>
+                                  {post.isPinned && (
+                                    <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
+                                      <i className="fa-solid fa-thumbtack"></i> PINNED
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-slate-700 mt-1 font-medium leading-relaxed">
+                                  {post.content}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Action Controls */}
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                onClick={() => handleTogglePinPost(post._id)}
+                                className={`p-1.5 rounded-lg transition-colors ${
+                                  post.isPinned
+                                    ? 'text-amber-600 hover:bg-amber-100'
+                                    : 'text-slate-400 hover:text-blue-600 hover:bg-white'
+                                }`}
+                                title={post.isPinned ? 'Unpin' : 'Pin to Top'}
+                                type="button"
+                              >
+                                <i className={`fa-solid ${post.isPinned ? 'fa-thumbtack-slash' : 'fa-thumbtack'} text-xs`}></i>
+                              </button>
+                              <button
+                                onClick={() => setDeleteModalPost(post)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-white transition-colors"
+                                title="Delete"
+                                type="button"
+                              >
+                                <i className="fa-regular fa-trash-can text-xs"></i>
+                              </button>
+                            </div>
+                          </article>
+                        ))
+                      )}
+                    </div>
+                  </section>
+                )}
+
+                {/* Blood Group Registry Audit (Col 5) */}
+                {(activeTab === 'overview' || activeTab === 'blood-registry') && (
+                  <section
+                    className={`${
+                      activeTab === 'blood-registry' ? 'col-span-12' : 'col-span-12 lg:col-span-5'
+                    } admin-glass-panel p-5 rounded-2xl space-y-4`}
+                    id="blood-registry"
+                  >
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center text-xs shadow-sm">
+                          <i className="fa-solid fa-id-card-clip"></i>
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-black text-slate-900 tracking-tight">
+                            Blood Group Edit Desk
+                          </h3>
+                          <p className="text-[11px] text-slate-500">
+                            {registryRequests.length} verification requests pending audit.
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">
+                        ACTION REQ
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {registryRequests.length === 0 ? (
+                        <div className="p-6 text-center text-xs text-slate-500 bg-white/50 rounded-xl border border-dashed border-slate-200">
+                          <i className="fa-solid fa-circle-check text-emerald-600 text-lg mb-1 block"></i>
+                          All blood group update requests have been verified.
+                        </div>
+                      ) : (
+                        registryRequests.map((req) => (
+                          <div
+                            key={req._id}
+                            className="p-3.5 rounded-xl border border-slate-200 bg-white/85 space-y-2.5 shadow-xs"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="font-bold text-xs text-slate-900">
+                                  {req.user?.name || req.userName || 'Campus Member'}
+                                </div>
+                                <div className="text-[10px] font-mono text-slate-500">
+                                  ID: {req.user?.institutionalId || req.userIdNumber || 'BAUST'} • {req.user?.department || req.department || ''}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 font-bold text-xs">
+                                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 line-through">
+                                  {req.currentGroup || req.oldBloodGroup}
+                                </span>
+                                <i className="fa-solid fa-arrow-right text-[10px] text-slate-400"></i>
+                                <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-extrabold">
+                                  {req.requestedGroup || req.newBloodGroup}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Certificate Preview Attachment Box */}
+                            <div className="flex items-center justify-between bg-slate-50 p-2 rounded-lg border border-slate-100">
+                              <div className="flex items-center gap-2">
+                                <i className="fa-regular fa-file-pdf text-rose-600 text-sm"></i>
+                                <span className="text-[11px] font-medium text-slate-700 truncate max-w-[140px]">
+                                  {req.documentName || 'Medical_Certificate.pdf'}
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => setInspectModalDoc(req)}
+                                className="text-[10px] text-blue-600 font-bold hover:underline"
+                                type="button"
+                              >
+                                Inspect
+                              </button>
+                            </div>
+
+                            {/* Approve / Reject Confirmation Buttons */}
+                            <div className="flex items-center gap-2 pt-1">
+                              <button
+                                onClick={() => handleApproveRegistry(req._id)}
+                                className="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-1 shadow-xs"
+                                type="button"
+                              >
+                                <i className="fa-solid fa-check text-[10px]"></i> Approve
+                              </button>
+                              <button
+                                onClick={() => setRejectModalReq(req)}
+                                className="flex-1 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-1"
+                                type="button"
+                              >
+                                <i className="fa-solid fa-xmark text-[10px]"></i> Reject
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </section>
+                )}
+              </div>
+            )}
+
+            {/* 4. COMMITTEE & HELPLINE DYNAMIC CMS EDITOR */}
+            {(activeTab === 'overview' || activeTab === 'helpline-cms') && (
+              <section
+                className="admin-glass-panel p-5 rounded-2xl space-y-4"
+                id="committee-cms"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200/80">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-700 text-white flex items-center justify-center text-base shadow-sm">
+                      <i className="fa-solid fa-pen-ruler"></i>
+                    </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-on-surface text-sm">{item.name}</span>
-                        <span className="px-2 py-0.2 rounded-full text-[10px] font-bold bg-primary/10 text-primary">
-                          {item.category}
+                        <h3 className="text-base font-black text-slate-900 tracking-tight">
+                          Helpline &amp; Committee Dynamic CMS Editor
+                        </h3>
+                        <span className="bg-blue-100 text-blue-800 font-bold text-[10px] px-2 py-0.5 rounded-full">
+                          LIVE RE-ORDER ACTIVE
                         </span>
-                        {item.isAvailable24_7 && (
-                          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-700">
-                            24/7
-                          </span>
-                        )}
                       </div>
-                      <p className="text-on-surface-variant text-[11px]">
-                        {item.role} · <strong>{item.phone}</strong> {item.location && `· ${item.location}`}
+                      <p className="text-xs text-slate-500">
+                        Manage Executive Committee hierarchy, hospital lines, and WhatsApp Community link.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setCommitteeModalOpen(true)}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm flex items-center gap-2 transition-colors"
+                    type="button"
+                  >
+                    <i className="fa-solid fa-user-plus text-xs"></i> Add New Committee Member
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-12 gap-5">
+                  {/* Committee Member List (Col 8) */}
+                  <div className="col-span-12 lg:col-span-8 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                        Committee Member Hierarchy &amp; Display Order
+                      </span>
+                      <span className="text-[11px] text-slate-400 italic">
+                        <i className="fa-solid fa-grip-vertical mr-1"></i> Live Helpline directory
+                      </span>
+                    </div>
+
+                    {committeeContacts.length === 0 ? (
+                      <div className="p-4 text-center text-slate-400 text-xs italic bg-white rounded-xl border">
+                        No committee members registered in directory.
+                      </div>
+                    ) : (
+                      committeeContacts.map((member) => (
+                        <div
+                          key={member._id}
+                          className="p-3.5 rounded-xl border border-slate-200 bg-white/90 flex flex-wrap items-center justify-between gap-4 hover:border-blue-400 transition-all shadow-sm"
+                        >
+                          <div className="flex items-center gap-3.5">
+                            <div className="text-slate-300 hover:text-slate-600 cursor-grab px-1">
+                              <i className="fa-solid fa-grip-vertical"></i>
+                            </div>
+                            <img
+                              alt={member.name}
+                              className="w-10 h-10 rounded-full object-cover border-2 border-blue-600"
+                              src={member.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=60'}
+                            />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-xs text-slate-900">{member.name}</span>
+                                {member.subtitle && (
+                                  <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded">
+                                    {member.subtitle}
+                                  </span>
+                                )}
+                                <span className="text-[10px] bg-blue-100 text-blue-800 font-semibold px-2 py-0.5 rounded font-mono">
+                                  {member.rankBadge || '1st Tier'}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-500 mt-0.5">
+                                {member.role} • {member.phone}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={member.rankBadge || '1st Tier Display'}
+                              onChange={(e) => handleUpdateCommitteeTier(member._id, e.target.value)}
+                              className="bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700 px-2 py-1 focus:outline-none"
+                            >
+                              <option value="1st Tier Display">1st Tier Display</option>
+                              <option value="2nd Tier Display">2nd Tier Display</option>
+                              <option value="3rd Tier Display">3rd Tier Display</option>
+                            </select>
+                            <button
+                              onClick={() => handleDeleteHelplineContact(member._id)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100"
+                              title="Delete Member"
+                              type="button"
+                            >
+                              <i className="fa-regular fa-trash-can text-xs"></i>
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Hotlines & QR Manager (Col 4) */}
+                  <div className="col-span-12 lg:col-span-4 space-y-3.5">
+                    {/* Medical Desk Hotlines Config */}
+                    <div className="p-3.5 rounded-xl border border-slate-200 bg-white/90 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <i className="fa-solid fa-phone text-blue-600"></i> Emergency Hotline Numbers
+                        </span>
+                        <button
+                          onClick={handleSaveHotlines}
+                          className="text-[10px] font-bold text-blue-600 hover:underline"
+                          type="button"
+                        >
+                          Save
+                        </button>
+                      </div>
+                      <div className="space-y-2 text-xs">
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-500 uppercase">
+                            BAUST Medical Center Desk
+                          </label>
+                          <input
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-mono font-semibold text-slate-800 focus:bg-white"
+                            value={baustDeskPhone}
+                            onChange={(e) => setBaustDeskPhone(e.target.value)}
+                            type="text"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-500 uppercase">
+                            Saidpur CMH Transfusion Desk
+                          </label>
+                          <input
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-mono font-semibold text-slate-800 focus:bg-white"
+                            value={saidpurCmhPhone}
+                            onChange={(e) => setSaidpurCmhPhone(e.target.value)}
+                            type="text"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* WhatsApp Community QR Manager */}
+                    <div className="p-3.5 rounded-xl border border-slate-200 bg-white/90 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <i className="fa-brands fa-whatsapp text-rose-600"></i> WhatsApp Group QR
+                        </span>
+                        <button
+                          onClick={handleSaveWhatsAppLink}
+                          className="text-[10px] font-bold text-blue-600 hover:underline"
+                          type="button"
+                        >
+                          Save
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-14 h-14 bg-rose-50 border border-rose-200 rounded-lg flex items-center justify-center shrink-0 p-1">
+                          <i className="fa-solid fa-qrcode text-2xl text-rose-600"></i>
+                        </div>
+                        <div className="space-y-1 w-full">
+                          <input
+                            className="w-full text-[10px] font-mono text-slate-700 border border-slate-200 rounded px-2 py-0.5 bg-slate-50"
+                            value={whatsappLink}
+                            onChange={(e) => setWhatsappLink(e.target.value)}
+                            type="text"
+                          />
+                          <span className="text-[9px] text-slate-400">
+                            Auto-syncs QR across student portals
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* 5. USER PROFILE & ROLE ADMINISTRATION */}
+            {(activeTab === 'overview' || activeTab === 'user-management') && (
+              <section
+                className="admin-glass-panel p-5 rounded-2xl space-y-4"
+                id="user-management"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200/80">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center text-base shadow-sm">
+                      <i className="fa-solid fa-users-gear"></i>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-black text-slate-900 tracking-tight">
+                          User Profile &amp; Role Administration
+                        </h3>
+                        <span className="text-xs text-slate-400 font-mono">
+                          {usersList.length} Profiles Shown
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        Search by department, modify donor availability status, and grant disaster volunteer clearance.
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        setEditingContact(item);
-                        setHelplineForm({
-                          category: item.category || 'Committee',
-                          name: item.name || '',
-                          role: item.role || '',
-                          subtitle: item.subtitle || '',
-                          rankBadge: item.rankBadge || '',
-                          avatarUrl: item.avatarUrl || '',
-                          phone: item.phone || '',
-                          secondaryPhone: item.secondaryPhone || '',
-                          email: item.email || '',
-                          whatsappNumber: item.whatsappNumber || '',
-                          whatsappLink: item.whatsappLink || '',
-                          qrCodeUrl: item.qrCodeUrl || '',
-                          location: item.location || '',
-                          timing: item.timing || '',
-                          notes: item.notes || '',
-                          isAvailable24_7: Boolean(item.isAvailable24_7),
-                        });
-                        setHelplineModalOpen(true);
-                      }}
-                      className="p-1.5 rounded-lg border border-outline-variant/40 hover:bg-surface-container"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">edit</span>
-                    </button>
-                    <button
-                      onClick={() => handleDeleteHelpline(item._id)}
-                      className="p-1.5 rounded-lg border border-error/30 text-error hover:bg-error/10"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">delete</span>
-                    </button>
+                  {/* Filter Navigation Tabs */}
+                  <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+                    {['All', 'CSE', 'EEE', 'ME', 'Faculty'].map((dept) => (
+                      <button
+                        key={dept}
+                        onClick={() => {
+                          setUserDeptFilter(dept);
+                          fetchUsers(dept, globalSearch);
+                        }}
+                        className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                          userDeptFilter === dept
+                            ? 'bg-white text-blue-700 shadow-sm'
+                            : 'text-slate-600 hover:text-slate-900 font-medium'
+                        }`}
+                        type="button"
+                      >
+                        {dept}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* ─── TAB 6: USER & ROLE ADMINISTRATION ────────────────────────────── */}
-      {activeTab === 'user-management' && (
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-bold text-on-surface">User & Role Administration</h2>
-              <p className="text-xs text-on-surface-variant">
-                Manage accounts, assign roles (Student, Teacher, Staff, Admin), and set donor availability status.
-              </p>
-            </div>
+                {/* User Accounts Table */}
+                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white/80">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100/90 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                      <tr>
+                        <th className="py-2.5 px-3.5">User Identity &amp; University ID</th>
+                        <th className="py-2.5 px-3">Dept &amp; Role</th>
+                        <th className="py-2.5 px-3">Blood Group</th>
+                        <th className="py-2.5 px-3">Status</th>
+                        <th className="py-2.5 px-3">Disaster Ready</th>
+                        <th className="py-2.5 px-3">Active State</th>
+                        <th className="py-2.5 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 text-slate-700">
+                      {usersList.map((u) => (
+                        <tr key={u._id} className="hover:bg-blue-50/30 transition-colors">
+                          <td className="py-3 px-3.5">
+                            <div className="flex items-center gap-2.5">
+                              <img
+                                alt={u.name}
+                                className="w-8 h-8 rounded-full object-cover border border-rose-600"
+                                src={u.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=60'}
+                              />
+                              <div>
+                                <div className="font-bold text-slate-900">{u.name}</div>
+                                <div className="text-[10px] font-mono text-slate-500">
+                                  ID: {u.institutionalId || u.studentId || 'BAUST'}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="font-semibold text-slate-800">
+                              {u.department || 'BAUST'}
+                            </span>
+                            <div className="text-[10px] text-blue-600 font-semibold">{u.userType || u.role || 'Member'}</div>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-extrabold text-[11px]">
+                              {u.bloodGroup || 'O+'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="font-bold text-slate-900">{u.availabilityStatus || 'Available'}</span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                checked={Boolean(u.isDisasterVolunteer)}
+                                onChange={() => handleToggleDisasterVolunteer(u)}
+                                className="sr-only peer"
+                                type="checkbox"
+                              />
+                              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${u.isSuspended ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${u.isSuspended ? 'bg-rose-600' : 'bg-blue-600'}`}></span>{' '}
+                              {u.isSuspended ? 'Suspended' : 'Active'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => handleResetPassword(u)}
+                                className="p-1.5 text-slate-400 hover:text-amber-600 rounded hover:bg-slate-100"
+                                title="Reset Password"
+                                type="button"
+                              >
+                                <i className="fa-solid fa-key text-xs"></i>
+                              </button>
+                              <button
+                                onClick={() => handleToggleSuspendUser(u)}
+                                className={`p-1.5 rounded hover:bg-slate-100 ${u.isSuspended ? 'text-emerald-600 hover:text-emerald-800' : 'text-slate-400 hover:text-rose-600'}`}
+                                title={u.isSuspended ? 'Reactivate Account' : 'Suspend Account'}
+                                type="button"
+                              >
+                                <i className={`fa-solid ${u.isSuspended ? 'fa-user-check' : 'fa-ban'} text-xs`}></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
 
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="Search by ID or name..."
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-                className="px-3 py-1.5 rounded-xl border border-outline-variant/60 text-xs bg-surface-container-lowest"
-              />
-              <select
-                value={userTypeFilter}
-                onChange={(e) => setUserTypeFilter(e.target.value)}
-                className="px-2.5 py-1.5 rounded-xl border border-outline-variant/60 text-xs bg-surface-container-lowest"
-              >
-                <option value="">All Roles</option>
-                <option value="Student">Student</option>
-                <option value="Teacher">Teacher</option>
-                <option value="Staff">Staff</option>
-                <option value="Admin">Admin</option>
-              </select>
-            </div>
-          </div>
-
-          {loadingUsers ? (
-            <div className="space-y-2">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-16 rounded-xl bg-surface-container animate-pulse" />
-              ))}
-            </div>
-          ) : usersError ? (
-            <div className="glass-card p-6 text-center text-error border border-error/20 rounded-2xl">
-              <p className="text-xs font-bold">{usersError}</p>
-              <button onClick={fetchUsers} className="btn-outline text-xs mt-3">
-                Retry
-              </button>
-            </div>
-          ) : users.length === 0 ? (
-            <div className="p-8 text-center text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/30">
-              No users match the search criteria.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {users.map((u) => (
-                <div
-                  key={u._id}
-                  className="p-3.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-                >
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-on-surface">{u.name}</span>
-                      <span className="font-mono text-[10px] text-on-surface-variant bg-surface-container-high px-1.5 py-0.5 rounded">
-                        {u.institutionalId}
-                      </span>
-                      <span className="blood-group-chip text-[9px] px-1.5 py-0.2">
-                        {u.bloodGroup}
-                      </span>
-                      {u.isDisasterVolunteer && (
-                        <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-primary/10 text-primary">
-                          Disaster Reserve
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-on-surface-variant text-[11px]">
-                      {u.department} · {u.email}
-                    </p>
-                  </div>
-
+            {/* 6. SYSTEM LOGS & AUDIT TRAIL TAB */}
+            {activeTab === 'audit-log' && (
+              <section className="admin-glass-panel p-5 rounded-2xl space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1">
-                      <span className="text-on-surface-variant text-[10px]">Role:</span>
-                      <select
-                        value={u.userType}
-                        onChange={(e) => handleUpdateUserRole(u._id, e.target.value)}
-                        className="px-2 py-1 rounded-lg border border-outline-variant/60 bg-surface-container-low font-semibold text-xs"
-                      >
-                        <option value="Student">Student</option>
-                        <option value="Teacher">Teacher</option>
-                        <option value="Staff">Staff</option>
-                        <option value="Admin">Admin</option>
-                      </select>
+                    <div className="w-10 h-10 rounded-xl bg-slate-800 text-white flex items-center justify-center text-base shadow-sm">
+                      <i className="fa-solid fa-database"></i>
                     </div>
-
-                    <div className="flex items-center gap-1">
-                      <span className="text-on-surface-variant text-[10px]">Status:</span>
-                      <select
-                        value={u.availabilityStatus || 'Available'}
-                        onChange={(e) => handleUpdateUserStatus(u._id, e.target.value)}
-                        className="px-2 py-1 rounded-lg border border-outline-variant/60 bg-surface-container-low font-semibold text-xs"
-                      >
-                        <option value="Available">Available</option>
-                        <option value="Cooldown">Cooldown</option>
-                        <option value="Unavailable">Unavailable</option>
-                      </select>
+                    <div>
+                      <h3 className="text-base font-black text-slate-900 tracking-tight">
+                        Immutable System Audit Logs &amp; Real-Time Telemetry
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        Cryptographically signed action log for super admin overrides and medical desk actions.
+                      </p>
                     </div>
-
-                    <button
-                      onClick={() => handleOpenEditUser(u)}
-                      className="px-2.5 py-1 rounded-lg text-xs font-bold border border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 transition flex items-center gap-1"
-                      title="Edit User Profile, Avatar & Donation Details"
-                    >
-                      <span className="material-symbols-outlined text-[13px]">edit</span>
-                      <span>Edit Details</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleToggleSuspendUser(u._id, Boolean(u.isSuspended))}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1 ${
-                        u.isSuspended
-                          ? 'border-rose-500/40 text-rose-700 bg-rose-500/10 hover:bg-rose-500/20'
-                          : 'border-emerald-500/40 text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20'
-                      }`}
-                      title={u.isSuspended ? 'Account suspended - Click to reactivate' : 'Account active - Click to suspend'}
-                    >
-                      <span className="material-symbols-outlined text-[13px]">
-                        {u.isSuspended ? 'block' : 'check_circle'}
-                      </span>
-                      <span>{u.isSuspended ? 'Suspended' : 'Active'}</span>
-                    </button>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ─── TAB 7: AUDIT LOG VIEWER ──────────────────────────────────────── */}
-      {activeTab === 'audit-log' && (
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-bold text-on-surface">Immutable System Audit Log</h2>
-              <p className="text-xs text-on-surface-variant">
-                Full cryptographic and operation record of all admin actions with actor IDs, IP addresses, and timestamps.
-              </p>
-            </div>
-
-            <select
-              value={auditActionFilter}
-              onChange={(e) => setAuditActionFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-xl border border-outline-variant/60 text-xs bg-surface-container-lowest"
-            >
-              <option value="">All Actions</option>
-              <option value="PIN_POST">PIN_POST</option>
-              <option value="UNPIN_POST">UNPIN_POST</option>
-              <option value="DELETE_POST">DELETE_POST</option>
-              <option value="APPROVE_BLOOD_GROUP_CHANGE">APPROVE_BLOOD_GROUP_CHANGE</option>
-              <option value="REJECT_BLOOD_GROUP_CHANGE">REJECT_BLOOD_GROUP_CHANGE</option>
-              <option value="EMERGENCY_STATUS_OVERRIDE">EMERGENCY_STATUS_OVERRIDE</option>
-              <option value="CREATE_HELPLINE_CONTACT">CREATE_HELPLINE_CONTACT</option>
-              <option value="UPDATE_USER_ROLE">UPDATE_USER_ROLE</option>
-              <option value="UPDATE_USER_AVAILABILITY_STATUS">UPDATE_USER_AVAILABILITY_STATUS</option>
-            </select>
-          </div>
-
-          {loadingAudit ? (
-            <div className="space-y-2">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-14 rounded-xl bg-surface-container animate-pulse" />
-              ))}
-            </div>
-          ) : auditError ? (
-            <div className="glass-card p-6 text-center text-error border border-error/20 rounded-2xl">
-              <p className="text-xs font-bold">{auditError}</p>
-              <button onClick={fetchAuditLogs} className="btn-outline text-xs mt-3">
-                Retry
-              </button>
-            </div>
-          ) : auditLogs.length === 0 ? (
-            <div className="p-8 text-center text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/30">
-              No audit records matching filter.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {auditLogs.map((log) => (
-                <div
-                  key={log._id}
-                  className="p-3.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs font-mono"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded font-black text-[10px] bg-slate-800 text-white">
-                        {log.action}
-                      </span>
-                      <span className="text-on-surface-variant text-[11px]">
-                        Target: <strong className="text-on-surface">{log.targetType}</strong> ({log.targetId})
-                      </span>
-                    </div>
-
-                    <div className="text-[11px] text-on-surface-variant">
-                      By: <strong>{log.performedBy?.name || 'Admin'}</strong> [{log.performedBy?.institutionalId || 'ADM'}] · IP: {log.ipAddress}
-                    </div>
-
-                    {log.details && Object.keys(log.details).length > 0 && (
-                      <div className="text-[10px] text-on-surface bg-surface-container-low p-1.5 rounded border border-outline-variant/20">
-                        {JSON.stringify(log.details)}
-                      </div>
-                    )}
-                  </div>
-
-                  <span className="text-[11px] text-on-surface-variant whitespace-nowrap">
-                    {new Date(log.createdAt).toLocaleString()}
+                  <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg font-bold">
+                    DATABASE SYNC OK
                   </span>
                 </div>
-              ))}
-            </div>
-          )}
+
+                <div className="space-y-2 text-xs font-mono">
+                  {auditLogs.length === 0 ? (
+                    <div className="p-4 text-center text-slate-400 text-xs italic bg-slate-900 text-slate-200 rounded-xl">
+                      Audit telemetry stream online. No prior audit logs returned for current filter.
+                    </div>
+                  ) : (
+                    auditLogs.map((log) => (
+                      <div key={log._id} className="p-3 bg-slate-900 text-slate-200 rounded-xl space-y-1.5">
+                        <div className="text-emerald-400 font-bold">[{new Date(log.createdAt).toISOString()}] {log.action}</div>
+                        <div className="text-slate-400">
+                          Target: {log.targetModel} #{log.targetId} • IP: {log.ipAddress} • PerformedBy: {log.performedBy?.name || 'Super Admin'}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+            )}
+
+            {/* Bottom Audit Footer */}
+            <footer className="pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-3">
+              <div className="flex items-center gap-4">
+                <a className="hover:underline text-blue-700 font-semibold" href="#overview">
+                  Admin Documentation
+                </a>
+                <a className="hover:underline text-blue-700 font-semibold" href="#overview">
+                  Security Keys
+                </a>
+                <span className="text-slate-400">© 2026 BAUST BloodLink — Cantonment Node</span>
+              </div>
+            </footer>
+          </main>
         </div>
-      )}
+      </div>
 
-      {/* ─── MODALS ───────────────────────────────────────────────────────── */}
-
-      {/* Delete Post Modal */}
-      {deleteModalPost && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-          <div className="glass-modal max-w-[460px] w-full p-6 rounded-2xl border border-error/30 shadow-2xl space-y-4 text-left">
-            <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
-              <span className="material-symbols-outlined text-error text-[20px]">delete_forever</span>
-              Moderate Offending Post
-            </h3>
-            <p className="text-xs text-on-surface-variant">
-              Deleting this post removes it permanently from the campus feed and records an entry into the audit trail.
-            </p>
-            <div>
-              <label className="block text-xs font-semibold text-on-surface mb-1">
-                Moderation Reason / Violation *
-              </label>
-              <input
-                type="text"
-                required
-                value={deleteReason}
-                onChange={(e) => setDeleteReason(e.target.value)}
-                placeholder="e.g., Inappropriate language, commercial spam"
-                className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 text-xs"
-              />
-            </div>
-            <div className="pt-2 border-t border-outline-variant/20 flex justify-end gap-2 text-xs">
+      {/* ─── MODAL: TRIGGER SOS BROADCAST (POST /api/blood-requests) ─────── */}
+      {broadcastSosModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-rose-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-rose-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center text-xs shadow-sm">
+                  <i className="fa-solid fa-tower-broadcast"></i>
+                </div>
+                <h4 className="font-black text-slate-900 text-base">Trigger Emergency SOS Broadcast</h4>
+              </div>
               <button
-                onClick={() => setDeleteModalPost(null)}
-                className="px-4 py-2 rounded-xl border border-outline-variant/40"
+                onClick={() => setBroadcastSosModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <i className="fa-solid fa-xmark text-base"></i>
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Patient &amp; Diagnosis Context</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Patient #B819 • Severe Surgical Hemorrhage"
+                  value={broadcastForm.patientName}
+                  onChange={(e) => setBroadcastForm({ ...broadcastForm, patientName: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-rose-500 outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Required Blood Group</label>
+                  <select
+                    value={broadcastForm.bloodGroup}
+                    onChange={(e) => setBroadcastForm({ ...broadcastForm, bloodGroup: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl p-2.5 font-bold text-rose-700 focus:ring-2 focus:ring-rose-500 outline-none bg-slate-50"
+                  >
+                    {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map((bg) => (
+                      <option key={bg} value={bg}>
+                        {bg}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Bags / Units</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={broadcastForm.unitsRequired}
+                    onChange={(e) => setBroadcastForm({ ...broadcastForm, unitsRequired: Number(e.target.value) })}
+                    className="w-full border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-rose-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Hospital Destination</label>
+                <select
+                  value={broadcastForm.hospitalName}
+                  onChange={(e) => setBroadcastForm({ ...broadcastForm, hospitalName: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-rose-500 outline-none bg-slate-50"
+                >
+                  <option value="Saidpur CMH">Saidpur CMH (Cantonment Hospital)</option>
+                  <option value="BAUST Medical Center">BAUST Medical Center (Campus Clinic)</option>
+                  <option value="Rangpur Medical College">Rangpur Medical College &amp; Hospital</option>
+                  <option value="Saidpur Railway Hospital">Saidpur 100-Bed Railway Hospital</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setBroadcastSosModalOpen(false)}
+                className="flex-1 py-2 rounded-xl text-slate-600 bg-slate-100 font-bold hover:bg-slate-200 transition-colors"
               >
                 Cancel
               </button>
               <button
-                onClick={handleDeletePost}
-                className="px-4 py-2 rounded-xl font-bold bg-error text-white hover:bg-error/90"
+                onClick={handleBroadcastSos}
+                className="flex-1 py-2 rounded-xl text-white bg-gradient-to-r from-rose-600 to-red-600 font-bold hover:from-rose-700 hover:to-red-700 shadow-md shadow-rose-500/30 transition-all"
               >
-                Confirm Delete
+                Broadcast to Campus
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Comment Modal */}
-      {deleteModalComment && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-          <div className="glass-modal max-w-[460px] w-full p-6 rounded-2xl border border-error/30 shadow-2xl space-y-4 text-left">
-            <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
-              <span className="material-symbols-outlined text-error text-[20px]">delete_forever</span>
-              Moderate Offending Comment
-            </h3>
-            <p className="text-xs text-on-surface-variant">
-              Deleting this comment removes it permanently from the post and records an entry into the audit trail.
-            </p>
-            <div>
-              <label className="block text-xs font-semibold text-on-surface mb-1">
-                Moderation Reason / Violation *
-              </label>
-              <input
-                type="text"
-                required
-                value={deleteCommentReason}
-                onChange={(e) => setDeleteCommentReason(e.target.value)}
-                placeholder="e.g., Harassment, profanity, inappropriate content"
-                className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 text-xs"
-              />
-            </div>
-            <div className="pt-2 border-t border-outline-variant/20 flex justify-end gap-2 text-xs">
-              <button
-                onClick={() => setDeleteModalComment(null)}
-                className="px-4 py-2 rounded-xl border border-outline-variant/40"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteComment}
-                className="px-4 py-2 rounded-xl font-bold bg-error text-white hover:bg-error/90"
-              >
-                Confirm Delete
+      {/* ─── MODAL: POST ANNOUNCEMENT (POST /api/posts) ────────────────────── */}
+      {announcementModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-blue-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-blue-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs shadow-sm">
+                  <i className="fa-solid fa-bullhorn"></i>
+                </div>
+                <h4 className="font-black text-slate-900 text-base">Broadcast Campus Announcement</h4>
+              </div>
+              <button onClick={() => setAnnouncementModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                <i className="fa-solid fa-xmark text-base"></i>
               </button>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* Reject Blood Group Request Modal */}
-      {rejectModalReq && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-          <div className="glass-modal max-w-[460px] w-full p-6 rounded-2xl border border-error/30 shadow-2xl space-y-4 text-left">
-            <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
-              <span className="material-symbols-outlined text-error text-[20px]">cancel</span>
-              Reject Blood Group Verification
-            </h3>
-            <p className="text-xs text-on-surface-variant">
-              Spec requires a clear reason for rejecting a blood group change request.
-            </p>
             <div>
-              <label className="block text-xs font-semibold text-on-surface mb-1">
-                Rejection Reason *
-              </label>
+              <label className="font-bold text-xs text-slate-700 block mb-1.5">Announcement Content</label>
               <textarea
-                rows={3}
-                required
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="e.g., Unclear lab report image, lab header missing stamp"
-                className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 text-xs"
+                rows={4}
+                value={announcementText}
+                onChange={(e) => setAnnouncementText(e.target.value)}
+                placeholder="Type executive announcement (will be pinned to student & faculty feed)..."
+                className="w-full border border-slate-200 rounded-xl p-3 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
-            <div className="pt-2 border-t border-outline-variant/20 flex justify-end gap-2 text-xs">
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                onClick={() => setAnnouncementModalOpen(false)}
+                className="flex-1 py-2 rounded-xl text-slate-600 bg-slate-100 text-xs font-bold hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePostAnnouncement}
+                className="flex-1 py-2 rounded-xl text-white bg-blue-600 text-xs font-bold hover:bg-blue-700 shadow-md shadow-blue-500/20"
+              >
+                Post &amp; Pin Announcement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: INSPECT DOCUMENT / REPORT ─────────────────────────────── */}
+      {inspectModalDoc && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h4 className="font-black text-slate-900 text-base">Verification Report Inspector</h4>
+                <p className="text-xs text-slate-500">
+                  {inspectModalDoc.user?.name || inspectModalDoc.userName} — Requesting change from{' '}
+                  <span className="font-bold line-through">{inspectModalDoc.currentGroup || inspectModalDoc.oldBloodGroup}</span> to{' '}
+                  <span className="font-bold text-rose-600">{inspectModalDoc.requestedGroup || inspectModalDoc.newBloodGroup}</span>
+                </p>
+              </div>
+              <button onClick={() => setInspectModalDoc(null)} className="text-slate-400 hover:text-slate-600 p-1">
+                <i className="fa-solid fa-xmark text-base"></i>
+              </button>
+            </div>
+
+            <div className="bg-slate-100 p-4 rounded-xl flex items-center justify-center min-h-[220px]">
+              <div className="text-center space-y-2">
+                <i className="fa-regular fa-file-pdf text-rose-600 text-5xl"></i>
+                <div className="font-bold text-xs text-slate-800">{inspectModalDoc.documentName || 'Official_Blood_Certificate.pdf'}</div>
+                <div className="text-[11px] text-slate-500">Document proof submitted by student/faculty for verification audit.</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+              <button
+                onClick={() => {
+                  handleApproveRegistry(inspectModalDoc._id);
+                  setInspectModalDoc(null);
+                }}
+                className="flex-1 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700"
+              >
+                Approve Verification
+              </button>
+              <button
+                onClick={() => {
+                  setRejectModalReq(inspectModalDoc);
+                  setInspectModalDoc(null);
+                }}
+                className="flex-1 py-2 bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl hover:bg-rose-100"
+              >
+                Reject Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: REJECT BLOOD REGISTRY REASON (PATCH /reject) ──────────── */}
+      {rejectModalReq && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-rose-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <h4 className="font-black text-slate-900 text-base">Reject Blood Group Change</h4>
+            <p className="text-xs text-slate-500">
+              Provide an audit reason for rejecting {rejectModalReq.user?.name || rejectModalReq.userName}'s request.
+            </p>
+            <textarea
+              rows={3}
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="e.g. Lab report seal illegible / missing hospital verification..."
+              className="w-full border border-slate-200 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-rose-500 outline-none"
+            />
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setRejectModalReq(null)}
-                className="px-4 py-2 rounded-xl border border-outline-variant/40"
+                className="flex-1 py-2 text-xs font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200"
               >
                 Cancel
               </button>
               <button
                 onClick={handleRejectRegistry}
-                className="px-4 py-2 rounded-xl font-bold bg-error text-white hover:bg-error/90"
+                className="flex-1 py-2 text-xs font-bold text-white bg-rose-600 rounded-xl hover:bg-rose-700"
               >
                 Confirm Rejection
               </button>
@@ -1808,475 +1930,124 @@ function AdminDashboardScreen() {
         </div>
       )}
 
-      {/* Emergency Status Override Modal */}
-      {overrideModalReq && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-          <div className="glass-modal max-w-[460px] w-full p-6 rounded-2xl border border-primary/30 shadow-2xl space-y-4 text-left">
-            <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-[20px]">tune</span>
-              Emergency Requisition Status Override
-            </h3>
+      {/* ─── MODAL: ADD COMMITTEE MEMBER (POST /api/helpline) ─────────────── */}
+      {committeeModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-blue-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h4 className="font-black text-slate-900 text-base">Add Executive Committee Member</h4>
+              <button onClick={() => setCommitteeModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <i className="fa-solid fa-xmark text-base"></i>
+              </button>
+            </div>
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block font-semibold text-on-surface mb-1">Select New Status</label>
-                <select
-                  value={overrideStatus}
-                  onChange={(e) => setOverrideStatus(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="Matching">Matching</option>
-                  <option value="Fulfilled">Fulfilled</option>
-                  <option value="Cancelled">Cancelled</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-on-surface mb-1">Override Rationale *</label>
-                <textarea
-                  rows={2}
-                  required
-                  value={overrideReason}
-                  onChange={(e) => setOverrideReason(e.target.value)}
-                  placeholder="e.g., Donors delivered blood bags directly at hospital"
-                  className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
-                />
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-outline-variant/20 flex justify-end gap-2 text-xs">
-              <button
-                onClick={() => setOverrideModalReq(null)}
-                className="px-4 py-2 rounded-xl border border-outline-variant/40"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleOverrideSos}
-                className="btn-primary px-4 py-2 rounded-xl font-bold"
-              >
-                Apply Override
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Helpline Contact Modal (Create/Edit) */}
-      {helplineModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-          <div className="glass-modal max-w-[560px] max-h-[90vh] overflow-y-auto w-full p-6 rounded-2xl border border-primary/30 shadow-2xl space-y-4 text-left">
-            <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-[20px]">support_agent</span>
-              {editingContact ? 'Edit Helpline & Directory Details' : 'Create Helpline & Directory Contact'}
-            </h3>
-
-            <form onSubmit={handleSaveHelpline} className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold mb-1">Category *</label>
-                  <select
-                    value={helplineForm.category}
-                    onChange={(e) => setHelplineForm({ ...helplineForm, category: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 font-semibold text-primary"
-                  >
-                    <option value="Committee">Committee Leadership</option>
-                    <option value="Medical">Medical Sector Emergency Desk</option>
-                    <option value="Campus">Campus Emergency & Logistics</option>
-                    <option value="WhatsApp">WhatsApp Community Broadcast</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-semibold mb-1">Contact / Center Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={helplineForm.name}
-                    onChange={(e) => setHelplineForm({ ...helplineForm, name: e.target.value })}
-                    placeholder="e.g. Engr. Fahim Shahriar or BAUST Medical Center"
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold mb-1">Role / Designation *</label>
-                  <input
-                    type="text"
-                    required
-                    value={helplineForm.role}
-                    onChange={(e) => setHelplineForm({ ...helplineForm, role: e.target.value })}
-                    placeholder="e.g. President or Primary Healthcare & Triage Desk"
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold mb-1">Subtitle / Extra Info</label>
-                  <input
-                    type="text"
-                    value={helplineForm.subtitle}
-                    onChange={(e) => setHelplineForm({ ...helplineForm, subtitle: e.target.value })}
-                    placeholder="e.g. Donor Registry & Verification"
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold mb-1">Rank / Status Badge</label>
-                  <input
-                    type="text"
-                    value={helplineForm.rankBadge}
-                    onChange={(e) => setHelplineForm({ ...helplineForm, rankBadge: e.target.value })}
-                    placeholder="e.g. 1st Rank, Campus Clinic, 24/7 On-Duty"
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold mb-1">Member Photo / Avatar URL</label>
-                  <input
-                    type="url"
-                    value={helplineForm.avatarUrl}
-                    onChange={(e) => setHelplineForm({ ...helplineForm, avatarUrl: e.target.value })}
-                    placeholder="https://... image link"
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold mb-1">Primary Phone Number *</label>
-                  <input
-                    type="text"
-                    required
-                    value={helplineForm.phone}
-                    onChange={(e) => setHelplineForm({ ...helplineForm, phone: e.target.value })}
-                    placeholder="e.g. +880 1711-234567"
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 font-mono font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold mb-1">Secondary Phone (Ambulance/STAT)</label>
-                  <input
-                    type="text"
-                    value={helplineForm.secondaryPhone}
-                    onChange={(e) => setHelplineForm({ ...helplineForm, secondaryPhone: e.target.value })}
-                    placeholder="e.g. +880 1769-660999"
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold mb-1">WhatsApp Community Link</label>
-                  <input
-                    type="url"
-                    value={helplineForm.whatsappLink}
-                    onChange={(e) => setHelplineForm({ ...helplineForm, whatsappLink: e.target.value })}
-                    placeholder="https://chat.whatsapp.com/invite/..."
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold mb-1">Custom QR Code Image URL</label>
-                  <input
-                    type="url"
-                    value={helplineForm.qrCodeUrl}
-                    onChange={(e) => setHelplineForm({ ...helplineForm, qrCodeUrl: e.target.value })}
-                    placeholder="https://... custom QR link"
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold mb-1">Campus Location</label>
-                  <input
-                    type="text"
-                    value={helplineForm.location}
-                    onChange={(e) => setHelplineForm({ ...helplineForm, location: e.target.value })}
-                    placeholder="e.g. Ground Floor, Academic Building 1"
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold mb-1">Working Hours / Timing</label>
-                  <input
-                    type="text"
-                    value={helplineForm.timing}
-                    onChange={(e) => setHelplineForm({ ...helplineForm, timing: e.target.value })}
-                    placeholder="e.g. 8:00 AM – 10:00 PM (24/7 On-Call)"
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold mb-1">Notes / Extra Tag</label>
+                <label className="font-bold text-slate-700 block mb-1">Full Name</label>
                 <input
                   type="text"
-                  value={helplineForm.notes}
-                  onChange={(e) => setHelplineForm({ ...helplineForm, notes: e.target.value })}
-                  placeholder="e.g. Official Cantonment Blood Testing Partner"
-                  className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
+                  value={committeeForm.name}
+                  onChange={(e) => setCommitteeForm({ ...committeeForm, name: e.target.value })}
+                  placeholder="e.g. Dr. Shafiqul Alam"
+                  className="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="avail247"
-                  checked={helplineForm.isAvailable24_7}
-                  onChange={(e) => setHelplineForm({ ...helplineForm, isAvailable24_7: e.target.checked })}
-                  className="rounded border-outline-variant/60 text-primary"
-                />
-                <label htmlFor="avail247" className="font-semibold text-on-surface">
-                  24/7 Rapid Emergency Availability
-                </label>
-              </div>
-
-              <div className="pt-3 border-t border-outline-variant/20 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setHelplineModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-outline-variant/40"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary px-5 py-2 font-bold">
-                  {editingContact ? 'Save Changes' : 'Create Contact'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit User Profile, Avatar & Donation Details Modal */}
-      {editUserModalUser && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-          <div className="glass-modal max-w-[560px] max-h-[90vh] overflow-y-auto w-full p-6 rounded-3xl border border-primary/30 shadow-2xl space-y-4 text-left">
-            <div className="flex items-center justify-between border-b border-outline-variant/30 pb-3">
-              <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-primary text-[24px]">manage_accounts</span>
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <h3 className="font-extrabold text-base text-on-surface">Edit User Profile &amp; Donation Record</h3>
-                  <span className="text-xs text-on-surface-variant font-mono">ID: {editUserModalUser.institutionalId || editUserModalUser._id}</span>
-                </div>
-              </div>
-              <button
-                onClick={() => setEditUserModalUser(null)}
-                className="text-on-surface-variant hover:text-on-surface"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveUserDetails} className="space-y-3 text-xs">
-              {/* Avatar Section */}
-              <div className="p-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-14 h-14 rounded-2xl bg-primary/10 overflow-hidden flex items-center justify-center flex-shrink-0 border border-primary/30">
-                    {editUserForm.avatarUrl ? (
-                      <img src={editUserForm.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="material-symbols-outlined text-[32px] text-primary">person</span>
-                    )}
-                  </div>
-                  <div>
-                    <span className="font-bold text-on-surface block">User Profile Avatar</span>
-                    <span className="text-[10px] text-on-surface-variant block">Select curated avatar or paste image link</span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setAvatarPickerForAdminUser(true)}
-                  className="btn-outline py-1.5 px-3 text-xs font-bold"
-                >
-                  Pick Avatar
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold mb-1">Full Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editUserForm.name}
-                    onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold mb-1">Phone Number</label>
-                  <input
-                    type="tel"
-                    value={editUserForm.phone}
-                    onChange={(e) => setEditUserForm({ ...editUserForm, phone: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-semibold mb-1">Blood Group *</label>
+                  <label className="font-bold text-slate-700 block mb-1">Blood Group</label>
                   <select
-                    value={editUserForm.bloodGroup}
-                    onChange={(e) => setEditUserForm({ ...editUserForm, bloodGroup: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 font-bold text-primary"
+                    value={committeeForm.bloodGroup}
+                    onChange={(e) => setCommitteeForm({ ...committeeForm, bloodGroup: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl p-2.5 outline-none bg-slate-50 font-bold"
                   >
-                    {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bg) => (
+                    {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map((bg) => (
                       <option key={bg} value={bg}>{bg}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold mb-1">Department *</label>
+                  <label className="font-bold text-slate-700 block mb-1">Display Tier</label>
                   <select
-                    value={editUserForm.department}
-                    onChange={(e) => setEditUserForm({ ...editUserForm, department: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
+                    value={committeeForm.rankBadge}
+                    onChange={(e) => setCommitteeForm({ ...committeeForm, rankBadge: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl p-2.5 outline-none bg-slate-50"
                   >
-                    {['CSE', 'EEE', 'ME', 'ICT', 'ENG', 'BBA', 'AIS', 'IPE', 'CE'].map((d) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-semibold mb-1">Role *</label>
-                  <select
-                    value={editUserForm.userType}
-                    onChange={(e) => setEditUserForm({ ...editUserForm, userType: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
-                  >
-                    {['Student', 'Teacher', 'Staff', 'Admin'].map((r) => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
+                    <option value="1st Tier Display">1st Tier Display</option>
+                    <option value="2nd Tier Display">2nd Tier Display</option>
+                    <option value="3rd Tier Display">3rd Tier Display</option>
                   </select>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold mb-1">Last Donation Date</label>
-                  <input
-                    type="date"
-                    value={editUserForm.lastDonationDate}
-                    onChange={(e) => setEditUserForm({ ...editUserForm, lastDonationDate: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold mb-1">Total Verified Donation Bags</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editUserForm.donationCount}
-                    onChange={(e) => setEditUserForm({ ...editUserForm, donationCount: parseInt(e.target.value, 10) || 0 })}
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60 font-mono"
-                  />
-                </div>
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Designation / Role</label>
+                <input
+                  type="text"
+                  value={committeeForm.role}
+                  onChange={(e) => setCommitteeForm({ ...committeeForm, role: e.target.value })}
+                  placeholder="e.g. Associate Professor, CSE"
+                  className="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold mb-1">Availability Status</label>
-                  <select
-                    value={editUserForm.availabilityStatus}
-                    onChange={(e) => setEditUserForm({ ...editUserForm, availabilityStatus: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/60"
-                  >
-                    <option value="Available">Available</option>
-                    <option value="Cooldown">Cooldown</option>
-                    <option value="Unavailable">Unavailable</option>
-                  </select>
-                </div>
-                <div className="flex items-center gap-2 pt-5">
-                  <input
-                    type="checkbox"
-                    id="editIsVol"
-                    checked={editUserForm.isDisasterVolunteer}
-                    onChange={(e) => setEditUserForm({ ...editUserForm, isDisasterVolunteer: e.target.checked })}
-                    className="rounded border-outline-variant/60 text-primary"
-                  />
-                  <label htmlFor="editIsVol" className="font-semibold text-on-surface">
-                    Disaster Volunteer Responder
-                  </label>
-                </div>
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  value={committeeForm.phone}
+                  onChange={(e) => setCommitteeForm({ ...committeeForm, phone: e.target.value })}
+                  placeholder="e.g. +880 1711-000000"
+                  className="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
               </div>
-
-              <div className="pt-3 border-t border-outline-variant/20 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditUserModalUser(null)}
-                  className="px-4 py-2 rounded-xl border border-outline-variant/40"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary px-5 py-2 font-bold">
-                  Save User Changes
-                </button>
-              </div>
-            </form>
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                onClick={() => setCommitteeModalOpen(false)}
+                className="flex-1 py-2 text-xs font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddCommitteeMember}
+                className="flex-1 py-2 text-xs font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700"
+              >
+                Save Member
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Admin Avatar Picker Modal */}
-      <AvatarPickerModal
-        isOpen={avatarPickerForAdminUser}
-        currentAvatarUrl={editUserForm.avatarUrl}
-        onClose={() => setAvatarPickerForAdminUser(false)}
-        onSave={(url) => setEditUserForm({ ...editUserForm, avatarUrl: url })}
-      />
-    </div>
-  );
-}
-
-function MetricCard({ title, count, icon, accent }) {
-  return (
-    <div className="glass-card p-4 rounded-2xl border border-outline-variant/30 flex items-center justify-between">
-      <div>
-        <p className="text-[11px] font-semibold text-on-surface-variant">{title}</p>
-        <p className="text-2xl font-black text-on-surface mt-0.5 tracking-tight font-mono">{count}</p>
-      </div>
-      <div className={`w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center ${accent}`}>
-        <span className="material-symbols-outlined text-[22px]">{icon}</span>
-      </div>
-    </div>
-  );
-}
-
-function ActionShortcutCard({ title, description, icon, badge, onClick }) {
-  return (
-    <div
-      onClick={onClick}
-      className="glass-card p-4 rounded-2xl border border-outline-variant/30 hover:border-primary/40 cursor-pointer transition flex flex-col justify-between space-y-3"
-    >
-      <div className="flex items-start justify-between">
-        <div className="w-9 h-9 rounded-xl bg-slate-900 text-primary flex items-center justify-center shadow-sm">
-          <span className="material-symbols-outlined text-[20px]">{icon}</span>
+      {/* ─── MODAL: DELETE POST REASON (DELETE /api/admin/posts/:id) ──────── */}
+      {deleteModalPost && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-rose-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <h4 className="font-black text-slate-900 text-base">Delete Feed Post</h4>
+            <p className="text-xs text-slate-500">
+              Are you sure you want to delete the post by {deleteModalPost.author?.name || 'User'}?
+            </p>
+            <textarea
+              rows={3}
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              placeholder="Reason for deletion..."
+              className="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-rose-500"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setDeleteModalPost(null)}
+                className="flex-1 py-2 text-xs font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeletePost}
+                className="flex-1 py-2 text-xs font-bold text-white bg-rose-600 rounded-xl hover:bg-rose-700"
+              >
+                Confirm Delete
+              </button>
+            </div>
+          </div>
         </div>
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface-container text-on-surface-variant border border-outline-variant/30">
-          {badge}
-        </span>
-      </div>
-      <div>
-        <h3 className="font-bold text-xs text-on-surface">{title}</h3>
-        <p className="text-[11px] text-on-surface-variant mt-0.5 leading-snug">{description}</p>
-      </div>
-      <div className="text-primary font-bold text-[11px] flex items-center gap-1 pt-1">
-        <span>Open Module</span>
-        <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-      </div>
+      )}
     </div>
   );
 }

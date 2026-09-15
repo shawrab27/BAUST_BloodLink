@@ -155,10 +155,16 @@ router.get('/overview', async (req, res, next) => {
     const dbActive = await isConnected();
 
     if (dbActive) {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       const [
         totalUsers,
         availableDonors,
+        cooldownDonors,
+        unavailableDonors,
         disasterVolunteers,
+        verifiedStudents,
+        verifiedFaculty,
+        weeklyNewUsers,
         donorsByGroupRaw,
         totalSosAlerts,
         activeEmergencyCount,
@@ -171,7 +177,12 @@ router.get('/overview', async (req, res, next) => {
       ] = await Promise.all([
         User.countDocuments(),
         User.countDocuments({ availabilityStatus: 'Available', isSuspended: false }),
+        User.countDocuments({ availabilityStatus: 'Cooldown', isSuspended: false }),
+        User.countDocuments({ availabilityStatus: 'Unavailable', isSuspended: false }),
         User.countDocuments({ isDisasterVolunteer: true }),
+        User.countDocuments({ userType: 'Student' }),
+        User.countDocuments({ userType: { $in: ['Teacher', 'Faculty'] } }),
+        User.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
         User.aggregate([
           { $match: { availabilityStatus: 'Available', isSuspended: false } },
           { $group: { _id: '$bloodGroup', count: { $sum: 1 } } },
@@ -196,7 +207,12 @@ router.get('/overview', async (req, res, next) => {
         metrics: {
           totalUsers,
           availableDonors,
+          cooldownDonors,
+          unavailableDonors,
           disasterVolunteers,
+          verifiedStudents,
+          verifiedFaculty,
+          weeklyNewUsers,
           donorsByBloodGroup,
           totalSosAlerts,
           activeEmergencyCount,
@@ -223,7 +239,12 @@ router.get('/overview', async (req, res, next) => {
       metrics: {
         totalUsers: mockAdminUsers.length,
         availableDonors: mockAdminUsers.filter((u) => u.availabilityStatus === 'Available').length,
+        cooldownDonors: mockAdminUsers.filter((u) => u.availabilityStatus === 'Cooldown').length,
+        unavailableDonors: mockAdminUsers.filter((u) => u.availabilityStatus === 'Unavailable').length,
         disasterVolunteers: mockAdminUsers.filter((u) => u.isDisasterVolunteer).length,
+        verifiedStudents: mockAdminUsers.filter((u) => u.userType === 'Student').length,
+        verifiedFaculty: mockAdminUsers.filter((u) => u.userType === 'Teacher' || u.userType === 'Faculty').length,
+        weeklyNewUsers: 1,
         donorsByBloodGroup,
         totalSosAlerts: 6,
         activeEmergencyCount: 2,
@@ -1143,6 +1164,7 @@ router.get('/users', async (req, res, next) => {
     const cursor = req.query.cursor;
     const search = req.query.search ? req.query.search.trim() : '';
     const userType = req.query.userType;
+    const department = req.query.department;
     const bloodGroup = req.query.bloodGroup;
     const dbActive = await isConnected();
 
@@ -1152,6 +1174,7 @@ router.get('/users', async (req, res, next) => {
         queryFilter._id = { $lt: cursor };
       }
       if (userType) queryFilter.userType = userType;
+      if (department) queryFilter.department = department;
       if (bloodGroup) queryFilter.bloodGroup = bloodGroup;
       if (search) {
         queryFilter.$or = [
@@ -1181,6 +1204,7 @@ router.get('/users', async (req, res, next) => {
     // Mock fallback
     let filtered = [...mockAdminUsers];
     if (userType) filtered = filtered.filter((u) => u.userType === userType);
+    if (department) filtered = filtered.filter((u) => u.department === department);
     if (bloodGroup) filtered = filtered.filter((u) => u.bloodGroup === bloodGroup);
     if (search) {
       const q = search.toLowerCase();
