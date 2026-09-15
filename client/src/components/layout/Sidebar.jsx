@@ -69,12 +69,13 @@ function Sidebar({ user = null }) {
                 to={item.to}
                 end={item.exact}
                 id={`sidebar-nav-${item.id}`}
+                title={item.label}
                 className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
                 aria-current={isActive ? 'page' : undefined}
               >
-                <div className="flex items-center gap-space-sm">
+                <div className="flex items-center gap-space-sm justify-center lg:justify-start">
                   <span
-                    className={`material-symbols-outlined text-[20px] transition-colors ${
+                    className={`material-symbols-outlined text-[22px] transition-colors shrink-0 ${
                       isActive
                         ? 'text-white'
                         : 'text-primary group-hover:text-primary'
@@ -84,7 +85,7 @@ function Sidebar({ user = null }) {
                     {item.icon}
                   </span>
                   <span
-                    className={`text-label-lg font-semibold tracking-wide ${
+                    className={`text-label-lg font-semibold tracking-wide hidden lg:inline ${
                       isActive ? 'text-white font-bold' : ''
                     }`}
                   >
@@ -92,9 +93,9 @@ function Sidebar({ user = null }) {
                   </span>
                 </div>
 
-                {/* Active indicator dot */}
+                {/* Active indicator dot (desktop only) */}
                 {isActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_#ffffff]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_#ffffff] hidden lg:inline-block shrink-0" />
                 )}
               </NavLink>
             );
@@ -105,7 +106,8 @@ function Sidebar({ user = null }) {
       {/* Bottom: User info strip */}
       {user && (
         <div className="border-t border-outline-variant/40 pt-space-sm mt-space-sm">
-          <div className="flex items-center gap-space-sm px-2 py-2">
+          {/* Desktop full view */}
+          <div className="hidden lg:flex items-center gap-space-sm px-2 py-2">
             <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center flex-shrink-0">
               <span className="material-symbols-outlined text-[16px] text-on-primary-container"
                 style={{ fontVariationSettings: '"FILL" 1' }}>
@@ -129,6 +131,13 @@ function Sidebar({ user = null }) {
                 {user.bloodGroup || '—'}
               </span>
             )}
+          </div>
+
+          {/* Tablet icon-only user avatar */}
+          <div className="flex lg:hidden items-center justify-center p-1" title={user.name || 'User Profile'}>
+            <div className="w-9 h-9 rounded-full bg-primary-container flex items-center justify-center text-primary font-black text-xs ring-2 ring-primary/20">
+              {user.bloodGroup || (user.name ? user.name.charAt(0).toUpperCase() : 'U')}
+            </div>
           </div>
         </div>
       )}

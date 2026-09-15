@@ -69,7 +69,7 @@ function LoginScreen() {
 
   return (
     <main className="min-h-screen w-full flex items-center justify-center bg-[#f7f9fd] relative overflow-hidden selection:bg-primary-fixed selection:text-primary">
-      <div className="flex flex-col w-full min-h-screen relative items-center justify-center py-8 px-4 sm:px-6 overflow-hidden">
+      <div className="flex flex-col w-full min-h-screen relative items-center justify-center py-6 sm:py-8 px-3.5 sm:px-6 overflow-hidden">
         
         {/* Vibrant Organic Live Blood Fluid & Smoke Atmosphere */}
         <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden z-0 select-none">
@@ -110,7 +110,7 @@ function LoginScreen() {
         </div>
 
         {/* Central Authentication Glass Card */}
-        <div className="relative z-10 w-full max-w-[530px] rounded-3xl p-8 sm:p-10 bg-white/80 backdrop-blur-2xl shadow-[0_24px_60px_-15px_rgba(184,0,53,0.14),0_10px_25px_-5px_rgba(13,28,47,0.06)] border border-[#e11d48]/20 transition-all duration-300 hover:shadow-[0_30px_70px_-12px_rgba(184,0,53,0.22),0_12px_30px_-5px_rgba(13,28,47,0.08)] ring-1 ring-white/60">
+        <div className="relative z-10 w-full max-w-[530px] rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 bg-white/80 backdrop-blur-2xl shadow-[0_24px_60px_-15px_rgba(184,0,53,0.14),0_10px_25px_-5px_rgba(13,28,47,0.06)] border border-[#e11d48]/20 transition-all duration-300 hover:shadow-[0_30px_70px_-12px_rgba(184,0,53,0.22),0_12px_30px_-5px_rgba(13,28,47,0.08)] ring-1 ring-white/60">
           
           {/* Card Top Brand & Header Module */}
           <header className="flex flex-col items-center text-center">
@@ -118,11 +118,11 @@ function LoginScreen() {
               <div className="absolute inset-0 rounded-full bg-primary-container/10 blur-xl scale-95 group-hover:scale-110 transition-transform duration-500" />
               <img
                 alt="BAUST BloodLink Official Insignia"
-                className="relative h-24 w-auto object-contain drop-shadow-[0_6px_14px_rgba(184,0,53,0.18)]"
+                className="relative h-20 sm:h-24 w-auto object-contain drop-shadow-[0_6px_14px_rgba(184,0,53,0.18)]"
                 src="/emblem.png"
               />
             </div>
-            <h1 className="text-3xl sm:text-4xl font-black tracking-tight flex items-center justify-center gap-2">
+            <h1 className="text-2xl sm:text-4xl font-black tracking-tight flex items-center justify-center gap-2">
               <span className="brand-baust">
                 BAUST
               </span>
@@ -132,7 +132,7 @@ function LoginScreen() {
             </h1>
             
             {/* Tagline Pill */}
-            <div className="mt-2 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-primary-fixed/50 text-primary text-xs font-bold tracking-widest uppercase border border-primary/15">
+            <div className="mt-2 inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1 rounded-full bg-primary-fixed/50 text-primary text-[10px] sm:text-xs font-bold tracking-widest uppercase border border-primary/15">
               <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: '"FILL" 1' }}>
                 bloodtype
               </span>

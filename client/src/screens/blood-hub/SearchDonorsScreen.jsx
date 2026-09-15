@@ -116,27 +116,27 @@ function SearchDonorsScreen() {
   };
 
   return (
-    <div className="page-wrapper max-w-[1280px] mx-auto">
+    <div className="page-wrapper max-w-[1280px] mx-auto px-3 sm:px-6 lg:px-8">
       {/* 1. Header Area */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-[32px] font-extrabold text-on-surface tracking-tight leading-tight flex items-center gap-2">
+          <h1 className="text-[26px] sm:text-[32px] font-extrabold text-on-surface tracking-tight leading-tight flex items-center gap-2">
             <span
-              className="material-symbols-outlined text-[32px] text-primary"
+              className="material-symbols-outlined text-[28px] sm:text-[32px] text-primary"
               style={{ fontVariationSettings: '"FILL" 1' }}
             >
               person_search
             </span>
             Donor Directory
           </h1>
-          <p className="text-on-surface-variant text-[15px] font-normal mt-0.5">
+          <p className="text-on-surface-variant text-[13px] sm:text-[15px] font-normal mt-0.5">
             Verified institutional blood donors across Saidpur Cantonment &amp; BAUST campus
           </p>
         </div>
 
         <button
           onClick={() => navigate('/blood-hub/request')}
-          className="px-5 py-2.5 rounded-full text-white font-bold text-sm bg-primary hover:bg-primary-dark shadow-md shadow-primary/25 hover:shadow-primary/40 flex items-center gap-2 transition-all active:scale-95 self-start md:self-auto"
+          className="px-5 py-2.5 rounded-full text-white font-bold text-sm bg-primary hover:bg-primary-dark shadow-md shadow-primary/25 hover:shadow-primary/40 flex items-center justify-center gap-2 transition-all active:scale-95 self-start md:self-auto cursor-pointer min-h-[44px]"
         >
           <span className="material-symbols-outlined text-[18px]">add_box</span>
           <span>Request Blood</span>
@@ -144,9 +144,9 @@ function SearchDonorsScreen() {
       </div>
 
       {/* 2. Filter & Search Control Panel */}
-      <div className="bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-5 border border-outline-variant/30 shadow-sm mb-6 space-y-4">
+      <div className="bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-4 sm:p-5 border border-outline-variant/30 shadow-sm mb-6 space-y-4">
         {/* Top Search & Dropdown Row */}
-        <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-3">
+        <form onSubmit={handleSearchSubmit} className="flex flex-col lg:flex-row gap-3">
           <div className="relative flex-1">
             <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant">
               search
@@ -157,18 +157,18 @@ function SearchDonorsScreen() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               id="donor-search-input"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm focus:outline-none focus:border-primary transition-all placeholder:text-on-surface-variant/60"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-container-low border border-outline-variant/30 text-on-surface text-sm focus:outline-none focus:border-primary transition-all placeholder:text-on-surface-variant/60 min-h-[42px]"
             />
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap sm:flex-nowrap gap-2">
             {/* Department Dropdown */}
-            <div className="relative min-w-[130px]">
+            <div className="relative flex-1 sm:flex-initial min-w-[120px] sm:min-w-[130px]">
               <select
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
                 id="donor-dept-filter"
-                className="w-full appearance-none pl-3 pr-8 py-2.5 rounded-xl bg-surface-container-low border border-outline-variant/30 text-on-surface text-xs font-semibold focus:outline-none cursor-pointer"
+                className="w-full appearance-none pl-3 pr-8 py-2.5 rounded-xl bg-surface-container-low border border-outline-variant/30 text-on-surface text-xs font-semibold focus:outline-none cursor-pointer min-h-[42px]"
               >
                 {DEPARTMENTS.map((d) => (
                   <option key={d} value={d}>
@@ -182,12 +182,12 @@ function SearchDonorsScreen() {
             </div>
 
             {/* Role Dropdown */}
-            <div className="relative min-w-[120px]">
+            <div className="relative flex-1 sm:flex-initial min-w-[110px] sm:min-w-[120px]">
               <select
                 value={userType}
                 onChange={(e) => setUserType(e.target.value)}
                 id="donor-role-filter"
-                className="w-full appearance-none pl-3 pr-8 py-2.5 rounded-xl bg-surface-container-low border border-outline-variant/30 text-on-surface text-xs font-semibold focus:outline-none cursor-pointer"
+                className="w-full appearance-none pl-3 pr-8 py-2.5 rounded-xl bg-surface-container-low border border-outline-variant/30 text-on-surface text-xs font-semibold focus:outline-none cursor-pointer min-h-[42px]"
               >
                 {USER_ROLES.map((r) => (
                   <option key={r} value={r}>
@@ -203,7 +203,7 @@ function SearchDonorsScreen() {
             <button
               type="submit"
               id="donor-search-btn"
-              className="px-4 py-2.5 rounded-xl bg-primary text-white font-semibold text-xs shadow-sm hover:brightness-105 active:scale-95 transition-all flex items-center gap-1.5"
+              className="px-4 py-2.5 rounded-xl bg-primary text-white font-semibold text-xs shadow-sm hover:brightness-105 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[42px] shrink-0"
             >
               <span className="material-symbols-outlined text-[16px]">filter_alt</span>
               <span>Filter</span>
@@ -225,7 +225,7 @@ function SearchDonorsScreen() {
                   key={bg}
                   type="button"
                   onClick={() => setBloodGroup(bg)}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-primary text-white shadow-sm ring-2 ring-primary/40'
                       : 'bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/20'
@@ -240,43 +240,43 @@ function SearchDonorsScreen() {
 
         {/* Status Segmented Switch + Count Summary */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-outline-variant/20">
-          <div className="inline-flex p-1 rounded-xl bg-surface-container-low/90 backdrop-blur-sm self-start">
+          <div className="flex flex-wrap sm:inline-flex p-1 rounded-xl bg-surface-container-low/90 backdrop-blur-sm gap-1">
             <button
               type="button"
               onClick={() => setStatus('active')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 status === 'active'
                   ? 'bg-surface-container-lowest text-primary shadow-sm'
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
               <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <span>Active Donors ({counts.active})</span>
+              <span>Active ({counts.active})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setStatus('cooldown')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 status === 'cooldown'
                   ? 'bg-surface-container-lowest text-primary shadow-sm'
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
               <span className="w-2 h-2 rounded-full bg-on-surface-variant/40" />
-              <span>On Cooldown ({counts.cooldown})</span>
+              <span>Cooldown ({counts.cooldown})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setStatus('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 status === 'all'
                   ? 'bg-surface-container-lowest text-primary shadow-sm'
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
-              <span>Show All ({counts.total})</span>
+              <span>All ({counts.total})</span>
             </button>
           </div>
 

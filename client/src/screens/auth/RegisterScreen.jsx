@@ -366,17 +366,17 @@ function RegisterScreen() {
       <div className="fixed top-1/2 -right-24 w-[32rem] h-[32rem] rounded-full bg-red-100/50 blur-3xl pointer-events-none z-0" />
       <div className="fixed bottom-0 left-10 w-80 h-80 rounded-full bg-rose-100/40 blur-3xl pointer-events-none z-0" />
 
-      {/* Persistent Top Navigation Bar (72px fixed height) */}
-      <header className="w-full h-[72px] bg-white/88 backdrop-blur-md border-b border-rose-100/60 sticky top-0 z-40 flex items-center justify-between px-8 shadow-xs">
-        <div className="flex items-center gap-4">
-          <Link to="/" className="flex items-center gap-3">
+      {/* Persistent Top Navigation Bar (72px fixed height — Solid white, no bleed-through) */}
+      <header className="w-full h-[72px] bg-white border-b border-slate-200/90 sticky top-0 z-40 flex items-center justify-between px-3.5 sm:px-6 md:px-8 shadow-xs">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <Link to="/" className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <img
               src="/emblem.png"
               alt="BAUST BloodLink Logo"
-              className="h-11 w-auto object-contain drop-shadow-xs"
+              className="h-9 sm:h-11 w-auto object-contain drop-shadow-xs shrink-0"
             />
-            <div>
-              <div className="flex items-center gap-1.5 text-xl font-black tracking-tight leading-none">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1 sm:gap-1.5 text-lg sm:text-xl font-black tracking-tight leading-none">
                 <span className="brand-baust">
                   BAUST
                 </span>
@@ -384,7 +384,7 @@ function RegisterScreen() {
                   BloodLink
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium hidden sm:block mt-0.5">
+              <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium hidden sm:block mt-0.5 truncate">
                 Campus Blood Transfusion &amp; Emergency Donor Network
               </p>
             </div>
@@ -392,55 +392,40 @@ function RegisterScreen() {
         </div>
 
         {/* Right Actions in Topbar */}
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          {/* Sign In link (prominent on mobile & desktop) */}
+          <Link
+            to="/login"
+            className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors border border-rose-200/80 shadow-2xs"
+            id="stitch-topbar-signin"
+          >
+            <span className="material-symbols-outlined text-[16px]">login</span>
+            <span>Sign In</span>
+          </Link>
+
           {/* Language Selector Pill */}
-          <div className="flex items-center bg-slate-100/90 p-1 rounded-lg border border-slate-200/80 text-xs font-semibold">
+          <div className="hidden sm:flex items-center bg-slate-100/90 p-0.5 sm:p-1 rounded-lg border border-slate-200/80 text-[11px] sm:text-xs font-semibold">
             <button
-              className="px-2.5 py-1 rounded-md bg-white text-rose-600 shadow-xs font-bold transition-all"
+              className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md bg-white text-rose-600 shadow-xs font-bold transition-all"
               type="button"
             >
               EN
             </button>
             <button
-              className="px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition-all"
+              className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-slate-600 hover:text-slate-900 transition-all"
               type="button"
             >
               BN
             </button>
           </div>
-
-          {/* Notification Bell */}
-          <button
-            className="relative p-2 rounded-xl text-slate-600 hover:text-rose-600 hover:bg-rose-50/80 transition-colors"
-            type="button"
-            aria-label="Emergency Alerts"
-          >
-            <span className="material-symbols-outlined text-[22px]">notifications</span>
-            <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600" />
-            </span>
-          </button>
-
-          {/* Already have an account link */}
-          <div className="hidden sm:flex items-center text-xs text-slate-600 border-l border-slate-200/80 pl-5">
-            <span>Already registered?</span>
-            <Link
-              to="/login"
-              className="ml-1.5 font-semibold text-rose-600 hover:text-rose-700 hover:underline"
-              id="stitch-topbar-signin"
-            >
-              Sign In
-            </Link>
-          </div>
         </div>
       </header>
 
       {/* Main Container */}
-      <main className="w-full max-w-[1440px] px-6 py-8 relative z-10 flex flex-col items-center">
+      <main className="w-full max-w-[1440px] px-3.5 sm:px-6 py-6 sm:py-8 relative z-10 flex flex-col items-center">
         {/* Header Intro Banner */}
-        <div className="w-full max-w-4xl text-center mb-7">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-rose-100/80 border border-rose-200/60 text-rose-700 text-xs font-semibold tracking-wide uppercase mb-3">
+        <div className="w-full max-w-4xl text-center mb-5 sm:mb-7">
+          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1 rounded-full bg-rose-100/80 border border-rose-200/60 text-rose-700 text-[11px] sm:text-xs font-semibold tracking-wide uppercase mb-2 sm:mb-3">
             <span
               className="material-symbols-outlined text-sm"
               style={{ fontVariationSettings: '"FILL" 1' }}
@@ -449,14 +434,14 @@ function RegisterScreen() {
             </span>
             Donor &amp; Campus Member Onboarding
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight flex items-center justify-center gap-2 flex-wrap">
+          <h1 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight flex items-center justify-center gap-2 flex-wrap">
             <span>Register with</span>
             <span className="inline-flex items-center gap-1.5">
               <span className="brand-baust">BAUST</span>
               <span className="brand-bloodlink">BloodLink</span>
             </span>
           </h1>
-          <p className="text-slate-600 text-sm sm:text-base mt-2 max-w-2xl mx-auto">
+          <p className="text-slate-600 text-xs sm:text-base mt-2 max-w-2xl mx-auto px-2">
             Join the verified institutional life-saving network. Fill out your details below to activate
             emergency alerts and donor eligibility.
           </p>
@@ -465,7 +450,7 @@ function RegisterScreen() {
         {/* Central Multi-Segment Glassmorphic Form Card */}
         <form
           onSubmit={handleSubmit}
-          className="w-full max-w-4xl bg-white/90 backdrop-blur-xl border border-rose-200/50 rounded-3xl p-7 sm:p-10 shadow-xl flex flex-col gap-9"
+          className="w-full max-w-4xl bg-white/90 backdrop-blur-xl border border-rose-200/50 rounded-2xl sm:rounded-3xl p-4 sm:p-7 md:p-10 shadow-xl flex flex-col gap-6 sm:gap-9"
         >
           {/* Server Error Alert */}
           {serverError && (
@@ -1333,11 +1318,11 @@ function RegisterScreen() {
       {/* ========================================================================= */}
       {activeBloodPicker && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
           onClick={() => setActiveBloodPicker(null)}
         >
           <div
-            className="w-full max-w-xl bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border-2 border-rose-200 flex flex-col gap-6 transform transition-all animate-scale-in"
+            className="w-full max-w-xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl border-2 border-rose-200 flex flex-col gap-4 sm:gap-6 transform transition-all animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}

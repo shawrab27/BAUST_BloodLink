@@ -472,7 +472,7 @@ function FeedScreenContent() {
   };
 
   return (
-    <div className="relative z-10 w-full max-w-[1360px] mx-auto p-4 sm:p-6 lg:p-8">
+    <div className="relative z-10 w-full max-w-[1360px] mx-auto p-3 sm:p-6 lg:p-8">
       {/* Main Feed 2-Column Layout */}
       <div className="flex flex-col lg:flex-row gap-6 items-start pb-12">
         
@@ -482,7 +482,7 @@ function FeedScreenContent() {
         <div className="flex-1 w-full max-w-[780px] flex flex-col gap-5">
           
           {/* ── Glass Post Creation Box ── */}
-          <section className="bg-surface-container-lowest/85 backdrop-blur-xl rounded-2xl p-4 shadow-md shadow-primary/5 border border-outline-variant/30 transition-all">
+          <section className="bg-surface-container-lowest/85 backdrop-blur-xl rounded-2xl p-4 sm:p-5 shadow-md shadow-primary/5 border border-outline-variant/30 transition-all">
             <div className="flex items-center gap-3">
               {user?.avatarUrl ? (
                 <img
@@ -499,7 +499,7 @@ function FeedScreenContent() {
               <div className="flex-1">
                 <button
                   onClick={() => setIsComposerOpen((o) => !o)}
-                  className="w-full text-left bg-surface-container-low/90 hover:bg-surface-container rounded-xl px-4 py-2.5 text-sm text-on-surface-variant transition-colors shadow-inner flex items-center justify-between group"
+                  className="w-full text-left bg-surface-container-low/90 hover:bg-surface-container rounded-xl px-4 py-2.5 text-sm text-on-surface-variant transition-colors shadow-inner flex items-center justify-between group cursor-pointer"
                   type="button"
                 >
                   <span className="font-medium text-slate-500">What's on your mind?</span>
@@ -542,7 +542,7 @@ function FeedScreenContent() {
                     <button
                       type="button"
                       onClick={() => setMediaPreview(null)}
-                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 hover:bg-black text-white flex items-center justify-center text-xs shadow-md transition-all"
+                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 hover:bg-black text-white flex items-center justify-center text-xs shadow-md transition-all cursor-pointer"
                       title="Remove Image"
                     >
                       <span className="material-symbols-outlined text-[16px]">close</span>
@@ -582,7 +582,7 @@ function FeedScreenContent() {
                         ✕
                       </button>
                     </div>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 max-h-[160px] overflow-y-auto">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 max-h-[160px] overflow-y-auto">
                       {FEELINGS_LIST.map((f) => (
                         <button
                           key={f.label}
@@ -592,14 +592,14 @@ function FeedScreenContent() {
                             setIsFeelingPickerOpen(false);
                             setIsComposerOpen(true);
                           }}
-                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                             selectedFeeling?.label === f.label
                               ? 'bg-primary text-white shadow-sm'
                               : 'bg-white hover:bg-surface-container-high border border-outline-variant/30 text-on-surface'
                           }`}
                         >
                           <span className="text-base">{f.emoji}</span>
-                          <span>{f.label}</span>
+                          <span className="truncate">{f.label}</span>
                         </button>
                       ))}
                     </div>
@@ -799,7 +799,7 @@ function FeedScreenContent() {
                 return (
                   <article
                     key={post._id}
-                    className={`relative bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-5 shadow-lg shadow-primary/5 transition-all overflow-hidden border ${
+                    className={`relative bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-4 sm:p-5 shadow-lg shadow-primary/5 transition-all overflow-hidden border ${
                       urgent ? 'border-primary/40 shadow-primary/10' : 'border-outline-variant/30 hover:border-primary/30'
                     }`}
                   >
@@ -807,7 +807,7 @@ function FeedScreenContent() {
                     {urgent && (
                       <>
                         <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary shadow-[0_0_10px_rgba(195,1,33,0.4)]" />
-                        <div className="-mx-5 -mt-5 px-5 py-2.5 mb-3 flex items-center justify-between bg-primary-50 border-b border-primary/20">
+                        <div className="-mx-4 sm:-mx-5 -mt-4 sm:-mt-5 px-4 sm:px-5 py-2.5 mb-3 flex items-center justify-between bg-primary-50 border-b border-primary/20">
                           <div className="flex items-center gap-2">
                             <span className="h-2 w-2 rounded-full bg-primary" />
                             <span className="text-xs text-primary font-bold uppercase tracking-wider">
@@ -819,31 +819,31 @@ function FeedScreenContent() {
                     )}
 
                     {/* Author Meta Row */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between mb-3 gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
                         {author.avatarUrl ? (
                           <img
                             src={author.avatarUrl}
                             alt={author.name || 'Author'}
-                            className="w-10 h-10 rounded-full object-cover shadow-sm ring-2 ring-primary/20"
+                            className="w-10 h-10 rounded-full object-cover shadow-sm ring-2 ring-primary/20 shrink-0"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center text-primary font-bold shadow-sm text-sm">
+                          <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center text-primary font-bold shadow-sm text-sm shrink-0">
                             <span className="material-symbols-outlined text-[22px]">
                               {urgent ? 'local_hospital' : 'account_circle'}
                             </span>
                           </div>
                         )}
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <h2 className="text-sm font-bold text-on-surface leading-tight">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h2 className="text-sm font-bold text-on-surface leading-tight truncate">
                               {author.name || 'Campus Member'}
                             </h2>
-                            <span className="material-symbols-outlined text-primary text-[18px]" title="Verified Member">
+                            <span className="material-symbols-outlined text-primary text-[18px] shrink-0" title="Verified Member">
                               verified
                             </span>
                             {author.bloodGroup && (
-                              <span className="blood-group-chip text-[10px] px-1.5 py-0.2">
+                              <span className="blood-group-chip text-[10px] px-1.5 py-0.2 shrink-0">
                                 {author.bloodGroup}
                               </span>
                             )}
@@ -862,7 +862,7 @@ function FeedScreenContent() {
                       </div>
 
                       <button
-                        className="p-1.5 rounded-lg text-outline hover:bg-surface-container transition-colors"
+                        className="p-1.5 rounded-lg text-outline hover:bg-surface-container transition-colors shrink-0"
                         type="button"
                         aria-label="Options"
                       >
@@ -925,7 +925,7 @@ function FeedScreenContent() {
                       <div className="flex flex-wrap items-center gap-3 pt-1 mb-3">
                         <Link
                           to="/blood-hub"
-                          className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2 rounded-full text-white text-xs font-bold bg-primary hover:bg-primary-dark shadow-md shadow-primary/30 transition-all"
+                          className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2 rounded-full text-white text-xs font-bold bg-primary hover:bg-primary-dark shadow-md shadow-primary/30 transition-all min-h-[40px]"
                         >
                           <span className="material-symbols-outlined text-[18px]">volunteer_activism</span>
                           <span>I Can Donate</span>
@@ -934,13 +934,13 @@ function FeedScreenContent() {
                     )}
 
                     {/* Social Engagement Bar */}
-                    <div className="pt-3 border-t border-outline-variant/20 flex items-center justify-between text-xs text-on-surface-variant font-medium">
-                      <div className="flex items-center gap-4">
+                    <div className="pt-3 border-t border-outline-variant/20 flex flex-wrap items-center justify-between gap-2 text-xs text-on-surface-variant font-medium">
+                      <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                         {/* Love / Like Button */}
                         <button
                           type="button"
                           onClick={() => handleToggleLove(post._id)}
-                          className={`inline-flex items-center gap-1.5 transition-colors ${
+                          className={`inline-flex items-center gap-1.5 py-1 px-1.5 rounded-lg transition-colors cursor-pointer ${
                             post.isLovedByMe ? 'text-primary font-bold' : 'hover:text-primary'
                           }`}
                         >
@@ -957,7 +957,7 @@ function FeedScreenContent() {
                         <button
                           type="button"
                           onClick={() => toggleComments(post._id)}
-                          className="inline-flex items-center gap-1.5 hover:text-on-surface transition-colors"
+                          className="inline-flex items-center gap-1.5 py-1 px-1.5 rounded-lg hover:text-on-surface transition-colors cursor-pointer"
                         >
                           <span className="material-symbols-outlined text-[19px]">chat_bubble</span>
                           <span>{post.commentCount || 0} Comments</span>
@@ -967,7 +967,7 @@ function FeedScreenContent() {
                         <button
                           type="button"
                           onClick={() => handleOpenRepost(post)}
-                          className={`inline-flex items-center gap-1.5 transition-colors ${
+                          className={`inline-flex items-center gap-1.5 py-1 px-1.5 rounded-lg transition-colors cursor-pointer ${
                             post.isRepostedByMe ? 'text-primary font-bold' : 'hover:text-on-surface'
                           }`}
                         >
@@ -983,7 +983,7 @@ function FeedScreenContent() {
                             navigator.share({ title: 'BAUST BloodLink Update', text: post.content, url: window.location.href });
                           }
                         }}
-                        className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                        className="inline-flex items-center gap-1 py-1 px-2 rounded-lg hover:text-primary transition-colors cursor-pointer"
                         title="Share Update"
                       >
                         <span className="material-symbols-outlined text-[18px]">share</span>

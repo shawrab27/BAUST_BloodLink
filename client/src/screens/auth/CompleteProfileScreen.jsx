@@ -168,7 +168,7 @@ function CompleteProfileScreen() {
   const todayStr = new Date().toISOString().split('T')[0];
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-rose-50/30 to-blue-50/40 flex items-center justify-center py-10 px-4">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-rose-50/30 to-blue-50/40 flex items-center justify-center py-6 sm:py-10 px-3 sm:px-4">
       <div className="w-full max-w-xl">
         {/* Navigation Back */}
         <div className="mb-4">
@@ -182,17 +182,17 @@ function CompleteProfileScreen() {
         </div>
 
         {/* User Identity Banner (Google / Social Account Info) */}
-        <div className="mb-6 p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-4">
+        <div className="mb-5 sm:mb-6 p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3 sm:gap-4">
           <div className="relative shrink-0">
             {user?.avatarUrl ? (
               <img
                 src={user.avatarUrl}
                 alt={user.name || 'User Profile'}
-                className="w-14 h-14 rounded-full object-cover ring-2 ring-primary/30 shadow-sm"
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover ring-2 ring-primary/30 shadow-sm"
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg ring-2 ring-primary/20">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-base sm:text-lg ring-2 ring-primary/20">
                 {user?.name ? user.name.charAt(0).toUpperCase() : 'G'}
               </div>
             )}
@@ -202,22 +202,22 @@ function CompleteProfileScreen() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base font-bold text-slate-900 truncate">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 truncate">
                 {user?.name || 'Google Guest'}
               </h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-primary/10 text-primary uppercase">
+              <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold bg-primary/10 text-primary uppercase">
                 {user?.authProvider ? `${user.authProvider} account` : 'Guest Mode'}
               </span>
             </div>
-            <p className="text-xs text-slate-500 truncate mt-0.5">
+            <p className="text-[11px] sm:text-xs text-slate-500 truncate mt-0.5">
               {user?.email || 'Authenticated via Google Identity'}
             </p>
           </div>
         </div>
 
         {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-black text-slate-800 tracking-tight">Complete Campus Verification</h1>
+        <div className="text-center mb-5 sm:mb-6 px-2">
+          <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">Complete Campus Verification</h1>
           <p className="text-slate-500 text-xs mt-1">
             Link your institutional details and donation status to unlock blood requests, crisis dispatch, and donor matches.
           </p>
@@ -226,11 +226,11 @@ function CompleteProfileScreen() {
         {/* Form Card */}
         <form
           onSubmit={handleSubmit}
-          className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 sm:p-8 space-y-5"
+          className="bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100 p-4 sm:p-7 md:p-8 space-y-4 sm:space-y-5"
           noValidate
         >
           {/* 1-Click Quick Preset Fill */}
-          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+          <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <span className="material-symbols-outlined text-[14px] text-primary">auto_fix_high</span>
               Quick Demo Presets (1-Click Autofill):
@@ -347,7 +347,7 @@ function CompleteProfileScreen() {
           </div>
 
           {/* User Type & Gender row */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">
                 I am a <span className="text-red-500">*</span>
@@ -399,7 +399,7 @@ function CompleteProfileScreen() {
           </div>
 
           {/* Department & Blood Group row */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">
                 Department <span className="text-red-500">*</span>
@@ -438,7 +438,7 @@ function CompleteProfileScreen() {
 
           {/* Student-specific fields */}
           {form.userType === 'Student' && (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">
                   Batch <span className="text-red-500">*</span>

@@ -102,26 +102,26 @@ function BloodHubScreen() {
   };
 
   return (
-    <div className="page-wrapper max-w-[1280px] mx-auto">
+    <div className="page-wrapper max-w-[1280px] mx-auto px-3 sm:px-6 lg:px-8">
       {/* 1. Header Area */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
-          <h1 className="font-serif text-[32px] font-extrabold text-on-surface tracking-tight leading-tight flex items-center gap-2">
+          <h1 className="font-serif text-[26px] sm:text-[32px] font-extrabold text-on-surface tracking-tight leading-tight flex items-center gap-2">
             <span
-              className="material-symbols-outlined text-[32px] text-primary"
+              className="material-symbols-outlined text-[28px] sm:text-[32px] text-primary"
               style={{ fontVariationSettings: '"FILL" 1' }}
             >
               water_drop
             </span>
             <span>Blood Hub <span className="text-primary font-bold">Portal</span></span>
           </h1>
-          <p className="text-on-surface-variant text-[15px] font-normal mt-0.5">
+          <p className="text-on-surface-variant text-[13px] sm:text-[15px] font-normal mt-0.5">
             Campus Blood Donor Coordination &amp; Requisition Network
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[12px] font-bold">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[11px] sm:text-[12px] font-bold">
             <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
             Live Node: Saidpur &amp; Rangpur Cantonment
           </span>
@@ -129,10 +129,10 @@ function BloodHubScreen() {
       </div>
 
       {/* 2. Two Main Action Hero Cards (Side-by-Side Split View) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
         {/* Option 1 Card: Search for Blood (3D Pop-Up) */}
         <div
-          className="group relative bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-6 border border-outline-variant/30 hover:border-primary/40 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-lg hover:shadow-primary/25 hover:-translate-y-1"
+          className="group relative bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-5 sm:p-6 border border-outline-variant/30 hover:border-primary/40 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-lg hover:shadow-primary/25 hover:-translate-y-1"
           style={{
             boxShadow:
               '0 20px 40px -15px rgba(225, 29, 72, 0.12), 0 8px 16px -6px rgba(13, 28, 47, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.9)',
@@ -161,22 +161,22 @@ function BloodHubScreen() {
               </span>
             </div>
 
-            <h2 className="text-[20px] font-bold text-on-surface tracking-tight group-hover:text-primary transition-colors flex items-center gap-2">
+            <h2 className="text-[18px] sm:text-[20px] font-bold text-on-surface tracking-tight group-hover:text-primary transition-colors flex items-center gap-2">
               <span>Search for Blood</span>
               <span className="material-symbols-outlined text-[18px] opacity-0 group-hover:opacity-100 text-primary transition-opacity duration-300">
                 arrow_outward
               </span>
             </h2>
-            <p className="text-on-surface-variant text-[14px] leading-relaxed mt-2">
+            <p className="text-on-surface-variant text-[13px] sm:text-[14px] leading-relaxed mt-2">
               Search and verify registered donors across campus departments, batches, and real-time medical eligibility cycles.
             </p>
           </div>
 
-          <div className="mt-6 pt-2">
+          <div className="mt-5 sm:mt-6 pt-2">
             <Link
               to="/blood-hub/search"
               id="blood-hub-search-btn"
-              className="w-full py-3 px-5 rounded-full bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-semibold text-[14px] shadow-sm hover:shadow flex items-center justify-center gap-2 transition-all border border-outline-variant/40 group-hover:border-primary/30 active:scale-95"
+              className="w-full py-3 px-4 sm:px-5 rounded-full bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-semibold text-[13px] sm:text-[14px] shadow-sm hover:shadow flex items-center justify-center gap-2 transition-all border border-outline-variant/40 group-hover:border-primary/30 active:scale-95 min-h-[44px]"
             >
               <span className="material-symbols-outlined text-[18px] text-primary">search</span>
               <span>Open Donor Directory</span>
@@ -189,7 +189,7 @@ function BloodHubScreen() {
 
         {/* Option 2 Card: Request for Blood */}
         <div
-          className="group relative bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-6 border border-primary/30 hover:border-primary/50 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-lg hover:shadow-primary/20 hover:-translate-y-1"
+          className="group relative bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-5 sm:p-6 border border-primary/30 hover:border-primary/50 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-lg hover:shadow-primary/20 hover:-translate-y-1"
         >
           <div className="absolute -top-12 -right-12 w-36 h-36 rounded-full bg-primary/10 group-hover:bg-primary/20 blur-2xl transition-all duration-300 pointer-events-none" />
 
@@ -213,22 +213,22 @@ function BloodHubScreen() {
               </span>
             </div>
 
-            <h2 className="text-[20px] font-bold text-on-surface tracking-tight group-hover:text-primary transition-colors flex items-center gap-2">
+            <h2 className="text-[18px] sm:text-[20px] font-bold text-on-surface tracking-tight group-hover:text-primary transition-colors flex items-center gap-2">
               <span>Request for Blood</span>
               <span className="material-symbols-outlined text-[18px] opacity-0 group-hover:opacity-100 text-primary transition-opacity duration-300">
                 arrow_outward
               </span>
             </h2>
-            <p className="text-on-surface-variant text-[14px] leading-relaxed mt-2">
+            <p className="text-on-surface-variant text-[13px] sm:text-[14px] leading-relaxed mt-2">
               Post an authorized requisition for scheduled clinical procedures or urgent critical needs across cantonment medical nodes.
             </p>
           </div>
 
-          <div className="mt-6 pt-2">
+          <div className="mt-5 sm:mt-6 pt-2">
             <Link
               to="/blood-hub/request"
               id="blood-hub-request-btn"
-              className="w-full py-3 px-5 rounded-full text-white font-semibold text-[14px] bg-primary hover:bg-primary-dark shadow-md shadow-primary/25 hover:shadow-primary/40 flex items-center justify-center gap-2 transition-all active:scale-95"
+              className="w-full py-3 px-4 sm:px-5 rounded-full text-white font-semibold text-[13px] sm:text-[14px] bg-primary hover:bg-primary-dark shadow-md shadow-primary/25 hover:shadow-primary/40 flex items-center justify-center gap-2 transition-all active:scale-95 min-h-[44px]"
             >
               <span className="material-symbols-outlined text-[18px]">post_add</span>
               <span>Launch Requisition Form</span>
@@ -241,7 +241,7 @@ function BloodHubScreen() {
       </div>
 
       {/* 3. Quick Stats Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
         {/* Stat 1: Active Donors */}
         <div className="bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-4 border border-outline-variant/30 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -328,25 +328,25 @@ function BloodHubScreen() {
       {/* 4. Active Campus Requests Panel */}
       <section className="bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl border border-outline-variant/40 shadow-lg shadow-primary/5 overflow-hidden">
         {/* Panel Header with Search & Filter Tabs */}
-        <div className="p-5 border-b border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-4 sm:p-5 border-b border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="material-symbols-outlined text-primary text-[22px]">emergency_heat</span>
-              <h3 className="text-[18px] font-bold text-on-surface">Active Campus Requests</h3>
+              <h3 className="text-[17px] sm:text-[18px] font-bold text-on-surface">Active Campus Requests</h3>
               <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-bold">
                 {requests.length} Open Requisitions
               </span>
             </div>
-            <p className="text-on-surface-variant text-[13px] mt-0.5">
+            <p className="text-on-surface-variant text-[12px] sm:text-[13px] mt-0.5">
               Real-time blood transfusion needs submitted by verified campus coordinators and doctors.
             </p>
           </div>
 
           {/* Controls */}
-          <div className="flex items-center gap-2">
-            <div className="relative">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 sm:flex-initial">
               <select
-                className="appearance-none px-3 py-1.5 pr-7 rounded-xl bg-surface-container text-on-surface text-[12px] font-semibold hover:bg-surface-container-high transition-colors focus:outline-none cursor-pointer"
+                className="w-full sm:w-auto appearance-none px-3 py-1.5 pr-7 rounded-xl bg-surface-container text-on-surface text-[12px] font-semibold hover:bg-surface-container-high transition-colors focus:outline-none cursor-pointer min-h-[38px]"
                 value={filterCondition}
                 onChange={(e) => setFilterCondition(e.target.value)}
                 id="filter-condition-select"
@@ -363,7 +363,7 @@ function BloodHubScreen() {
             <button
               onClick={fetchDashboardData}
               id="refresh-requests-btn"
-              className="px-3 py-1.5 rounded-full text-white text-[12px] font-semibold flex items-center gap-1.5 bg-primary hover:bg-primary-dark shadow-sm hover:shadow-md transition-all"
+              className="px-3.5 py-1.5 rounded-full text-white text-[12px] font-semibold flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-dark shadow-sm hover:shadow-md transition-all cursor-pointer min-h-[38px]"
               type="button"
             >
               <span className="material-symbols-outlined text-[16px]">refresh</span>
@@ -374,8 +374,8 @@ function BloodHubScreen() {
 
         {/* 3-State Data Rendering: 3D Cards Grid */}
         {loading ? (
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {Array.from({ length: 6 }).map((_, idx) => (
                 <div
                   key={idx}
@@ -401,7 +401,7 @@ function BloodHubScreen() {
             </div>
           </div>
         ) : error ? (
-          <div className="p-12 text-center">
+          <div className="p-8 sm:p-12 text-center">
             <div className="w-12 h-12 mx-auto rounded-full bg-primary/10 text-primary flex items-center justify-center mb-3">
               <span className="material-symbols-outlined text-[24px]">cloud_off</span>
             </div>
@@ -409,7 +409,7 @@ function BloodHubScreen() {
             <p className="text-[13px] text-on-surface-variant mb-4">{error}</p>
             <button
               onClick={fetchDashboardData}
-              className="px-4 py-2 rounded-full bg-primary hover:bg-primary-dark text-white font-semibold text-xs inline-flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+              className="px-4 py-2 rounded-full bg-primary hover:bg-primary-dark text-white font-semibold text-xs inline-flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">refresh</span>
               Retry Sync
@@ -424,13 +424,13 @@ function BloodHubScreen() {
             />
           </div>
         ) : (
-          <div className="p-6">
-            {/* 3D Cards Responsive Grid: 3 columns (9 per page) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="p-4 sm:p-6">
+            {/* 3D Cards Responsive Grid: 1-col mobile, 2-col tablet, 3-col desktop (9 per page) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {paginatedRequests.map((req) => (
                 <div
                   key={req._id}
-                  className="group relative bg-surface-container-lowest/95 backdrop-blur-xl rounded-2xl p-5 border border-outline-variant/35 hover:border-primary/50 transition-all duration-300 flex flex-col justify-between shadow-md hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-2 overflow-hidden"
+                  className="group relative bg-surface-container-lowest/95 backdrop-blur-xl rounded-2xl p-4 sm:p-5 border border-outline-variant/35 hover:border-primary/50 transition-all duration-300 flex flex-col justify-between shadow-md hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-1 sm:hover:-translate-y-2 overflow-hidden"
                   style={{
                     boxShadow:
                       '0 12px 28px -8px rgba(225, 29, 72, 0.09), 0 4px 12px rgba(13, 28, 47, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.95)',
@@ -442,9 +442,9 @@ function BloodHubScreen() {
 
                   <div>
                     {/* Card Header: Identity & 3D Blood Group Badge */}
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-surface-container to-surface-container-high border border-outline-variant/30 flex items-center justify-center text-primary shadow-sm group-hover:scale-105 transition-transform">
+                    <div className="flex items-start justify-between gap-2.5 mb-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-surface-container to-surface-container-high border border-outline-variant/30 flex items-center justify-center text-primary shadow-sm group-hover:scale-105 transition-transform shrink-0">
                           <span className="material-symbols-outlined text-[22px]">
                             {req.patientType === 'Student'
                               ? 'school'
@@ -455,9 +455,9 @@ function BloodHubScreen() {
                               : 'person'}
                           </span>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <h4 className="font-bold text-on-surface text-[15px] leading-tight">
+                            <h4 className="font-bold text-on-surface text-[14px] sm:text-[15px] leading-tight truncate">
                               {req.patientName}
                             </h4>
                             {req.patientType && (
@@ -484,7 +484,7 @@ function BloodHubScreen() {
 
                       {/* 3D Blood Group Badge & Units */}
                       <div className="flex flex-col items-end shrink-0">
-                        <span className="inline-flex items-center justify-center px-3 py-1 rounded-xl text-white font-black text-[13px] tracking-wider bg-gradient-to-br from-primary to-[#8A0014] shadow-md shadow-primary/20 border border-white/20 group-hover:scale-105 transition-transform">
+                        <span className="inline-flex items-center justify-center px-2.5 sm:px-3 py-1 rounded-xl text-white font-black text-[12px] sm:text-[13px] tracking-wider bg-gradient-to-br from-primary to-[#8A0014] shadow-md shadow-primary/20 border border-white/20 group-hover:scale-105 transition-transform">
                           {req.bloodGroup}
                         </span>
                         <span className="text-[10px] font-bold text-primary flex items-center gap-0.5 mt-1">
@@ -510,12 +510,12 @@ function BloodHubScreen() {
                         <span className="material-symbols-outlined text-primary text-[17px] shrink-0 mt-0.5">
                           local_hospital
                         </span>
-                        <div className="text-[12px] leading-snug">
-                          <span className="font-bold text-on-surface block truncate max-w-[210px]">
+                        <div className="text-[12px] leading-snug min-w-0 flex-1">
+                          <span className="font-bold text-on-surface block truncate max-w-full">
                             {req.hospital}
                           </span>
                           {req.hospitalBed && (
-                            <span className="text-[11px] text-on-surface-variant font-medium block mt-0.5">
+                            <span className="text-[11px] text-on-surface-variant font-medium block mt-0.5 truncate">
                               {req.hospitalBed}
                             </span>
                           )}
@@ -547,7 +547,7 @@ function BloodHubScreen() {
                   {/* Card Action: 3D Respond Button */}
                   <button
                     onClick={() => handleRespond(req)}
-                    className="w-full py-2.5 px-4 rounded-xl text-white font-bold text-xs bg-primary hover:bg-primary-dark shadow-md shadow-primary/20 hover:shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 group-hover:shadow-primary/30 cursor-pointer"
+                    className="w-full py-2.5 px-4 rounded-xl text-white font-bold text-xs bg-primary hover:bg-primary-dark shadow-md shadow-primary/20 hover:shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 group-hover:shadow-primary/30 cursor-pointer min-h-[40px]"
                     type="button"
                   >
                     <span>Respond to Request</span>
@@ -564,18 +564,18 @@ function BloodHubScreen() {
         {/* Multi-Page Numbered Pagination (9 items per page) */}
         {!loading && !error && requests.length > 0 && (
           <div className="p-4 bg-surface-container-low/60 border-t border-outline-variant/20 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] text-on-surface-variant">
-            <div className="font-medium">
+            <div className="font-medium text-center sm:text-left">
               Showing <span className="font-bold text-on-surface">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> -{' '}
               <span className="font-bold text-on-surface">{Math.min(currentPage * ITEMS_PER_PAGE, requests.length)}</span> of{' '}
               <span className="font-bold text-on-surface">{requests.length}</span> Active Requisitions (9 per page)
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-1.5 rounded-xl border border-outline-variant/40 bg-surface-container text-on-surface font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl border border-outline-variant/40 bg-surface-container text-on-surface font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high transition-all flex items-center gap-1 active:scale-95 cursor-pointer min-h-[36px]"
                   type="button"
                 >
                   <span className="material-symbols-outlined text-[15px]">chevron_left</span>
@@ -586,7 +586,7 @@ function BloodHubScreen() {
                   <button
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`w-8 h-8 rounded-xl font-bold text-xs transition-all flex items-center justify-center cursor-pointer ${
+                    className={`w-8 h-8 rounded-xl font-bold text-xs transition-all flex items-center justify-center cursor-pointer min-h-[36px] min-w-[36px] ${
                       currentPage === pageNum
                         ? 'bg-primary text-white shadow-md shadow-primary/25 scale-105'
                         : 'bg-surface-container text-on-surface hover:bg-surface-container-high border border-outline-variant/30'
@@ -600,7 +600,7 @@ function BloodHubScreen() {
                 <button
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 rounded-xl border border-outline-variant/40 bg-surface-container text-on-surface font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl border border-outline-variant/40 bg-surface-container text-on-surface font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high transition-all flex items-center gap-1 active:scale-95 cursor-pointer min-h-[36px]"
                   type="button"
                 >
                   <span>Next</span>

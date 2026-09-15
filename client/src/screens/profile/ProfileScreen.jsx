@@ -320,50 +320,50 @@ function ProfileScreen() {
   // If user is a Guest, render the dedicated Guest profile without blood group/donation records
   if (isGuest) {
     return (
-      <div className="page-wrapper max-w-[1140px] mx-auto pb-16 space-y-6">
+      <div className="page-wrapper max-w-[1140px] mx-auto px-3 sm:px-6 lg:px-8 pb-16 space-y-6">
         {/* ── GUEST HERO PROFILE HEADER ── */}
-        <div className="glass-card p-6 rounded-3xl border border-primary/20 bg-gradient-to-r from-primary/5 via-surface-container to-surface-container-low relative overflow-hidden shadow-sm">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl border border-primary/20 bg-gradient-to-r from-primary/5 via-surface-container to-surface-container-low relative overflow-hidden shadow-sm">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-4 sm:gap-5 min-w-0">
               <button
                 type="button"
                 onClick={() => setAvatarModalOpen(true)}
-                className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-sm flex-shrink-0 group relative overflow-hidden cursor-pointer"
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-sm flex-shrink-0 group relative overflow-hidden cursor-pointer"
                 title="Click to choose avatar"
               >
                 {user.avatarUrl ? (
                   <img src={user.avatarUrl} alt="Guest Avatar" className="w-full h-full object-cover rounded-2xl" />
                 ) : (
-                  <span className="material-symbols-outlined text-[44px]">person</span>
+                  <span className="material-symbols-outlined text-[36px] sm:text-[44px]">person</span>
                 )}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
                   <span className="material-symbols-outlined text-[20px]">photo_camera</span>
                 </div>
               </button>
 
-              <div>
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <h1 className="text-2xl font-black text-on-surface">{user.name || 'Guest Explorer'}</h1>
-                  <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-primary/15 text-primary border border-primary/30">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black text-on-surface truncate">{user.name || 'Guest Explorer'}</h1>
+                  <span className="px-2.5 sm:px-3 py-0.5 rounded-full text-xs font-bold bg-primary/15 text-primary border border-primary/30 shrink-0">
                     Guest Mode
                   </span>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-on-surface-variant mt-1.5 flex-wrap">
+                <div className="flex items-center gap-2 sm:gap-3 text-xs text-on-surface-variant mt-1.5 flex-wrap">
                   <span>Public Access Session</span>
                   {user.email && (
                     <>
                       <span>•</span>
-                      <span className="text-on-surface">{user.email}</span>
+                      <span className="text-on-surface truncate">{user.email}</span>
                     </>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 self-end md:self-auto">
               <button
                 onClick={logout}
-                className="btn-outline py-2 px-5 text-xs font-bold flex items-center gap-1.5"
+                className="btn-outline py-2 px-5 text-xs font-bold flex items-center gap-1.5 cursor-pointer min-h-[40px]"
                 id="guest-signout-btn"
               >
                 <span className="material-symbols-outlined text-[16px]">logout</span>
@@ -374,7 +374,7 @@ function ProfileScreen() {
         </div>
 
         {/* ── GUEST NOTICE & UPGRADE CARDS ── */}
-        <div className="p-5 rounded-2xl bg-surface-container-lowest border border-primary/20 shadow-sm space-y-2">
+        <div className="p-4 sm:p-5 rounded-2xl bg-surface-container-lowest border border-primary/20 shadow-sm space-y-2">
           <div className="flex items-center gap-2 text-primary font-bold text-sm">
             <span className="material-symbols-outlined text-[20px]">info</span>
             <span>Guest Profile Overview</span>
@@ -385,8 +385,8 @@ function ProfileScreen() {
         </div>
 
         {/* ── UPGRADE ACTIONS GRID ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <div className="glass-card p-6 rounded-2xl border border-primary/30 flex flex-col justify-between space-y-4 hover:border-primary transition-all shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+          <div className="glass-card p-5 sm:p-6 rounded-2xl border border-primary/30 flex flex-col justify-between space-y-4 hover:border-primary transition-all shadow-sm">
             <div>
               <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3">
                 <span className="material-symbols-outlined text-[24px]">person_add</span>
@@ -403,14 +403,14 @@ function ProfileScreen() {
                 await logout();
                 navigate('/register');
               }}
-              className="btn-primary w-full py-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow-md"
+              className="btn-primary w-full py-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow-md min-h-[42px]"
             >
               <span>Create Account</span>
               <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
             </button>
           </div>
 
-          <div className="glass-card p-6 rounded-2xl border border-outline-variant/40 flex flex-col justify-between space-y-4 hover:border-primary transition-all shadow-sm">
+          <div className="glass-card p-5 sm:p-6 rounded-2xl border border-outline-variant/40 flex flex-col justify-between space-y-4 hover:border-primary transition-all shadow-sm">
             <div>
               <div className="w-12 h-12 rounded-xl bg-surface-container-high text-on-surface flex items-center justify-center mb-3">
                 <span className="material-symbols-outlined text-[24px]">login</span>
@@ -427,14 +427,14 @@ function ProfileScreen() {
                 await logout();
                 navigate('/login');
               }}
-              className="btn-outline w-full py-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:border-primary hover:text-primary"
+              className="btn-outline w-full py-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:border-primary hover:text-primary min-h-[42px]"
             >
               <span>Log In</span>
               <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
             </button>
           </div>
 
-          <div className="glass-card p-6 rounded-2xl border border-primary/40 bg-gradient-to-br from-primary/5 via-white to-secondary/5 flex flex-col justify-between space-y-4 hover:border-primary transition-all shadow-md">
+          <div className="glass-card p-5 sm:p-6 rounded-2xl border border-primary/40 bg-gradient-to-br from-primary/5 via-white to-secondary/5 flex flex-col justify-between space-y-4 hover:border-primary transition-all shadow-md">
             <div>
               <div className="w-12 h-12 rounded-xl bg-primary text-white flex items-center justify-center mb-3 shadow-md">
                 <span className="material-symbols-outlined text-[24px]">badge</span>
@@ -451,7 +451,7 @@ function ProfileScreen() {
               type="button"
               id="guest-complete-profile-btn"
               onClick={() => navigate('/complete-profile')}
-              className="btn-primary w-full py-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg"
+              className="btn-primary w-full py-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg min-h-[42px]"
             >
               <span>Complete Profile</span>
               <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
@@ -502,19 +502,19 @@ function ProfileScreen() {
   ];
 
   return (
-    <div className="page-wrapper max-w-[1140px] mx-auto pb-16 space-y-6">
+    <div className="page-wrapper max-w-[1140px] mx-auto px-3 sm:px-6 lg:px-8 pb-16 space-y-6">
       {/* ── HERO PROFILE HEADER ── */}
-      <div className="glass-card p-6 rounded-3xl border border-primary/30 bg-gradient-to-r from-primary/10 via-surface-container to-surface-container-low relative overflow-hidden shadow-sm">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+      <div className="glass-card p-4 sm:p-6 rounded-3xl border border-primary/30 bg-gradient-to-r from-primary/10 via-surface-container to-surface-container-low relative overflow-hidden shadow-sm">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 sm:gap-6 relative z-10">
           {/* Avatar & User Info */}
-          <div className="flex items-center gap-5">
-            <div className="relative group cursor-pointer" onClick={() => setAvatarModalOpen(true)}>
-              <div className="w-24 h-24 rounded-2xl bg-primary-container flex items-center justify-center ring-4 ring-primary/40 shadow-md overflow-hidden relative">
+          <div className="flex items-center gap-4 sm:gap-5 min-w-0">
+            <div className="relative group cursor-pointer flex-shrink-0" onClick={() => setAvatarModalOpen(true)}>
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-primary-container flex items-center justify-center ring-4 ring-primary/40 shadow-md overflow-hidden relative">
                 {user.avatarUrl ? (
                   <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
                 ) : (
                   <span
-                    className="material-symbols-outlined text-[52px] text-on-primary-container"
+                    className="material-symbols-outlined text-[44px] sm:text-[52px] text-on-primary-container"
                     style={{ fontVariationSettings: '"FILL" 1' }}
                   >
                     account_circle
@@ -522,40 +522,40 @@ function ProfileScreen() {
                 )}
                 {/* Hover Camera Overlay */}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center text-white gap-0.5">
-                  <span className="material-symbols-outlined text-[24px]">photo_camera</span>
+                  <span className="material-symbols-outlined text-[22px] sm:text-[24px]">photo_camera</span>
                   <span className="text-[10px] font-bold">Edit Avatar</span>
                 </div>
               </div>
 
-              <span className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center ring-2 ring-surface shadow-sm" title="Verified Campus Donor">
-                <span className="material-symbols-outlined text-[16px]">verified</span>
+              <span className="absolute -bottom-1 -right-1 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-primary text-white flex items-center justify-center ring-2 ring-surface shadow-sm" title="Verified Campus Donor">
+                <span className="material-symbols-outlined text-[14px] sm:text-[16px]">verified</span>
               </span>
             </div>
 
-            <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-2xl font-black text-on-surface">{user.name}</h1>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary text-white shadow-sm">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-black text-on-surface truncate">{user.name}</h1>
+                <span className="px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary text-white shadow-sm shrink-0">
                   {user.bloodGroup} Positive
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                <span className="px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1 shrink-0">
                   <span className="material-symbols-outlined text-[14px]">trophy</span>
                   #3 Campus Donor
                 </span>
               </div>
 
-              <div className="flex items-center gap-3 text-xs text-on-surface-variant mt-1.5 flex-wrap">
+              <div className="flex items-center gap-2 sm:gap-3 text-xs text-on-surface-variant mt-1.5 flex-wrap">
                 <span className="font-mono bg-surface-container-high px-2 py-0.5 rounded border border-outline-variant/30">
                   ID: {user.institutionalId}
                 </span>
                 <span>•</span>
-                <span className="font-medium text-on-surface">{user.department} Department</span>
+                <span className="font-medium text-on-surface">{user.department} Dept</span>
                 <span>•</span>
                 <span className="font-medium">{user.userType || 'Student'}</span>
                 {user.email && (
                   <>
                     <span>•</span>
-                    <span className="text-on-surface-variant">{user.email}</span>
+                    <span className="text-on-surface-variant truncate">{user.email}</span>
                   </>
                 )}
               </div>
@@ -563,19 +563,19 @@ function ProfileScreen() {
           </div>
 
           {/* Quick Metrics */}
-          <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-            <div className="px-4 py-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 text-center min-w-[100px] shadow-sm">
-              <span className="text-xs font-bold text-on-surface-variant block">Donations</span>
-              <span className="text-xl font-black text-primary">{donationCount} Bags</span>
+          <div className="flex items-center gap-2.5 sm:gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+            <div className="px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 text-center min-w-[90px] sm:min-w-[100px] shadow-sm flex-1 md:flex-initial">
+              <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant block">Donations</span>
+              <span className="text-lg sm:text-xl font-black text-primary">{donationCount} Bags</span>
             </div>
-            <div className="px-4 py-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 text-center min-w-[100px] shadow-sm">
-              <span className="text-xs font-bold text-on-surface-variant block">Impact</span>
-              <span className="text-xl font-black text-primary">{donationCount * 3} Lives</span>
+            <div className="px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 text-center min-w-[90px] sm:min-w-[100px] shadow-sm flex-1 md:flex-initial">
+              <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant block">Impact</span>
+              <span className="text-lg sm:text-xl font-black text-primary">{donationCount * 3} Lives</span>
             </div>
-            <div className="px-4 py-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 text-center min-w-[100px] shadow-sm">
-              <span className="text-xs font-bold text-on-surface-variant block">Status</span>
-              <span className={`text-xs font-bold mt-1 block ${isEligible ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                {isEligible ? 'Eligible Now' : `Cooldown (${cooldownDaysLeft}d)`}
+            <div className="px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 text-center min-w-[90px] sm:min-w-[100px] shadow-sm flex-1 md:flex-initial">
+              <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant block">Status</span>
+              <span className={`text-[11px] sm:text-xs font-bold mt-1 block ${isEligible ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                {isEligible ? 'Eligible' : `Cooldown (${cooldownDaysLeft}d)`}
               </span>
             </div>
           </div>

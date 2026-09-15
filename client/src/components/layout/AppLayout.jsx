@@ -1,14 +1,15 @@
 import Topbar from './Topbar';
 import Sidebar from './Sidebar';
+import BottomTabBar from './BottomTabBar';
 
 /**
- * AppLayout — Master 1440px desktop layout shell.
+ * AppLayout — Responsive layout shell.
  *
  * Structure:
- *   - Fixed 72px Topbar (identical on every screen)
- *   - Fixed 260px Sidebar
- *   - Main content area: padding-left 260px, padding-top 72px
- *   - Ambient WebGL canvas background (subtle ruby fluid shader)
+ *   - Fixed 72px Topbar (identical on every screen, hamburger menu on mobile)
+ *   - Fixed Sidebar (260px desktop, collapsed 72px tablet, hidden <768px)
+ *   - Fixed BottomTabBar (mobile <768px only, instant thumb-reachable emergency navigation)
+ *   - Main content area: responsive left padding & bottom padding
  *   - Admin routes receive .admin-layout class override via isAdmin prop
  */
 function AppLayout({ children, user = null, notificationCount = 0, isAdmin = false }) {
@@ -17,7 +18,7 @@ function AppLayout({ children, user = null, notificationCount = 0, isAdmin = fal
       {/* Topbar */}
       <Topbar user={user} notificationCount={notificationCount} isAdmin={isAdmin} />
 
-      {/* Sidebar */}
+      {/* Sidebar (Desktop 260px, Tablet 72px, Mobile hidden) */}
       <Sidebar user={user} />
 
       {/* Main Content Area */}
@@ -29,6 +30,9 @@ function AppLayout({ children, user = null, notificationCount = 0, isAdmin = fal
           </div>
         </main>
       </div>
+
+      {/* Mobile Bottom Tab Bar (<768px) */}
+      <BottomTabBar />
     </div>
   );
 }

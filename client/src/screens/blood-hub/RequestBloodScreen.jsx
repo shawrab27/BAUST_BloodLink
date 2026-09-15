@@ -160,10 +160,10 @@ function RequestBloodScreen() {
   };
 
   return (
-    <div className="page-wrapper max-w-[840px] mx-auto pb-16">
+    <div className="page-wrapper max-w-[840px] mx-auto px-3 sm:px-6 pb-16">
       {/* Header Banner */}
       <div className="mb-6">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
           <Link
             to="/blood-hub"
             className="inline-flex items-center text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors"
@@ -178,16 +178,16 @@ function RequestBloodScreen() {
           </span>
         </div>
 
-        <h1 className="text-[28px] font-black text-on-surface tracking-tight leading-tight flex items-center gap-2.5">
+        <h1 className="text-[24px] sm:text-[28px] font-black text-on-surface tracking-tight leading-tight flex items-center gap-2.5">
           <span
-            className="material-symbols-outlined text-[28px] text-primary"
+            className="material-symbols-outlined text-[26px] sm:text-[28px] text-primary"
             style={{ fontVariationSettings: '"FILL" 1' }}
           >
             add_box
           </span>
           Blood Requisition Form
         </h1>
-        <p className="text-on-surface-variant text-[14px] mt-1">
+        <p className="text-on-surface-variant text-[13px] sm:text-[14px] mt-1">
           Submit an authorized institutional blood request. Compatible donors will receive notifications.
         </p>
 
@@ -203,7 +203,7 @@ function RequestBloodScreen() {
 
       {/* Success View */}
       {successData ? (
-        <div className="bg-surface-container-lowest rounded-2xl p-8 border border-primary/30 shadow-xl text-center animate-fade-in space-y-4">
+        <div className="bg-surface-container-lowest rounded-2xl p-6 sm:p-8 border border-primary/30 shadow-xl text-center animate-fade-in space-y-4">
           <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto shadow-inner">
             <span
               className="material-symbols-outlined text-[36px]"
@@ -213,15 +213,15 @@ function RequestBloodScreen() {
             </span>
           </div>
 
-          <h2 className="text-[24px] font-extrabold text-on-surface">Requisition Dispatched!</h2>
+          <h2 className="text-[22px] sm:text-[24px] font-extrabold text-on-surface">Requisition Dispatched!</h2>
           <p className="text-on-surface-variant text-sm max-w-[500px] mx-auto leading-relaxed">
             Requisition for <strong className="text-primary font-bold">{successData.units} Bag(s) of {successData.bloodGroup}</strong> ({successData.condition}) for patient <strong className="text-on-surface">{successData.patientName}</strong> is now live.
           </p>
 
-          <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
               onClick={() => navigate('/blood-hub')}
-              className="px-6 py-2.5 rounded-xl bg-primary text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-95 transition-all"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-primary text-white font-bold text-sm shadow-md hover:brightness-105 active:scale-95 transition-all cursor-pointer min-h-[42px]"
             >
               View in Active Requests
             </button>
@@ -231,7 +231,7 @@ function RequestBloodScreen() {
                 setPatientName('');
                 setDiagnosis('');
               }}
-              className="px-6 py-2.5 rounded-xl border border-outline-variant text-on-surface font-semibold text-sm hover:bg-surface-container transition-all"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-outline-variant text-on-surface font-semibold text-sm hover:bg-surface-container transition-all cursor-pointer min-h-[42px]"
             >
               Submit Another Requisition
             </button>
@@ -247,22 +247,22 @@ function RequestBloodScreen() {
           )}
 
           {/* SECTION 1: Condition & Patient Overview */}
-          <div className="bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-6 border border-outline-variant/30 shadow-sm space-y-4">
+          <div className="bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-outline-variant/30 shadow-sm space-y-4">
             <div className="flex items-center gap-2.5 mb-1">
               <span className="w-7 h-7 rounded-full bg-primary text-white font-black text-xs flex items-center justify-center shadow-sm">
                 1
               </span>
-              <h2 className="font-bold text-on-surface text-[17px]">Condition &amp; Patient Information</h2>
+              <h2 className="font-bold text-on-surface text-[16px] sm:text-[17px]">Condition &amp; Patient Information</h2>
             </div>
 
             {/* Binary Condition Selector: Normal vs Emergency */}
             <div>
               <label className="input-label">Condition *</label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setCondition('Normal')}
-                  className={`p-3.5 rounded-xl border-2 text-left transition-all flex items-center justify-between ${
+                  className={`p-3.5 rounded-xl border-2 text-left transition-all flex items-center justify-between cursor-pointer ${
                     condition === 'Normal'
                       ? 'border-primary bg-primary/5 shadow-sm ring-2 ring-primary/20'
                       : 'border-outline-variant/30 bg-surface-container-low/40 hover:bg-surface-container'
@@ -289,7 +289,7 @@ function RequestBloodScreen() {
                 <button
                   type="button"
                   onClick={() => setCondition('Emergency')}
-                  className={`p-3.5 rounded-xl border-2 text-left transition-all flex items-center justify-between ${
+                  className={`p-3.5 rounded-xl border-2 text-left transition-all flex items-center justify-between cursor-pointer ${
                     condition === 'Emergency'
                       ? 'border-primary bg-primary/10 shadow-sm ring-2 ring-primary/30'
                       : 'border-outline-variant/30 bg-surface-container-low/40 hover:bg-surface-container'
@@ -330,7 +330,7 @@ function RequestBloodScreen() {
                     required
                     value={patientType}
                     onChange={(e) => setPatientType(e.target.value)}
-                    className="input-field appearance-none cursor-pointer"
+                    className="input-field appearance-none cursor-pointer min-h-[42px]"
                   >
                     {PATIENT_TYPES.map((pt) => (
                       <option key={pt} value={pt}>
@@ -355,7 +355,7 @@ function RequestBloodScreen() {
                   placeholder="e.g., Md. Karim Uddin"
                   value={patientName}
                   onChange={(e) => setPatientName(e.target.value)}
-                  className="input-field"
+                  className="input-field min-h-[42px]"
                 />
               </div>
 
@@ -371,7 +371,7 @@ function RequestBloodScreen() {
                   max="120"
                   value={patientAge}
                   onChange={(e) => setPatientAge(e.target.value)}
-                  className="input-field"
+                  className="input-field min-h-[42px]"
                 />
               </div>
             </div>
@@ -386,24 +386,24 @@ function RequestBloodScreen() {
                 placeholder="e.g., Post-operative blood loss, Dengue, Anemia"
                 value={diagnosis}
                 onChange={(e) => setDiagnosis(e.target.value)}
-                className="input-field"
+                className="input-field min-h-[42px]"
               />
             </div>
           </div>
 
           {/* SECTION 2: Blood Type & Quantity */}
-          <div className="bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-6 border border-outline-variant/30 shadow-sm space-y-4">
+          <div className="bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-outline-variant/30 shadow-sm space-y-4">
             <div className="flex items-center gap-2.5 mb-1">
               <span className="w-7 h-7 rounded-full bg-primary text-white font-black text-xs flex items-center justify-center shadow-sm">
                 2
               </span>
-              <h2 className="font-bold text-on-surface text-[17px]">Blood Group &amp; Units</h2>
+              <h2 className="font-bold text-on-surface text-[16px] sm:text-[17px]">Blood Group &amp; Units</h2>
             </div>
 
-            {/* Blood Group Grid */}
+            {/* Blood Group Grid (4x2 on mobile, 8x1 on tablet/desktop) */}
             <div>
               <label className="input-label">Required Blood Group *</label>
-              <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2">
+              <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-8 gap-2">
                 {BLOOD_GROUPS.map((bg) => {
                   const isSelected = bloodGroup === bg.id;
                   return (
@@ -411,13 +411,13 @@ function RequestBloodScreen() {
                       key={bg.id}
                       type="button"
                       onClick={() => setBloodGroup(bg.id)}
-                      className={`py-3 px-1 rounded-xl flex flex-col items-center justify-center transition-all border-2 ${
+                      className={`py-2.5 sm:py-3 px-1 rounded-xl flex flex-col items-center justify-center transition-all border-2 cursor-pointer ${
                         isSelected
                           ? 'bg-primary text-white border-primary shadow-md scale-105 font-black ring-2 ring-primary/30'
                           : 'bg-surface-container-low border-outline-variant/30 text-on-surface font-bold hover:border-primary/40'
                       }`}
                     >
-                      <span className="text-[16px] leading-tight">{bg.label}</span>
+                      <span className="text-[15px] sm:text-[16px] leading-tight">{bg.label}</span>
                       <span
                         className={`text-[10px] font-semibold mt-0.5 ${
                           isSelected ? 'text-white/80' : 'text-on-surface-variant'
@@ -468,15 +468,15 @@ function RequestBloodScreen() {
           </div>
 
           {/* SECTION 3: Hospital & Required Date/Time */}
-          <div className="bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-6 border border-outline-variant/30 shadow-sm space-y-4">
+          <div className="bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-outline-variant/30 shadow-sm space-y-4">
             <div className="flex items-center gap-2.5 mb-1">
               <span className="w-7 h-7 rounded-full bg-primary text-white font-black text-xs flex items-center justify-center shadow-sm">
                 3
               </span>
-              <h2 className="font-bold text-on-surface text-[17px]">Hospital Location &amp; Timeline</h2>
+              <h2 className="font-bold text-on-surface text-[16px] sm:text-[17px]">Hospital Location &amp; Timeline</h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="input-label" htmlFor="hospital-select">
                   Hospital / Clinical Facility *
@@ -489,7 +489,7 @@ function RequestBloodScreen() {
                     id="hospital-select"
                     value={hospital}
                     onChange={(e) => setHospital(e.target.value)}
-                    className="input-field pl-10 appearance-none cursor-pointer"
+                    className="input-field pl-10 appearance-none cursor-pointer min-h-[42px]"
                   >
                     {HOSPITALS.map((h) => (
                       <option key={h.id} value={h.id}>
@@ -517,7 +517,7 @@ function RequestBloodScreen() {
                     placeholder="e.g., ICU Bed 04 / Ward 3B"
                     value={hospitalBed}
                     onChange={(e) => setHospitalBed(e.target.value)}
-                    className="input-field pl-10"
+                    className="input-field pl-10 min-h-[42px]"
                   />
                 </div>
               </div>
@@ -525,7 +525,7 @@ function RequestBloodScreen() {
 
             {/* Live Location Picker via react-leaflet (OpenStreetMap) */}
             <div className="pt-1">
-              <label className="input-label mb-2 flex items-center justify-between">
+              <label className="input-label mb-2 flex items-center justify-between flex-wrap gap-1">
                 <span className="flex items-center gap-1.5 font-semibold text-on-surface">
                   <span className="material-symbols-outlined text-[16px] text-primary">map</span>
                   Pinpoint Facility Location (OpenStreetMap)
@@ -556,7 +556,7 @@ function RequestBloodScreen() {
                   required
                   value={reqDate}
                   onChange={(e) => setReqDate(e.target.value)}
-                  className="input-field"
+                  className="input-field min-h-[42px]"
                 />
               </div>
 
@@ -570,22 +570,22 @@ function RequestBloodScreen() {
                   required
                   value={reqTime}
                   onChange={(e) => setReqTime(e.target.value)}
-                  className="input-field"
+                  className="input-field min-h-[42px]"
                 />
               </div>
             </div>
           </div>
 
           {/* SECTION 4: Contact Information & Notes */}
-          <div className="bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-6 border border-outline-variant/30 shadow-sm space-y-4">
+          <div className="bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-outline-variant/30 shadow-sm space-y-4">
             <div className="flex items-center gap-2.5 mb-1">
               <span className="w-7 h-7 rounded-full bg-primary text-white font-black text-xs flex items-center justify-center shadow-sm">
                 4
               </span>
-              <h2 className="font-bold text-on-surface text-[17px]">Contact Person &amp; Additional Notes</h2>
+              <h2 className="font-bold text-on-surface text-[16px] sm:text-[17px]">Contact Person &amp; Additional Notes</h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="input-label" htmlFor="contact-name-input">
                   Contact Person Name *
@@ -601,7 +601,7 @@ function RequestBloodScreen() {
                     placeholder="e.g., Major Tanvir Ahmed"
                     value={contactName}
                     onChange={(e) => setContactName(e.target.value)}
-                    className="input-field pl-10"
+                    className="input-field pl-10 min-h-[42px]"
                   />
                 </div>
               </div>
@@ -621,7 +621,7 @@ function RequestBloodScreen() {
                     placeholder="+880 1712-345678"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value)}
-                    className="input-field pl-10 font-mono"
+                    className="input-field pl-10 font-mono min-h-[42px]"
                   />
                 </div>
               </div>
@@ -646,7 +646,7 @@ function RequestBloodScreen() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
             <Link
               to="/blood-hub"
-              className="w-full sm:w-auto px-5 py-3 rounded-xl border border-outline-variant text-on-surface font-semibold text-sm hover:bg-surface-container transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-5 py-3 rounded-xl border border-outline-variant text-on-surface font-semibold text-sm hover:bg-surface-container transition-all flex items-center justify-center gap-2 min-h-[44px]"
             >
               <span className="material-symbols-outlined text-[18px]">arrow_back</span>
               <span>Cancel</span>
@@ -656,7 +656,7 @@ function RequestBloodScreen() {
               type="submit"
               disabled={isSubmitting}
               id="submit-requisition-btn"
-              className="w-full sm:w-auto px-8 py-3 rounded-full text-white font-extrabold text-base bg-primary hover:bg-primary-dark shadow-md shadow-primary/30 hover:shadow-primary/45 flex items-center justify-center gap-2.5 transition-all active:scale-95 disabled:opacity-50"
+              className="w-full sm:w-auto px-8 py-3 rounded-full text-white font-extrabold text-base bg-primary hover:bg-primary-dark shadow-md shadow-primary/30 hover:shadow-primary/45 flex items-center justify-center gap-2.5 transition-all active:scale-95 disabled:opacity-50 min-h-[48px] cursor-pointer"
             >
               {isSubmitting ? (
                 <>

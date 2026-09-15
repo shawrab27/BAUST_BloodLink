@@ -289,43 +289,43 @@ function EmergencySosScreen() {
 
   return (
     <div className="w-full text-on-surface select-none pb-16 relative">
-      {/* Dynamic Ambient Glow Spots (Visual Foundation from Stitch) */}
+      {/* Dynamic Ambient Glow Spots */}
       <div className="fixed top-24 left-1/4 w-96 h-96 bg-primary-container/10 rounded-full blur-3xl pointer-events-none -z-10" />
       <div className="fixed bottom-12 right-1/4 w-[28rem] h-[28rem] bg-secondary-container/10 rounded-full blur-3xl pointer-events-none -z-10" />
 
-      {/* Max Canvas Container 1360px centered for 1440px desktop matching Stitch */}
-      <div className="w-full max-w-[1360px] mx-auto px-6 space-y-7">
+      {/* Responsive Canvas Container */}
+      <div className="w-full max-w-[1360px] mx-auto px-3 sm:px-6 space-y-6 sm:space-y-7">
         
         {/* ── 1. TOP BREADCRUMB & HEADER ─────────────────────────────────────── */}
-        <header className="flex flex-col gap-3 pt-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <header className="flex flex-col gap-3 pt-4 sm:pt-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
             <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-3xl sm:text-4xl font-black text-on-surface tracking-tight" id="emergency-heading">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-on-surface tracking-tight" id="emergency-heading">
                   Campus Crisis Command Center
                 </h1>
-                <span className="px-3 py-1 rounded-full bg-primary-container text-white font-mono text-[11px] font-bold tracking-wide shadow-sm flex items-center gap-1.5">
+                <span className="px-2.5 sm:px-3 py-1 rounded-full bg-primary-container text-white font-mono text-[10px] sm:text-[11px] font-bold tracking-wide shadow-sm flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-white animate-ping" />
                   OPERATIONAL LEVEL: {telemetry.operationalLevel || 'ELEVATED STANDBY'}
                 </span>
               </div>
-              <p className="text-sm font-medium text-slate-500">
+              <p className="text-xs sm:text-sm font-medium text-slate-500">
                 Unified Emergency Preparedness &amp; Rapid Campus Dispatch
               </p>
             </div>
 
             {/* Real-Time Telemetry Badges */}
-            <div className="flex flex-wrap items-center gap-3 bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl shadow-xs border border-rose-100/50">
-              <div className="flex items-center gap-2 px-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 bg-white/90 backdrop-blur-md px-3 sm:px-4 py-2 rounded-xl shadow-xs border border-rose-100/50">
+              <div className="flex items-center gap-1.5 sm:gap-2 px-1 sm:px-3">
                 <span className="material-symbols-outlined text-primary text-[17px]">hub</span>
-                <span className="text-[11px] text-on-surface font-bold">
+                <span className="text-[10.5px] sm:text-[11px] text-on-surface font-bold">
                   {telemetry.bridgeStatus || 'Saidpur CMH Bridge Active'}
                 </span>
               </div>
               <div className="h-4 w-px bg-slate-200 hidden sm:block" />
-              <div className="flex items-center gap-2 pl-3">
+              <div className="flex items-center gap-1.5 sm:gap-2 pl-1 sm:pl-3">
                 <span className="material-symbols-outlined text-emerald-600 text-[17px]">sync</span>
-                <span className="text-[11px] text-slate-500 font-medium">
+                <span className="text-[10.5px] sm:text-[11px] text-slate-500 font-medium">
                   {telemetry.syncStatus || 'Live Telemetry Synced'}
                 </span>
               </div>
@@ -334,7 +334,7 @@ function EmergencySosScreen() {
         </header>
 
         {/* ── 2. SECTION 1: CAMPUS READINESS BRIEFING ────────────────────────── */}
-        <section className="rounded-2xl bg-white/90 backdrop-blur-2xl p-6 sm:p-8 shadow-2xl shadow-primary/5 border border-slate-100/80 space-y-6 transition-all duration-300 hover:shadow-primary/10">
+        <section className="rounded-2xl bg-white/90 backdrop-blur-2xl p-4 sm:p-6 lg:p-8 shadow-2xl shadow-primary/5 border border-slate-100/80 space-y-5 sm:space-y-6 transition-all duration-300 hover:shadow-primary/10">
           {/* Alert Event Banner */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-rose-50/80 border border-rose-200/60 px-4 py-3 rounded-xl gap-2">
             <div className="flex items-center gap-3">
@@ -462,10 +462,10 @@ function EmergencySosScreen() {
         </section>
 
         {/* ── 3. SECTION 2: RESPONSE READINESS SCORE ─────────────────────────── */}
-        <section className="rounded-2xl bg-white/90 backdrop-blur-2xl p-6 sm:p-8 shadow-2xl shadow-primary/5 border border-slate-100/80 transition-all duration-300 hover:shadow-primary/10">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+        <section className="rounded-2xl bg-white/90 backdrop-blur-2xl p-4 sm:p-6 lg:p-8 shadow-2xl shadow-primary/5 border border-slate-100/80 transition-all duration-300 hover:shadow-primary/10">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-center">
             {/* Left: Circular Gauge Graphic */}
-            <div className="md:col-span-5 flex items-center gap-6 md:pr-6 border-b md:border-b-0 md:border-r border-slate-200/60 pb-6 md:pb-0">
+            <div className="md:col-span-5 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 sm:gap-6 md:pr-6 border-b md:border-b-0 md:border-r border-slate-200/60 pb-6 md:pb-0">
               <div className="relative w-32 h-32 sm:w-36 sm:h-36 flex items-center justify-center shrink-0">
                 {/* SVG Circular Progress Gauge */}
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
@@ -524,7 +524,7 @@ function EmergencySosScreen() {
                     Formula &amp; Weighting <span className="material-symbols-outlined text-sm">info</span>
                   </span>
                   {/* Tooltip on hover */}
-                  <div className="absolute right-0 bottom-full mb-2 hidden group-hover:block w-80 p-3.5 rounded-xl bg-slate-900 text-white shadow-2xl text-xs z-30 font-normal leading-relaxed">
+                  <div className="absolute right-0 bottom-full mb-2 hidden group-hover:block w-72 sm:w-80 p-3.5 rounded-xl bg-slate-900 text-white shadow-2xl text-xs z-30 font-normal leading-relaxed">
                     <span className="font-bold text-rose-300 block pb-1">Scoring Algorithm:</span>
                     {telemetry.readinessScore?.formulaFormula || 'Score = (Available Donors × 0.4) + (Disaster Standby × 0.3) - (Gaps × 15) - (Unresolved SOS × 10)'}
                   </div>
@@ -583,7 +583,7 @@ function EmergencySosScreen() {
             {contacts.map((contact) => (
               <div
                 key={contact.id}
-                className="p-5 rounded-2xl bg-white backdrop-blur-xl shadow-xl shadow-primary/5 border border-slate-100 space-y-4 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-primary/15"
+                className="p-4 sm:p-5 rounded-2xl bg-white backdrop-blur-xl shadow-xl shadow-primary/5 border border-slate-100 space-y-4 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-primary/15"
               >
                 <div>
                   <div className="flex items-center justify-between text-slate-400">
@@ -605,7 +605,7 @@ function EmergencySosScreen() {
                     href={contact.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-2.5 px-3 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center gap-2 hover:bg-rose-700 transition-colors cursor-pointer shadow-sm"
+                    className="w-full py-3 px-3 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center gap-2 hover:bg-rose-700 transition-colors cursor-pointer shadow-sm min-h-[44px]"
                   >
                     <span className="material-symbols-outlined text-sm">{contact.actionIcon}</span>
                     <span>{contact.actionText}</span>
@@ -613,7 +613,7 @@ function EmergencySosScreen() {
                 ) : (
                   <a
                     href={`tel:${contact.phone}`}
-                    className={`w-full py-2.5 px-3 rounded-full text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm ${
+                    className={`w-full py-3 px-3 rounded-full text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm min-h-[44px] ${
                       contact.btnVariant === 'neutral'
                         ? 'bg-slate-100 text-primary hover:bg-primary hover:text-white'
                         : 'bg-primary text-white hover:bg-rose-700'
@@ -629,7 +629,7 @@ function EmergencySosScreen() {
         </section>
 
         {/* ── 5. SECTION 4: STAT PRIORITY EMERGENCY SOS TRIGGER ───────────────── */}
-        <section className="rounded-2xl bg-gradient-to-br from-white via-rose-50/40 to-white backdrop-blur-2xl p-6 sm:p-7 shadow-xl shadow-primary/10 border border-rose-100/80 space-y-6">
+        <section className="rounded-2xl bg-gradient-to-br from-white via-rose-50/40 to-white backdrop-blur-2xl p-4 sm:p-7 shadow-xl shadow-primary/10 border border-rose-100/80 space-y-5 sm:space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
@@ -665,7 +665,7 @@ function EmergencySosScreen() {
                   id="sos-blood-group"
                   value={sosForm.bloodGroup}
                   onChange={(e) => setSosForm({ ...sosForm, bloodGroup: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white font-semibold text-xs text-on-surface appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 border border-slate-200/80 shadow-xs"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white font-semibold text-xs text-on-surface appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 border border-slate-200/80 shadow-xs min-h-[44px]"
                 >
                   <option value="O-">O- Negative (Universal Critical)</option>
                   <option value="O+">O+ Positive</option>
@@ -676,7 +676,7 @@ function EmergencySosScreen() {
                   <option value="AB+">AB+ Positive</option>
                   <option value="AB-">AB- Negative</option>
                 </select>
-                <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-400 pointer-events-none text-lg">
+                <span className="material-symbols-outlined absolute right-3 top-3 text-slate-400 pointer-events-none text-lg">
                   expand_more
                 </span>
               </div>
@@ -692,14 +692,14 @@ function EmergencySosScreen() {
                   id="sos-units"
                   value={sosForm.units}
                   onChange={(e) => setSosForm({ ...sosForm, units: Number(e.target.value) })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white font-semibold text-xs text-on-surface appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 border border-slate-200/80 shadow-xs"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white font-semibold text-xs text-on-surface appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 border border-slate-200/80 shadow-xs min-h-[44px]"
                 >
                   <option value={1}>1 Bag (500ml)</option>
                   <option value={2}>2 Bags Emergency Pack</option>
                   <option value={3}>3 Bags Trauma Resupply</option>
                   <option value={4}>4+ Bags Massive Transfusion</option>
                 </select>
-                <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-400 pointer-events-none text-lg">
+                <span className="material-symbols-outlined absolute right-3 top-3 text-slate-400 pointer-events-none text-lg">
                   expand_more
                 </span>
               </div>
@@ -715,13 +715,13 @@ function EmergencySosScreen() {
                   id="sos-hospital"
                   value={sosForm.hospital}
                   onChange={(e) => setSosForm({ ...sosForm, hospital: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white font-semibold text-xs text-on-surface appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 border border-slate-200/80 shadow-xs"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white font-semibold text-xs text-on-surface appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 border border-slate-200/80 shadow-xs min-h-[44px]"
                 >
                   <option value="Saidpur CMH Blood Center">Saidpur CMH Blood Center</option>
                   <option value="BAUST Campus Medical Center">BAUST Campus Medical Center</option>
                   <option value="Rangpur Medical College (Regional)">Rangpur Medical College (Regional)</option>
                 </select>
-                <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-400 pointer-events-none text-lg">
+                <span className="material-symbols-outlined absolute right-3 top-3 text-slate-400 pointer-events-none text-lg">
                   expand_more
                 </span>
               </div>
@@ -737,14 +737,14 @@ function EmergencySosScreen() {
                   id="sos-cohort"
                   value={sosForm.patientCohort}
                   onChange={(e) => setSosForm({ ...sosForm, patientCohort: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white font-semibold text-xs text-on-surface appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 border border-slate-200/80 shadow-xs"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white font-semibold text-xs text-on-surface appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 border border-slate-200/80 shadow-xs min-h-[44px]"
                 >
                   <option value="student">BAUST Enrolled Student</option>
                   <option value="faculty">Faculty / Admin Staff</option>
                   <option value="cantonment">Saidpur Cantonment Resident</option>
                   <option value="civilian">Civilian Emergency Bypass</option>
                 </select>
-                <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-400 pointer-events-none text-lg">
+                <span className="material-symbols-outlined absolute right-3 top-3 text-slate-400 pointer-events-none text-lg">
                   expand_more
                 </span>
               </div>
@@ -752,7 +752,7 @@ function EmergencySosScreen() {
           </div>
 
           {/* Action Button Area */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-rose-100/60">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-rose-100/60">
             <div className="flex items-center gap-2 text-slate-600 text-xs font-medium">
               <span className="material-symbols-outlined text-primary text-base shrink-0">wifi_tethering</span>
               <span>Dispatches targeted mobile push alerts to verified donors within 2.5 km perimeter.</span>
@@ -761,7 +761,7 @@ function EmergencySosScreen() {
             <button
               onClick={handleTriggerSos}
               disabled={isDispatching}
-              className={`py-3.5 px-8 rounded-full text-white text-sm font-black shadow-xl shadow-primary/25 hover:shadow-primary/40 flex items-center justify-center gap-3 transition-all transform active:scale-95 cursor-pointer disabled:opacity-80 shrink-0 ${
+              className={`w-full sm:w-auto py-4 px-8 min-h-[50px] rounded-full text-white text-sm sm:text-base font-black shadow-xl shadow-primary/25 hover:shadow-primary/40 flex items-center justify-center gap-3 transition-all transform active:scale-95 cursor-pointer disabled:opacity-80 shrink-0 ${
                 dispatchFeedback?.status === 'success'
                   ? 'bg-emerald-600'
                   : 'bg-primary hover:bg-primary-dark'
@@ -789,10 +789,10 @@ function EmergencySosScreen() {
         </section>
 
         {/* ── 6. SECTION 5: ACTIVE REQUISITIONS & DISPATCH TRACKER ───────────── */}
-        <section className="rounded-2xl bg-white/90 backdrop-blur-2xl p-6 sm:p-8 shadow-2xl shadow-primary/5 border border-slate-100/80 space-y-6 transition-all duration-300 hover:shadow-primary/10">
+        <section className="rounded-2xl bg-white/90 backdrop-blur-2xl p-4 sm:p-6 lg:p-8 shadow-2xl shadow-primary/5 border border-slate-100/80 space-y-5 sm:space-y-6 transition-all duration-300 hover:shadow-primary/10">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="space-y-0.5">
-              <h3 className="text-xl font-black text-on-surface">
+              <h3 className="text-lg sm:text-xl font-black text-on-surface">
                 Active Campus Requisitions &amp; Dispatch Tracker
               </h3>
               <p className="text-xs text-slate-500 font-medium">
@@ -928,10 +928,10 @@ function EmergencySosScreen() {
       {/* ── 7. FULFILLED MISSION REPORT MODAL ─────────────────────────────────── */}
       {isReportModalOpen && (
         <div
-          className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in"
           id="report-modal"
         >
-          <div className="w-full max-w-lg rounded-2xl bg-white/95 backdrop-blur-2xl p-6 sm:p-7 shadow-2xl space-y-5 border border-slate-100">
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white/95 backdrop-blur-2xl p-4 sm:p-7 shadow-2xl space-y-4 sm:space-y-5 border border-slate-100">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">

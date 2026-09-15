@@ -30,7 +30,8 @@
     line-height: 1.6;
     color: #2B2B2B;
     background-color: #FAF4F4;
-    min-width: 1280px;
+    min-width: 0;
+    width: 100%;
   }
 
   /* Custom Smooth Scrollbar */
@@ -112,7 +113,7 @@
     border-radius: 1.75rem;
   }
 
-  /* ── Topbar — fixed 72px ── */
+  /* ── Topbar — fixed 72px (Solid crisp surface, no bleed-through on scroll) ── */
   .topbar {
     position: fixed;
     top: 0;
@@ -120,21 +121,20 @@
     right: 0;
     height: 72px;
     z-index: 50;
-    @apply glass-panel;
+    background: #FFFFFF;
     border-top: none;
     border-left: none;
     border-right: none;
-    border-bottom: 1px solid rgba(228, 220, 222, 0.8);
-    box-shadow: 0 4px 20px rgba(43, 40, 43, 0.03);
+    border-bottom: 1px solid rgba(228, 220, 222, 0.9);
+    box-shadow: 0 2px 12px rgba(43, 40, 43, 0.04);
   }
 
-  /* ── Sidebar — fixed 260px ── */
+  /* ── Sidebar — fixed 260px desktop, collapsed 72px tablet, hidden mobile ── */
   .sidebar {
     position: fixed;
     left: 0;
     top: 72px;
     bottom: 0;
-    width: 260px;
     z-index: 40;
     @apply glass-panel;
     border-top: none;
@@ -142,19 +142,48 @@
     border-bottom: none;
     border-right: 1px solid rgba(228, 220, 222, 0.8);
     box-shadow: 4px 0 20px rgba(43, 40, 43, 0.02);
-    padding: 1.25rem 1rem;
-    display: flex;
+    display: none;
     flex-direction: column;
     justify-content: space-between;
   }
 
+  @media (min-width: 768px) {
+    .sidebar {
+      display: flex;
+      width: 72px;
+      padding: 1.25rem 0.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .sidebar {
+      width: 260px;
+      padding: 1.25rem 1rem;
+    }
+  }
+
   /* ── Main content area ── */
   .main-content {
-    padding-left: 260px;
+    padding-left: 0;
     padding-top: 72px;
+    padding-bottom: 76px; /* clears fixed mobile bottom tab bar */
     min-height: 100vh;
     position: relative;
     background-color: #FBF6F6;
+  }
+
+  @media (min-width: 768px) {
+    .main-content {
+      padding-left: 72px;
+      padding-bottom: 0;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .main-content {
+      padding-left: 260px;
+      padding-bottom: 0;
+    }
   }
 
   /* ── Admin layout override ── */
@@ -534,8 +563,14 @@
   .page-wrapper {
     max-width: 1440px;
     margin: 0 auto;
-    padding: 1.5rem;
+    padding: 1rem;
     width: 100%;
+  }
+
+  @media (min-width: 640px) {
+    .page-wrapper {
+      padding: 1.5rem;
+    }
   }
 
   /* ── Card left-accent (critical blood request indicator) ── */
