@@ -13,86 +13,44 @@ import { useAuth } from '../../context/AuthContext';
  */
 function BottomTabBar() {
   const location = useLocation();
-  const { user } = useAuth();
 
-  const isAdmin = user && (user.userType === 'Admin' || user.role === 'Admin');
-
-  const tabs = isAdmin
-    ? [
-        {
-          id: 'admin',
-          label: 'Admin',
-          icon: 'shield_person',
-          to: '/admin',
-          iconFill: true,
-        },
-        {
-          id: 'feed',
-          label: 'Feed',
-          icon: 'newspaper',
-          to: '/feed',
-          exact: true,
-        },
-        {
-          id: 'emergency',
-          label: 'SOS',
-          icon: 'e911_emergency',
-          to: '/emergency',
-          iconFill: true,
-          isEmergency: true,
-        },
-        {
-          id: 'blood-hub',
-          label: 'Blood Hub',
-          icon: 'water_drop',
-          to: '/blood-hub',
-          iconFill: true,
-        },
-        {
-          id: 'profile',
-          label: 'Profile',
-          icon: 'account_circle',
-          to: '/profile',
-          iconFill: true,
-        },
-      ]
-    : [
-        {
-          id: 'feed',
-          label: 'Feed',
-          icon: 'newspaper',
-          to: '/feed',
-          exact: true,
-        },
-        {
-          id: 'blood-hub',
-          label: 'Blood Hub',
-          icon: 'water_drop',
-          to: '/blood-hub',
-          iconFill: true,
-        },
-        {
-          id: 'emergency',
-          label: 'SOS',
-          icon: 'e911_emergency',
-          to: '/emergency',
-          iconFill: true,
-          isEmergency: true,
-        },
-        {
-          id: 'helpline',
-          label: 'Helpline',
-          icon: 'medical_services',
-          to: '/helpline',
-        },
-        {
-          id: 'profile',
-          label: 'Profile',
-          icon: 'account_circle',
-          to: '/profile',
-          iconFill: true,
-        },
-      ];
+  const tabs = [
+    {
+      id: 'feed',
+      label: 'Feed',
+      icon: 'newspaper',
+      to: '/feed',
+      exact: true,
+    },
+    {
+      id: 'blood-hub',
+      label: 'Blood Hub',
+      icon: 'water_drop',
+      to: '/blood-hub',
+      iconFill: true,
+    },
+    {
+      id: 'emergency',
+      label: 'SOS',
+      icon: 'e911_emergency',
+      to: '/emergency',
+      iconFill: true,
+      isEmergency: true,
+    },
+    {
+      id: 'helpline',
+      label: 'Helpline',
+      icon: 'medical_services',
+      to: '/helpline',
+    },
+    {
+      id: 'profile',
+      label: 'Profile',
+      icon: 'account_circle',
+      to: '/profile',
+      iconFill: true,
+    },
+  ];
 
   return (
     <nav
