@@ -102,8 +102,7 @@ function PublicRoute({ children }) {
   }
 
   if (isAuthenticated) {
-    const isAdmin = user && (user.userType === 'Admin' || user.role === 'Admin');
-    return <Navigate to={isAdmin ? '/admin' : '/feed'} replace />;
+    return <Navigate to="/feed" replace />;
   }
 
   return children;
@@ -121,8 +120,7 @@ function RootRedirect() {
   }
 
   if (isAuthenticated) {
-    const isAdmin = user && (user.userType === 'Admin' || user.role === 'Admin');
-    return <Navigate to={isAdmin ? '/admin' : '/feed'} replace />;
+    return <Navigate to="/feed" replace />;
   }
 
   return <Navigate to="/login" replace />;

@@ -45,8 +45,7 @@ function LoginScreen() {
 
     const res = await login({ institutionalId: id, password: form.password });
     if (res.success) {
-      const isAdmin = res.user?.userType === 'Admin' || res.user?.role === 'Admin';
-      const targetPath = location.state?.from?.pathname || (isAdmin ? '/admin' : '/feed');
+      const targetPath = location.state?.from?.pathname || '/feed';
       navigate(targetPath, { replace: true });
     } else {
       setServerError(res.error || 'Invalid credentials.');
@@ -60,8 +59,7 @@ function LoginScreen() {
     try {
       const res = await socialLogin(provider);
       if (res.success) {
-        const isAdmin = res.user?.userType === 'Admin' || res.user?.role === 'Admin';
-        const targetPath = location.state?.from?.pathname || (isAdmin ? '/admin' : '/feed');
+        const targetPath = location.state?.from?.pathname || '/feed';
         navigate(targetPath, { replace: true });
       } else if (res.error && res.error !== 'Sign-in cancelled.') {
         setServerError(res.error);
@@ -162,6 +160,43 @@ function LoginScreen() {
           )}
 
           {/* Form */}
+          {/* Reviewer Quick Autofill */}
+          <div className="mb-4 p-3 rounded-2xl bg-slate-50/90 border border-slate-200/90">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[14px] text-primary">verified_user</span>
+                Reviewer Quick Autofill:
+              </span>
+              <span className="text-[10px] text-slate-400 font-normal">Click to fill</span>
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setForm({ institutionalId: '210201001', password: 'Password123!' });
+                  setClientError('');
+                  setServerError('');
+                }}
+                className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-primary hover:bg-primary/5 active:scale-95 text-xs font-semibold text-slate-700 hover:text-primary transition-all text-left shadow-xs flex flex-col"
+              >
+                <span className="text-[11px] font-bold text-primary">Student (User View)</span>
+                <span className="text-[10px] text-slate-400 font-mono">ID: 210201001</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setForm({ institutionalId: '1001', password: 'Password123!' });
+                  setClientError('');
+                  setServerError('');
+                }}
+                className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-amber-600 hover:bg-amber-50 active:scale-95 text-xs font-semibold text-slate-700 hover:text-amber-700 transition-all text-left shadow-xs flex flex-col"
+              >
+                <span className="text-[11px] font-bold text-amber-700">Admin (Staff)</span>
+                <span className="text-[10px] text-slate-400 font-mono">ID: 1001</span>
+              </button>
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {/* Institutional ID Field */}
             <div className="flex flex-col gap-1.5">
