@@ -165,36 +165,33 @@ function LoginScreen() {
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[14px] text-primary">verified_user</span>
-                Reviewer Quick Autofill:
+                Demo Student Login:
               </span>
-              <span className="text-[10px] text-slate-400 font-normal">Click to fill</span>
+              <span className="text-[10px] text-slate-400 font-normal">Click to autofill</span>
             </p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setForm({ institutionalId: '210201001', password: 'Password123!' });
-                  setClientError('');
-                  setServerError('');
-                }}
-                className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-primary hover:bg-primary/5 active:scale-95 text-xs font-semibold text-slate-700 hover:text-primary transition-all text-left shadow-xs flex flex-col"
-              >
-                <span className="text-[11px] font-bold text-primary">Student (User View)</span>
-                <span className="text-[10px] text-slate-400 font-mono">ID: 210201001</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setForm({ institutionalId: '1001', password: 'Password123!' });
-                  setClientError('');
-                  setServerError('');
-                }}
-                className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-amber-600 hover:bg-amber-50 active:scale-95 text-xs font-semibold text-slate-700 hover:text-amber-700 transition-all text-left shadow-xs flex flex-col"
-              >
-                <span className="text-[11px] font-bold text-amber-700">Admin (Staff)</span>
-                <span className="text-[10px] text-slate-400 font-mono">ID: 1001</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setForm({ institutionalId: '210201001', password: 'Password123!' });
+                setClientError('');
+                setServerError('');
+              }}
+              className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 hover:border-primary hover:bg-primary/5 active:scale-95 transition-all text-left shadow-xs flex items-center justify-between group"
+            >
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-primary flex items-center gap-1.5">
+                  <span>Student (User View)</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-primary/10 text-primary font-semibold">Active Donor</span>
+                </span>
+                <span className="text-[11px] text-slate-600 font-medium mt-1">
+                  ID: <span className="font-mono font-bold text-slate-800">210201001</span> &nbsp;·&nbsp; Pass: <span className="font-mono font-bold text-slate-800">Password123!</span>
+                </span>
+              </div>
+              <span className="text-[11px] font-bold text-primary group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+                Fill &amp; Go
+                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              </span>
+            </button>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
