@@ -15,7 +15,7 @@ function LoginScreen() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [form, setForm] = useState({ institutionalId: '', password: '' });
+  const [form, setForm] = useState({ institutionalId: '210201001', password: 'Password123!' });
   const [clientError, setClientError] = useState('');
   const [serverError, setServerError] = useState('');
   const [socialLoading, setSocialLoading] = useState(null); // 'google' | 'facebook' | 'github' | null
@@ -222,7 +222,7 @@ function LoginScreen() {
                     setServerError('');
                     setForm((f) => ({ ...f, institutionalId: e.target.value.trim() }));
                   }}
-                  placeholder="e.g. 1001 or 210201054"
+                  placeholder="e.g. 210201001"
                   type="text"
                   inputMode="numeric"
                   autoComplete="username"
@@ -245,7 +245,7 @@ function LoginScreen() {
                 <input
                   className="w-full pl-11 pr-11 py-3.5 bg-white/90 text-on-surface text-sm rounded-xl shadow-sm border border-outline-variant/40 outline-none placeholder:text-on-surface-variant/40 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                   id="pwdInput"
-                  placeholder="••••••••••••"
+                  placeholder="Password123!"
                   type={showPassword ? 'text' : 'password'}
                   value={form.password}
                   onChange={(e) => {
