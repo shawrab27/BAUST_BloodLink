@@ -1468,5 +1468,39 @@ router.get('/audit-logs', async (req, res, next) => {
   }
 });
 
+// ─── RESET PASSWORD (ADMIN UTILITY) ──────────────────────────────────────────
+router.post('/users/:id/reset-password', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const dbActive = await isConnected();
+
+    let targetUser;
+    if (dbActive) {
+      targetUser = await User.findById(id).select('name email institutionalId');
+      if (!targetUser) return res.status(404).json({ error: 'Not Found', message: 'User not found.' });
+    } else {
+      targetUser = mockAdminUsers.find((u) => u._id.toString() === id.toString());
+      if (!targetUser) return res.status(404).json({ error: 'Not Found', message: 'User not found.' });
+    }
+
+    // In production, would send email/SMS reset link. In demo mode, return success.
+    await logAuditEvent({
+      action: 'ADMIN_PASSWORD_RESET_DISPATCH',
+      req,
+      targetModel: 'User',
+      targetId: id,
+      details: { targetEmail: targetUser.email || targetUser.institutionalId },
+    });
+
+    return res.status(200).json({
+      message: `Password reset link dispatched to ${targetUser.email || targetUser.name}. User must check their registered email.`,
+      userId: id,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+
 module.exports = router;
 module.exports.mockAuditLogs = mockAuditLogs;

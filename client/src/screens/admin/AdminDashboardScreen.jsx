@@ -235,7 +235,7 @@ function AdminDashboardScreen() {
   const fetchAuditLogs = useCallback(async () => {
     setLoadingAudit(true);
     try {
-      const res = await fetch('/api/admin/audit-log?limit=30', { headers: getHeaders() });
+      const res = await fetch('/api/admin/audit-logs?limit=30', { headers: getHeaders() });
       const data = await res.json();
       if (res.ok && data.logs) {
         setAuditLogs(data.logs);
@@ -468,7 +468,7 @@ function AdminDashboardScreen() {
   const handleUpdateCommitteeTier = async (memberId, newTier) => {
     try {
       const res = await fetch(`/api/helpline/${memberId}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: getHeaders(),
         body: JSON.stringify({ rankBadge: newTier }),
       });
@@ -505,7 +505,7 @@ function AdminDashboardScreen() {
       if (cmhContact) {
         updates.push(
           fetch(`/api/helpline/${cmhContact._id}`, {
-            method: 'PUT',
+            method: 'PATCH',
             headers: getHeaders(),
             body: JSON.stringify({ phone: saidpurCmhPhone.trim() }),
           })
@@ -514,7 +514,7 @@ function AdminDashboardScreen() {
       if (baustContact) {
         updates.push(
           fetch(`/api/helpline/${baustContact._id}`, {
-            method: 'PUT',
+            method: 'PATCH',
             headers: getHeaders(),
             body: JSON.stringify({ phone: baustDeskPhone.trim() }),
           })
@@ -533,7 +533,7 @@ function AdminDashboardScreen() {
       const waContact = helplines.find((c) => c.category === 'WhatsApp');
       if (waContact) {
         const res = await fetch(`/api/helpline/${waContact._id}`, {
-          method: 'PUT',
+          method: 'PATCH',
           headers: getHeaders(),
           body: JSON.stringify({ whatsappLink: whatsappLink.trim() }),
         });
