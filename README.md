@@ -13,13 +13,19 @@
 
 ## 🔑 Peer Reviewer & Testing Credentials
 
-The login screen includes a **1-click Demo Student Login** autofill bar. You can also manually use these test credentials:
+The login screen includes **1-click Demo Accounts Autofill** buttons (pre-filled with Student credentials by default):
 
-### Demo Student Login (General User & Donor View)
+### 1. Demo Student Login (General User & Donor View)
 - **Institutional ID:** `210201001`
 - **Password:** `Password123!`
 - **Role:** Student / Active Blood Donor
 - **Destination:** User Community Feed (`/feed`), Blood Hub, Search Donors, Emergency SOS, Helpline, Profile.
+
+### 2. Demo Admin Login (Staff & Command Center View)
+- **Institutional ID:** `1001`
+- **Password:** `Password123!`
+- **Role:** System Administrator
+- **Destination:** Super Admin Command Center (`/admin`) and full campus management tools.
 
 ---
 

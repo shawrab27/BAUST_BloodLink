@@ -45,7 +45,8 @@ function LoginScreen() {
 
     const res = await login({ institutionalId: id, password: form.password });
     if (res.success) {
-      const targetPath = location.state?.from?.pathname || '/feed';
+      const isAdmin = res.user?.userType === 'Admin' || res.user?.role === 'Admin';
+      const targetPath = location.state?.from?.pathname || (isAdmin ? '/admin' : '/feed');
       navigate(targetPath, { replace: true });
     } else {
       setServerError(res.error || 'Invalid credentials.');
@@ -165,33 +166,65 @@ function LoginScreen() {
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[14px] text-primary">verified_user</span>
-                Demo Student Login:
+                Demo Accounts (Click to Fill):
               </span>
-              <span className="text-[10px] text-slate-400 font-normal">Click to autofill</span>
+              <span className="text-[10px] text-slate-400 font-normal">Pre-filled with Student</span>
             </p>
-            <button
-              type="button"
-              onClick={() => {
-                setForm({ institutionalId: '210201001', password: 'Password123!' });
-                setClientError('');
-                setServerError('');
-              }}
-              className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 hover:border-primary hover:bg-primary/5 active:scale-95 transition-all text-left shadow-xs flex items-center justify-between group"
-            >
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-primary flex items-center gap-1.5">
-                  <span>Student (User View)</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-primary/10 text-primary font-semibold">Active Donor</span>
-                </span>
-                <span className="text-[11px] text-slate-600 font-medium mt-1">
-                  ID: <span className="font-mono font-bold text-slate-800">210201001</span> &nbsp;·&nbsp; Pass: <span className="font-mono font-bold text-slate-800">Password123!</span>
-                </span>
-              </div>
-              <span className="text-[11px] font-bold text-primary group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
-                Fill &amp; Go
-                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-              </span>
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {/* User Demo Card */}
+              <button
+                type="button"
+                onClick={() => {
+                  setForm({ institutionalId: '210201001', password: 'Password123!' });
+                  setClientError('');
+                  setServerError('');
+                }}
+                className={`p-2.5 rounded-xl border text-left transition-all shadow-xs flex flex-col justify-between ${
+                  form.institutionalId === '210201001'
+                    ? 'bg-rose-50/70 border-primary ring-1 ring-primary/30'
+                    : 'bg-white border-slate-200 hover:border-primary/50 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-primary">Student (User View)</span>
+                  {form.institutionalId === '210201001' && (
+                    <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-primary text-white font-bold">Active</span>
+                  )}
+                </div>
+                <div className="text-[10px] text-slate-600 font-medium mt-1">
+                  ID: <span className="font-mono font-bold text-slate-800">210201001</span>
+                  <br />
+                  Pass: <span className="font-mono font-bold text-slate-800">Password123!</span>
+                </div>
+              </button>
+
+              {/* Admin Demo Card */}
+              <button
+                type="button"
+                onClick={() => {
+                  setForm({ institutionalId: '1001', password: 'Password123!' });
+                  setClientError('');
+                  setServerError('');
+                }}
+                className={`p-2.5 rounded-xl border text-left transition-all shadow-xs flex flex-col justify-between ${
+                  form.institutionalId === '1001'
+                    ? 'bg-amber-50/70 border-amber-600 ring-1 ring-amber-600/30'
+                    : 'bg-white border-slate-200 hover:border-amber-500/50 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-700">Admin (Staff View)</span>
+                  {form.institutionalId === '1001' && (
+                    <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-600 text-white font-bold">Active</span>
+                  )}
+                </div>
+                <div className="text-[10px] text-slate-600 font-medium mt-1">
+                  ID: <span className="font-mono font-bold text-slate-800">1001</span>
+                  <br />
+                  Pass: <span className="font-mono font-bold text-slate-800">Password123!</span>
+                </div>
+              </button>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
